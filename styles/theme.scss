@@ -1,0 +1,217 @@
+/**
+ * 通用主题样式 - 所有页面共用
+ * 使用方法：在页面的 <style> 中添加 @import "@/styles/theme.scss";
+ */
+
+/* ========== 主题变量 ========== */
+page {
+	--theme-bg: #f5f5f5;
+	--theme-bg-gradient: none;
+	--theme-card-bg: #ffffff;
+	--theme-card-bg-gradient: none;
+	--theme-primary: #409EFF;
+	--theme-primary-light: #e8f4ff;
+	--theme-success: #67C23A;
+	--theme-warning: #E6A23C;
+	--theme-danger: #F56C6C;
+	--theme-text-primary: #333333;
+	--theme-text-secondary: #666666;
+	--theme-text-tertiary: #999999;
+	--theme-border: #f0f0f0;
+	--theme-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+	--theme-radius-sm: 8rpx;
+	--theme-radius-md: 12rpx;
+	--theme-radius-lg: 16rpx;
+	--theme-radius-xl: 50rpx;
+}
+
+/* ========== 科技风格主题变量 ========== */
+.theme-ark {
+	--theme-bg: #0D0D15;
+	--theme-bg-gradient: linear-gradient(180deg, #0D0D15 0%, #1A1A2E 50%, #0D0D15 100%);
+	--theme-card-bg: #16162A;
+	--theme-card-bg-gradient: linear-gradient(135deg, #16162A 0%, #1E1E3A 100%);
+	--theme-primary: #FF6B35;
+	--theme-primary-light: rgba(255, 107, 53, 0.1);
+	--theme-success: #00D4AA;
+	--theme-warning: #FF6B35;
+	--theme-danger: #FF4444;
+	--theme-text-primary: #E8E8F0;
+	--theme-text-secondary: #8A8AA0;
+	--theme-text-tertiary: #6A6A80;
+	--theme-border: #2A2A4A;
+	--theme-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.3);
+	--theme-radius-sm: 2rpx;
+	--theme-radius-md: 4rpx;
+	--theme-radius-lg: 8rpx;
+	--theme-radius-xl: 4rpx;
+}
+
+/* ========== 通用容器样式 ========== */
+.theme-container {
+	padding: 30rpx;
+	background-color: var(--theme-bg);
+	min-height: 100vh;
+}
+
+.theme-ark .theme-container {
+	background: var(--theme-bg-gradient);
+	position: relative;
+}
+
+/* 科技感网格背景 */
+.theme-ark .theme-container::before {
+	content: '';
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-image:
+		linear-gradient(rgba(255, 107, 53, 0.03) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(255, 107, 53, 0.03) 1px, transparent 1px);
+	background-size: 50rpx 50rpx;
+	pointer-events: none;
+	z-index: 0;
+}
+
+/* ========== 通用卡片样式 ========== */
+.theme-card {
+	background-color: var(--theme-card-bg);
+	border-radius: var(--theme-radius-lg);
+	padding: 30rpx;
+	box-shadow: var(--theme-shadow);
+	margin-bottom: 30rpx;
+}
+
+.theme-ark .theme-card {
+	background: var(--theme-card-bg-gradient);
+	border: 1rpx solid var(--theme-border);
+	position: relative;
+}
+
+/* ========== 通用标题样式 ========== */
+.theme-title {
+	font-size: 32rpx;
+	font-weight: bold;
+	color: var(--theme-primary);
+}
+
+.theme-ark .theme-title {
+	text-shadow: 0 0 10rpx rgba(255, 107, 53, 0.3);
+}
+
+/* ========== 通用文字样式 ========== */
+.theme-text {
+	font-size: 28rpx;
+	color: var(--theme-text-primary);
+}
+
+.theme-text-secondary {
+	font-size: 26rpx;
+	color: var(--theme-text-secondary);
+}
+
+.theme-text-tertiary {
+	font-size: 24rpx;
+	color: var(--theme-text-tertiary);
+}
+
+/* ========== 通用按钮样式 ========== */
+.theme-btn {
+	background-color: var(--theme-primary);
+	color: #ffffff;
+	border-radius: var(--theme-radius-xl);
+	font-size: 28rpx;
+	padding: 20rpx 40rpx;
+}
+
+.theme-ark .theme-btn {
+	box-shadow: 0 0 20rpx rgba(255, 107, 53, 0.3);
+}
+
+.theme-btn-secondary {
+	background-color: var(--theme-border);
+	color: var(--theme-text-secondary);
+	border-radius: var(--theme-radius-md);
+	font-size: 26rpx;
+	padding: 15rpx 25rpx;
+}
+
+.theme-btn-danger {
+	background-color: var(--theme-danger);
+	color: #ffffff;
+	border-radius: var(--theme-radius-xl);
+	font-size: 28rpx;
+	padding: 20rpx 40rpx;
+}
+
+/* ========== 通用输入框样式 ========== */
+.theme-input {
+	background-color: var(--theme-card-bg);
+	border: 1rpx solid var(--theme-border);
+	border-radius: var(--theme-radius-md);
+	padding: 20rpx;
+	color: var(--theme-text-primary);
+	font-size: 28rpx;
+}
+
+/* ========== 通用列表项样式 ========== */
+.theme-list-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 30rpx;
+	background-color: var(--theme-card-bg);
+	border-bottom: 1rpx solid var(--theme-border);
+}
+
+.theme-ark .theme-list-item {
+	background: var(--theme-card-bg-gradient);
+}
+
+/* ========== 通用分隔线样式 ========== */
+.theme-divider {
+	height: 1rpx;
+	background-color: var(--theme-border);
+	margin: 20rpx 0;
+}
+
+.theme-ark .theme-divider {
+	background: linear-gradient(90deg, transparent, var(--theme-border), transparent);
+}
+
+/* ========== 加载状态样式 ========== */
+.theme-loading {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 100rpx 0;
+}
+
+.theme-loading-text {
+	font-size: 28rpx;
+	color: var(--theme-text-tertiary);
+	margin-top: 20rpx;
+}
+
+/* ========== 空状态样式 ========== */
+.theme-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 100rpx 0;
+}
+
+.theme-empty-icon {
+	font-size: 100rpx;
+	color: var(--theme-text-tertiary);
+	margin-bottom: 20rpx;
+}
+
+.theme-empty-text {
+	font-size: 28rpx;
+	color: var(--theme-text-tertiary);
+}

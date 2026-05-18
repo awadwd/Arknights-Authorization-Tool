@@ -1,0 +1,77 @@
+{
+	"name": "mockm-tool",
+	"description": "Let the back-end interface cross-domain, and support interface request record saving and viewing, and can quickly generate interfaces, documents, and data.",
+	"displayName": "Interface Companion",
+	"version": "1.1.16",
+	"publisher": "wll8",
+	"engines": {
+		"HBuilderX": "^2.7.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"main": "./extension",
+	"activationEvents": [
+		"onCommand:extension.mockmTool.apiStudio",
+		"onCommand:extension.mockmTool.reqHistory",
+		"onCommand:extension.mockmTool.mockmDoc",
+		"onCommand:extension.mockmTool.simplePostman",
+		"onCommand:extension.mockmTool.mockjsDoc"
+	],
+	"contributes": {
+		"commands": [
+			{
+				"command": "extension.mockmTool.apiStudio",
+				"title": "Open UI interface - interface editing"
+			},
+			{
+				"command": "extension.mockmTool.reqHistory",
+				"title": "Open UI interface - request record"
+			},
+			{
+				"command": "extension.mockmTool.mockmDoc",
+				"title": "mockm documentation"
+			},
+			{
+				"command": "extension.mockmTool.simplePostman",
+				"title": "simple postman"
+			},
+			{
+				"command": "extension.mockmTool.mockjsDoc",
+				"title": "mockjs documentation"
+			}
+		],
+		"menus": {
+			"editor/context": [
+				{
+					"command": "extension.mockmTool.apiStudio",
+					"group": "z_commands",
+					"when": "editorTextFocus"
+				},
+				{
+					"command": "extension.mockmTool.reqHistory",
+					"group": "z_commands",
+					"when": "editorTextFocus"
+				},
+				{
+					"command": "extension.mockmTool.simplePostman",
+					"group": "z_commands",
+					"when": "editorTextFocus"
+				},
+				{
+					"command": "extension.mockmTool.mockmDoc",
+					"group": "z_commands",
+					"when": "editorTextFocus"
+				},
+				{
+					"command": "extension.mockmTool.mockjsDoc",
+					"group": "z_commands",
+					"when": "editorTextFocus"
+				},
+				{
+					"group": "z_commands"
+				}
+			]
+		}
+	}
+}
