@@ -1,42 +1,9 @@
-# 明日方舟通行证查询
+# ArknightsAuthenticationAssistant
 
-按干员名查询所属盒号，或按盒号查询包含的干员列表。
+明日方舟通行证查询工具小助手，使用Uni-app开发，目前已上线微信小程序版本；明日方舟通行证是明日方舟朝陇山研发的一款周边产品，一般是盲盒亚克力制品本程序对该产品的分盒、信息、抽取、干员信息可以进行查询
 
-## 操作方式
+![image](./image/QRCode.jpg) ![image](./image/wechatCode.jpg)<br>                        免下载扫码体验本项目 Scan to experience this project<br>
 
-### 方式一：菜单交互
+版权声明：程序所涉及的公司名称、商标、产品等均为其各自所有者的资产，仅供识别。程序内使用的商品图片、游戏图片、动画、音频、文本原文，仅用于更好地表现游戏及商品资料，其版权属于 Arknights/上海鹰角网络科技有限公司及明日方舟朝陇山/上海木鸢网络科技有限公司。<br>除非另有声明，程序其他内容采用知识共享 署名-非商业性使用 4.0 国际 许可协议进行许可。未经许可不得将本程序内容或由其衍生作品用于商业目的。<br>
 
-发送 `兔兔通行证`，选择序号进入对应查询：
-
-- `1` — 查干员 → 输入干员名称关键字
-- `2` — 查盒号 → 输入盒号
-
-输入 `Q` 可退出当前查询。
-
-### 方式二：直接指令
-
-直接发送以下指令，无需进入菜单：
-
-| 指令 | 说明 |
-|------|------|
-| `兔兔通行证查干员 阿米娅` | 按干员名查询所属盒号 |
-| `兔兔通行证查盒号 1` | 按盒号查询包含的干员列表 |
-
-### 支持的查询方式
-
-- **中文名**：阿米娅、棘刺、风笛……
-- **英文名**：Amiya、Exusiai……
-- **日文名**：アル圾……
-- **外号/别名**：兔兔（阿米娅）、李狗剩（逻各斯）……
-
-### 盒号格式
-
-支持以下格式：
-
-- 纯数字：`1`、`5`、`10`
-- 带小数位：`1.0`、`5.0`
-- W 系列：`W-01`、`W-02`
-
-## 数据来源
-
-GitHub 开放数据仓库：[ArknightsAuthorization_Series-mirror](https://github.com/awadwd/ArknightsAuthorization_Series-mirror)
+Copyright Notice:The company names, trademarks, and products mentioned in the program are the assets of their respective owners and are used solely for identification purposes. The product images, game images, animations, audio, and textual content used within the program are solely for the purpose of better representing the game and product materials, and their copyrights belong to Arknights/Shanghai Yingjiao Network Technology Co., Ltd. and Tomorrow's Ark Chaolong Mountain/Shanghai Muyuan Network Technology Co., Ltd. Unless otherwise stated, the remaining content of the program is licensed under the Creative Commons Attribution-NonCommercial 4.0 International License. The content of this program or any derivative works thereof may not be used for commercial purposes without permission
