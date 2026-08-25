@@ -53,7 +53,7 @@ daily_recommend 抽签概率验证脚本
 1. 在微信开发者工具里运行项目
 2. daily_recommend 页面触发下载数据
 3. 微信开发者工具控制台执行:
-   const data = uni.getStorageSync('arknightsData');
+   const data = wx.getStorageSync('arknightsData');
    console.log(JSON.stringify(data));
 4. 复制 console 输出到 Box_Id.json
 
