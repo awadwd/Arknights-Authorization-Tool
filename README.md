@@ -84,6 +84,10 @@ npm install
 
 工具默认从 GitHub 镜像获取数据，无需手动更新。知晓云用户可在 Setting 页面手动触发数据刷新。
 
+### 5. daily_recommend页面开发
+
+如果您需要对daily_recommend页面的随机抽取逻辑、Theme列表进行了修改,需要使用TestTool下的工具进行重跑概率;确保概率基本无过大偏差即可~
+
 ---
 
 ## 线上版本与开源版本差异
