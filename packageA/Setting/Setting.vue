@@ -1,36 +1,41 @@
-<template>
+﻿<template>
 	<view :class="['container', 'theme-' + themeMode]">
 		<!-- 数据源设置 -->
-		<view class="section">
+		<view class="section" id="section-data">
 			<view class="section-header">
 				<text class="section-title">数据源设置</text>
 			</view>
 			<view class="section-content">
 				<view class="data-source-options">
 					<view 
-						class="data-source-item" 
-						v-for="option in dataSourceOptions" 
-						:key="option.value"
-						:class="{ 
-							'active': dataSource === option.value, 
-							'disabled': option.disabled || (option.value === 'github' && isDownloading),
-							'loading': option.value === 'github' && isDownloading
-						}"
-						@click="selectDataSource(option.value)"
+					class="data-source-item"
+					v-for="(option, index) in dataSourceOptions"
+					:key="option.value"
+					:style="itemStyle(index, option.value)"
+					:class="{
+						'active': dataSource === option.value,
+						'disabled': option.disabled || (option.value === 'github' && isDownloading),
+						'loading': option.value === 'github' && isDownloading
+					}"
+					@click="selectDataSource(option.value)"
 					>
-						<view class="data-source-info">
-							<text class="data-source-label">
-								{{ option.label }}
-								<text v-if="option.value === 'github' && isDownloading" class="loading-text"> (下载中...)</text>
-							</text>
-							<text class="data-source-desc">{{ option.desc }}</text>
-							<text class="data-source-warning" v-if="option.warning">{{ option.warning }}</text>
-						</view>
-						<view class="data-source-radio">
-							<view class="radio-inner" v-if="dataSource === option.value && !isDownloading"></view>
-							<view class="loading-spinner" v-if="option.value === 'github' && isDownloading"></view>
-						</view>
+					<view class="drag-handle"
+						@touchstart.stop="onDataSourceDragStart($event, index)"
+						@touchmove.stop.prevent="onDataSourceDragMove($event)"
+						@touchend.stop="onDataSourceDragEnd"
+						@touchcancel.stop="onDataSourceDragEnd"
+						:class="{ dragging: dragIndex === index }">
+						<text class="drag-icon">≡</text>
 					</view>
+					<view class="data-source-info">
+						<text class="data-source-label">
+							{{ option.label }}
+							<text v-if="option.value === 'github' && isDownloading" class="loading-text"> (下载中...)</text>
+						</text>
+						<text class="data-source-desc">{{ option.desc }}</text>
+						<text class="data-source-warning" v-if="option.warning">{{ option.warning }}</text>
+					</view>					<view class="loading-spinner" v-if="option.value === 'github' && isDownloading"></view>
+				</view>
 				</view>
 				
 				<!-- 自定义本地数据管理 -->
@@ -92,7 +97,7 @@
 		</view>
 		
 		<!-- 数据管理 -->
-		<view class="section">
+		<view class="section" id="section-custom">
 			<view class="section-header">
 				<text class="section-title">数据管理</text>
 			</view>
@@ -111,7 +116,7 @@
 		</view>
 		
 		<!-- 搜索功能设置 -->
-		<view class="section">
+		<view class="section" id="section-search">
 			<view class="section-header">
 				<text class="section-title">搜索功能设置</text>
 			</view>
@@ -189,7 +194,7 @@
 		</view>
 		
 		<!-- 功能设置 -->
-		<view class="section">
+		<view class="section" id="section-function">
 			<view class="section-header">
 				<text class="section-title">功能设置</text>
 			</view>
@@ -280,9 +285,12 @@
 		</view>
 
 		<!-- 界面主题设置 -->
-		<view class="section">
+		<view class="section" id="section-theme">
 			<view class="section-header">
-				<text class="section-title">界面主题</text><text class="danger-btn">测试中功能，谨慎使用</text>				
+				<view class="section-title-row">
+				<text class="section-title">界面主题</text>
+				<text class="section-warning-tag">测试中功能，谨慎使用</text>
+			</view>				
 			</view>
 			<view class="section-content">
 				<view class="theme-options">
@@ -460,10 +468,48 @@
 				</view>
 			</view>
 		</view>
-	</view>
+				<view class="section" id="section-errorlog">
+				<view class="section-header">
+					<text class="section-title">报错日志</text>
+					<text class="errorlog-section-desc">在没有错误日志的情况下诊断任何问题无异于闭眼开车</text>
+					<!-- <text v-if="errorLogCount > 0" class="errorlog-badge-inline">{{ errorLogCount }}</text> -->
+				</view>
+				<view class="section-content">
+					
+					<!-- 主操作: 查看报错日志 (大号) -->
+					<button class="errorlog-primary-btn" @click="viewErrorLogs">查看报错日志</button>
+					<!-- 次要操作: 清空日志 (小号) -->
+					<!-- <button class="errorlog-secondary-btn" @click="clearErrorLogs">清空日志</button> -->
+					<!-- 调试模式按钮: 正式发布(微信小程序)时不会编译 -->
+					<!-- #ifndef MP-WEIXIN -->
+					<button class="errorlog-debug-btn" @click="testLogError">插入测试日志</button>
+					<!-- #endif -->
+				</view>
+			</view>
+
+
+		<!-- 报错日志自定义弹窗 -->
+		<view v-if="showErrorLogModal" class="errorlog-modal-mask" @click="closeErrorLogModal">
+			<view class="errorlog-modal" @click.stop>
+				<view class="errorlog-modal-title">报错日志 (共{{ currentErrorLogs.length }}条)</view>
+				<scroll-view scroll-y class="errorlog-modal-body">
+					<view v-for="(log, idx) in currentErrorLogs" :key="idx" class="errorlog-modal-item">
+						<text class="errorlog-modal-meta">[{{ idx + 1 }}] {{ log.time }} [{{ log.context || log.source }}]</text>
+						<text class="errorlog-modal-msg">{{ log.name }}: {{ log.message }}</text>
+					</view>
+				</scroll-view>
+				<view class="errorlog-modal-btns">
+					<button class="cancel-btn" @click="closeErrorLogModal">关闭</button>
+					<button class="secondary-btn" @click="copyErrorLogs">复制到剪贴板</button>
+					<button class="danger-btn" @click="onClearFromModal">清空日志</button>
+				</view>
+			</view>
+		</view>
+		</view>
 </template>
 
 <script>
+	import errorLog from "@/utils/errorLog.js";
 	// 开源版本：知晓云配置已禁用，使用 GitHub 直链
 	const GITHUB_DATA_SOURCES = {
 		searchWordUrl: 'https://raw.githubusercontent.com/awadwd/ArknightsAuthorization_Series-mirror/refs/heads/main/searchWord.json',
@@ -472,11 +518,11 @@
 	
 	// 知晓云配置 - 开源版本clientId为空，商业版请配置知晓云
 	const KNOW_CLOUD_CONFIG = {
-		clientId: '',
-		baseUrl: 'https://raw.githubusercontent.com/awadwd/ArknightsAuthorization_Series-mirror/refs/heads/main',
+		clientId: 'YOUR_KNOW_CLOUD_CLIENT_ID',
+		baseUrl: 'https://YOUR_KNOW_CLOUD_CLIENT_ID.myminapp.com/hserve/v2.2',
 		tableNames: {
-			SearchWord_Version: '', // 开源版本使用 GitHub 直链
-			Guess_Version: ''       // 开源版本使用 GitHub 直链
+			SearchWord_Version: 'SearchWord_Version',
+			Guess_Version: 'Guess_Version'
 		}
 	};
 	
@@ -490,7 +536,7 @@
 		},
 		github: {
 			name: 'GitHub源',
-			characterUrl: 'https://raw.githubusercontent.com/awadwd/ArknightsAuthenticationAssistant/refs/heads/main/resource/Box_Id.json',
+			characterUrl: 'https://raw.githubusercontent.com/awadwd/ArknightsAuthorization_Series-mirror/refs/heads/main/Box_Id.json',
 			warning: '仅支持基础角色数据，可能无法显示分盒信息、市价、头像及热度标记'
 		},
 		local: {
@@ -507,14 +553,22 @@
 	const FIXED_SEARCH_URL = 'https://raw.gitcode.com/huangjinzhou1/ArknightsAuthorization_Series/blobs/11e970795ce8a6e94ac5baa0d5d0458c4103c7e2/searchWord.json';
 	
 	// 备用预测数据URL（仅当知晓云查询失败时使用）
-	//const FALLBACK_GUESS_URL = 'https://raw.gitcode.com/huangjinzhou1/ArknightsAuthorization_Series/blobs/d9ade5c72ca1f9c45a8405cba0c4957fa9887291/guessNew_Box_Id.json';
+	const FALLBACK_GUESS_URL = 'https://raw.gitcode.com/huangjinzhou1/ArknightsAuthorization_Series/blobs/d9ade5c72ca1f9c45a8405cba0c4957fa9887291/guessNew_Box_Id.json';
 	
 	export default {
 		data() {
 			return {
+				errorLogCount: 0,
+				showErrorLogModal: false,
+				currentErrorLogs: [],
 				localUpdateTime: '',
 				cloudUpdateTime: '',
 				currentVersion: '',
+
+				// 隐私协议（官方API）
+				showPrivacyModal: false,
+				privacyContractName: '《隐私保护指引》',
+				pendingFileAction: false,
 				dataCount: 0,
 				localDataSize: '',
 				enableGuessData: false,
@@ -530,13 +584,25 @@
 				searchDataUrl: FIXED_SEARCH_URL, // 初始化使用固定URL
 				showMarketPrice: false,
 				// 数据源相关数据
-				dataSource: 'domestic',
+				dataSource: 'knowCloud',
+			dragIndex: -1,
+			dragStartIndex: -1,
+			dragCurrentIndex: -1,
+			dragYStart: 0,
+			dragOffsetY: 0,
+			itemHeight: 0,
 				dataSourceOptions: [
-					{ 
-						value: 'domestic', 
-						label: '国内源（推荐）', 
-						desc: '速度快，稳定性好，支持全部功能',
+					{
+						value: 'knowCloud', 
+						label: '知晓云源', 
+						desc: '官方实时数据，支持全部功能',
 						warning: ''
+					},
+					{
+						value: 'domestic', 
+						label: '国内源', 
+						desc: 'GitCode镜像，支持全部功能',
+						warning: '试运行阶段，数据可能不稳定'
 					},
 					{ 
 						value: 'github', 
@@ -555,7 +621,7 @@
 						label: '自定义数据', 
 						desc: '上传自定义JSON数据',
 						warning: '需自行验证数据格式'
-					}
+					},
 				],
 				// GitHub源相关数据
 				githubCharactersCount: 0,
@@ -661,12 +727,18 @@
 				return count;
 			}
 		},
-		onLoad() {
+
+
+
+		onLoad(options) {
 			this.loadDataSourceSetting();
 			this.loadDataInfo();
 			this.loadMarketPriceSetting(); // 新增：加载市价设置
 			this.calculateDataSize();
-			this.loadGuessDataSetting();
+				try { this.loadGuessDataSetting(); } catch (e) {
+					this.logError(e);
+					console.warn('loadGuessDataSetting failed:', e); 
+				}
 			this.loadSearchSettings();
 			this.checkDomesticData();
 			this.loadCustomDataInfo();
@@ -680,11 +752,22 @@
 			// 加载主题设置
 			this.loadThemeSetting();
 			
+			// func_search 跳转：滚动到指定 tab
+			if (options && options.tab) {
+				this.scrollToTab(options.tab);
+			}
+			
 			// 设置分享配置
 			wx.showShareMenu({
 				withShareTicket: true,
 				menus: ['shareAppMessage', 'shareTimeline']
 			});
+		},
+
+		onShow() {
+			this.refreshErrorLogCount();
+			// 重新加载设置，保持与 func_search 页面同步
+			this.loadSearchSettings();
 		},
 		
 		onUnload() {
@@ -710,6 +793,274 @@
 		},
 		
 		methods: {
+				logError(e, ctx) {
+				try {
+					errorLog.logError(e, ctx);
+				} catch (logErr) {
+					console.error('[logError] storage failed:', logErr);
+				}
+			},
+
+			viewErrorLogs() {
+				const logs = errorLog.getErrorLogs();
+				if (logs.length === 0) {
+					uni.showToast({ title: '暂无报错记录', icon: 'none' });
+					return;
+				}
+				this.currentErrorLogs = logs;
+				this.showErrorLogModal = true;
+			},
+
+			closeErrorLogModal() {
+				this.showErrorLogModal = false;
+				this.currentErrorLogs = [];
+			},
+
+			copyErrorLogs() {
+				const logs = this.currentErrorLogs || [];
+				const text = '报错日志 (' + logs.length + '条)\n' + logs.map((log, idx) =>
+					`[${log.time}] [${log.context || log.source}] ${log.name}: ${log.message}`
+				).join('\n');
+				uni.setClipboardData({
+					data: text,
+					success: () => {
+						uni.showToast({ title: '已复制到剪贴板', icon: 'success' });
+						this.closeErrorLogModal();
+					},
+					fail: () => uni.showToast({ title: '复制失败', icon: 'none' }),
+				});
+			},
+			onClearFromModal() {
+				this.closeErrorLogModal();
+				this.clearErrorLogs();
+			},
+
+
+			refreshErrorLogCount() {
+				try {
+					const logs = errorLog.getErrorLogs();
+					this.errorLogCount = logs ? logs.length : 0;
+				} catch (e) {
+					this.errorLogCount = 0;
+				}
+			},
+
+			clearErrorLogs() {
+				uni.showModal({
+					title: '确认清空',
+					content: '确定要清空所有报错日志吗？',
+					success: (res) => {
+					if (res.confirm) {
+						errorLog.clearErrorLogs();
+						uni.showToast({ title: '日志已清空', icon: 'success' });
+					}
+					},
+				});
+			},
+
+			testLogError() {
+				// 测试方法: 主动插入一条错误日志, 用于验证日志功能是否正常
+				try {
+					// 模拟一个真实错误
+					throw new Error('这是一条测试错误日志 - 验证日志记录功能正常');
+				} catch (e) {
+					this.logError(e, 'Setting.testLogError');
+					uni.showToast({ title: '测试日志已记录', icon: 'success' });
+				}
+			},
+
+				loadGuessDataSetting() {
+			console.log('[Setting] loadGuessDataSetting raw =', uni.getStorageSync('enableGuessData'));
+			try {
+				const enableGuessData = uni.getStorageSync('enableGuessData');
+				if (typeof enableGuessData === 'boolean' || typeof enableGuessData === 'string') {
+					this.enableGuessData = enableGuessData === true || enableGuessData === 'true';
+				}
+				if (this.enableGuessData) {
+					const guessData = uni.getStorageSync('guessData');
+					this.guessDataCount = guessData && Array.isArray(guessData) ? guessData.length : 0;
+					const savedStatus = uni.getStorageSync('guessDataStatusMessage');
+					if (savedStatus) {
+						this.guessDataStatusMessage = savedStatus;
+					}
+				}
+			} catch (e) {
+				this.logError(e);
+				console.warn('加载预测数据设置失败:', e);
+			}
+		},
+
+		onDataSourceDragStart(e, index) {
+			this.dragIndex = index;
+			this.dragStartIndex = index;
+			this.dragCurrentIndex = index;
+			this.dragYStart = (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+			this.dragOffsetY = 0;
+		},
+		onDataSourceDragMove(e) {
+			if (this.dragStartIndex < 0) return;
+			if (!e.touches || !e.touches[0]) return;
+			const curY = e.touches[0].clientY;
+			this.dragOffsetY = curY - this.dragYStart;
+			const step = this.itemHeight || 72;
+			const delta = Math.round(this.dragOffsetY / step);
+			let target = this.dragStartIndex + delta;
+			const len = this.dataSourceOptions.length;
+			if (target < 0) target = 0;
+			if (target > len - 1) target = len - 1;
+			this.dragCurrentIndex = target;
+		},
+		onDataSourceDragEnd() {
+			if (this.dragStartIndex < 0) return;
+			const from = this.dragStartIndex;
+			const to = this.dragCurrentIndex;
+			if (from !== to) {
+				const arr = this.dataSourceOptions.slice();
+				const moved = arr.splice(from, 1)[0];
+				arr.splice(to, 0, moved);
+				this.dataSourceOptions = arr;
+			}
+			const order = this.dataSourceOptions.map(o => o.value);
+			uni.setStorageSync('dataSourceOrder', order);
+			this.dragIndex = -1;
+			this.dragStartIndex = -1;
+			this.dragCurrentIndex = -1;
+			this.dragYStart = 0;
+			this.dragOffsetY = 0;
+		},
+		itemStyle(index, value) {
+			const step = this.itemHeight || 72;
+			if (this.dragStartIndex < 0) return {};
+			if (index === this.dragStartIndex) {
+				return { transform: 'translateY(' + this.dragOffsetY + 'px)' };
+			}
+			const movedTo = this.dragCurrentIndex;
+			const movedFrom = this.dragStartIndex;
+			let shift = 0;
+			if (movedFrom < movedTo) {
+				if (index > movedFrom && index <= movedTo) shift = -1;
+			} else if (movedFrom > movedTo) {
+				if (index >= movedTo && index < movedFrom) shift = 1;
+			}
+			if (shift === 0) return {};
+			return { transform: 'translateY(' + (shift * step) + 'px)' };
+		},
+
+		onGuessDataChange(e) {
+			const newValue = e.detail.value;
+			this.enableGuessData = newValue;
+			uni.setStorageSync('enableGuessData', newValue);
+			if (newValue) {
+				this.downloadGuessData();
+			} else {
+				this.guessDataStatusMessage = '已关闭预测数据';
+			}
+		},
+		moveDataSource(index, direction) {
+			const newIndex = index + direction;
+			if (newIndex < 0 || newIndex >= this.dataSourceOptions.length) return;
+			const arr = [...this.dataSourceOptions];
+			const [item] = arr.splice(index, 1);
+			arr.splice(newIndex, 0, item);
+			this.dataSourceOptions = arr;
+			uni.setStorageSync('dataSourceOrder', arr.map(o => o.value));
+		},
+		// func_search 跳转：滚动到指定设置项
+		scrollToTab(tab) {
+
+
+
+			
+
+
+
+
+
+			const tabMap = {
+
+
+
+				data: 'section-data',
+
+
+
+				theme: 'section-theme',
+
+
+
+				search: 'section-search',
+
+
+
+				custom: 'section-custom',
+
+
+
+				function: 'section-function',
+
+
+
+				about: 'section-function'
+
+
+
+			};
+
+
+
+			const id = tabMap[tab];
+
+
+
+			if (!id) return;
+
+
+
+			setTimeout(() => {
+
+
+
+				const query = uni.createSelectorQuery().in(this);
+
+
+
+				query.select('#' + id).boundingClientRect(rect => {
+
+
+
+					if (rect) {
+
+
+
+						uni.pageScrollTo({
+
+
+
+							scrollTop: rect.top - 10,
+
+
+
+							duration: 300
+
+
+
+						});
+
+
+
+					}
+
+
+
+				}).exec();
+
+
+
+			}, 300);
+
+
+
+		},
 			// ===================== 主题设置相关方法 =====================
 
 			// 加载主题设置
@@ -746,6 +1097,7 @@
 						}
 						console.log('加载主题设置:', this.themeMode);
 					} catch (e) {
+						this.logError(e);
 						console.error('加载主题设置失败:', e);
 						this.themeMode = 'simple';
 					}
@@ -835,6 +1187,7 @@
 						throw new Error(`请求失败: ${res.statusCode}`);
 					}
 				} catch (error) {
+					this.logError(error);
 					console.error(`知晓云请求失败 (${tableName}):`, error);
 					// 如果还有重试次数，则重试
 					if (retryCount < 3) {
@@ -883,6 +1236,7 @@
 						};
 					}
 				} catch (error) {
+					this.logError(error);
 					console.error('从知晓云获取搜索词URL失败:', error);
 					// 如果知晓云请求失败，使用固定URL
 					console.warn('知晓云请求失败，使用固定URL');
@@ -935,6 +1289,7 @@
 						};
 					}
 				} catch (error) {
+					this.logError(error);
 					console.error(`从知晓云获取预测URL失败 (type=${type}):`, error);
 					// 如果知晓云请求失败，使用备用URL
 					console.warn('知晓云请求失败，使用备用URL');
@@ -999,6 +1354,23 @@
 					console.log('统一数据存储完成，数据源:', this.dataSource, '数据条数:', this.unifiedData.length);
 				}
 			},
+			onPrivacyConfirm() {
+				this.showPrivacyModal = false;
+				if (this.pendingFileAction) {
+					this.pendingFileAction = false;
+					this.doSelectJsonFile();
+				}
+			},
+
+			onPrivacyCancel() {
+				this.showPrivacyModal = false;
+				this.pendingFileAction = false;
+				uni.showToast({ title: '需要同意隐私协议才能使用文件上传功能', icon: 'none' });
+			},
+
+
+
+
 			
 			// 清除所有已下载的数据文件
 			clearAllDownloadedFiles() {
@@ -1060,12 +1432,14 @@
 								});
 							}
 						} catch (fileErr) {
+							this.logError(fileErr);
 							console.log('清除文件失败:', fileErr);
 						}
 					}
 					
 					return true;
 				} catch (e) {
+					this.logError(e);
 					console.error('清除数据失败:', e);
 					return false;
 				}
@@ -1107,6 +1481,7 @@
 					const domesticData = uni.getStorageSync('arknightsData');
 					this.hasDomesticData = domesticData && Array.isArray(domesticData) && domesticData.length > 0;
 				} catch (e) {
+					this.logError(e);
 					console.error('检查国内源数据失败:', e);
 					this.hasDomesticData = false;
 				}
@@ -1120,6 +1495,7 @@
 						this.customDataInfo = customDataInfo;
 					}
 				} catch (e) {
+					this.logError(e);
 					console.error('加载自定义数据信息失败:', e);
 				}
 			},
@@ -1137,6 +1513,7 @@
 						this.loadGithubDataInfo();
 					}
 				} catch (e) {
+					this.logError(e);
 					console.error('加载数据源设置失败:', e);
 				}
 			},
@@ -1149,6 +1526,7 @@
 						this.githubCharactersCount = githubData.length;
 					}
 				} catch (e) {
+					this.logError(e);
 					console.error('加载GitHub数据信息失败:', e);
 				}
 			},
@@ -1224,6 +1602,12 @@
 					return;
 				}
 				
+				// 如果选择知晓云源，直接切换
+				if (source === 'knowCloud') {
+					this.confirmSwitchDataSource(source);
+					return;
+				}
+
 				// 如果选择GitHub源，显示警告并开始下载
 				if (source === 'github') {
 					this.confirmSwitchToGithub(source);
@@ -1249,7 +1633,9 @@
 			// 开始GitHub下载
 			async startGithubDownload(source) {
 				// 清除之前的数据
+				if (source !== 'knowCloud') {
 				this.clearAllDownloadedFiles();
+				}
 				
 				// 设置下载状态
 				this.isDownloading = true;
@@ -1293,6 +1679,7 @@
 						});
 					}
 				} catch (error) {
+					this.logError(error);
 					console.error('下载GitHub数据失败:', error);
 					if (!this.isDownloadCancelled) {
 						uni.hideLoading();
@@ -1333,6 +1720,8 @@
 					message = '已切换至本地数据，将使用已下载的本地数据';
 				} else if (source === 'custom') {
 					message = '已切换至自定义数据';
+				} else if (source === 'knowCloud') {
+					message = '已切换到知晓云源';
 				}
 				
 				uni.showToast({
@@ -1384,6 +1773,50 @@
 			
 			// 选择JSON文件 - 兼容多个平台
 			selectJsonFile() {
+
+
+
+			// #ifdef MP-WEIXIN
+
+
+
+			wx.requirePrivacyAuthorize({
+
+
+
+				success: () => { this.doSelectJsonFile(); },
+
+
+
+				fail: () => { this.onPrivacyCancel(); }
+
+
+
+			});
+
+
+
+			// #endif
+
+
+
+			// #ifndef MP-WEIXIN
+
+
+
+			this.doSelectJsonFile();
+
+
+
+			// #endif
+
+
+
+		},
+	
+
+			// 实际选文件
+			doSelectJsonFile() {
 				// #ifdef MP-WEIXIN
 			    wx.chooseMessageFile({
 			        count: 1,
@@ -1510,6 +1943,7 @@
 								this.uploadProgress = 60;
 								await this.processJsonString(result.data);
 							} catch (err) {
+								this.logError(err);
 								console.error('获取远程JSON失败:', err);
 								uni.showToast({
 									title: '获取数据失败，请检查链接',
@@ -1555,6 +1989,7 @@
 					this.uploadProgress = 60;
 					await this.processJsonString(fileContent);
 				} catch (error) {
+					this.logError(error);
 					console.error('处理JSON文件失败:', error);
 					uni.showToast({
 						title: '读取文件失败',
@@ -1593,6 +2028,7 @@
 					try {
 						jsonData = JSON.parse(jsonString);
 					} catch (e) {
+						this.logError(e);
 						uni.showToast({
 							title: 'JSON格式错误',
 							icon: 'none'
@@ -1615,6 +2051,7 @@
 					this.showValidationModal = true;
 					
 				} catch (error) {
+					this.logError(error);
 					console.error('处理JSON数据失败:', error);
 					uni.showToast({
 						title: '数据处理失败',
@@ -1793,6 +2230,7 @@
 					this.loadDataInfo();
 					
 				} catch (e) {
+					this.logError(e);
 					console.error('保存自定义数据失败:', e);
 					uni.showToast({
 						title: '保存数据失败',
@@ -1808,6 +2246,7 @@
 					const sizeInKB = (jsonString.length / 1024).toFixed(2);
 					return `${sizeInKB} KB`;
 				} catch (e) {
+					this.logError(e);
 					return '未知';
 				}
 			},
@@ -1876,6 +2315,7 @@
 					this.saveJsonToFile(jsonString, fileName);
 					
 				} catch (e) {
+					this.logError(e);
 					console.error('导出数据失败:', e);
 					uni.hideLoading();
 					uni.showToast({
@@ -1924,6 +2364,7 @@
 			        this.saveAndShareJsonFile(jsonString, fileName);
 			        
 			    } catch (e) {
+			    	this.logError(e);
 			        uni.hideLoading();
 			        console.error('分享数据失败:', e);
 			        uni.showToast({
@@ -1951,6 +2392,7 @@
 			            this.saveFileToLocal(tempFilePath);
 			            
 			        } catch (writeError) {
+			        	this.logError(writeError);
 			            console.error('写入文件失败:', writeError);
 			            uni.hideLoading();
 			            uni.showToast({
@@ -2106,6 +2548,7 @@
 			            this.shareFileMessage(tempFilePath);
 			            
 			        } catch (writeError) {
+			        	this.logError(writeError);
 			            console.error('写入分享文件失败:', writeError);
 			            uni.hideLoading();
 			            uni.showToast({
@@ -2220,6 +2663,7 @@
 									try {
 										data = JSON.parse(data);
 									} catch (e) {
+										this.logError(e);
 										console.error('GitHub数据JSON解析失败:', e);
 										resolve(false);
 										return;
@@ -2351,6 +2795,7 @@
 					this.calculateDataSize();
 					
 				} catch (e) {
+					this.logError(e);
 					console.error('加载数据信息失败:', e);
 				}
 			},
@@ -2372,6 +2817,7 @@
 						nickname: this.enableNicknameSearch
 					});
 				} catch (e) {
+					this.logError(e);
 					console.error('加载搜索设置失败:', e);
 				}
 			},
@@ -2449,6 +2895,7 @@
 						uni.setStorageSync('searchWords', updatedWords);
 					}
 				} catch (e) {
+					this.logError(e);
 					console.error('清理英文数据失败:', e);
 				}
 			},
@@ -2467,6 +2914,7 @@
 						uni.setStorageSync('searchWords', updatedWords);
 					}
 				} catch (e) {
+					this.logError(e);
 					console.error('清理外号数据失败:', e);
 				}
 			},
@@ -2513,197 +2961,19 @@
 			          this.downloadSearchData();
 			        }
 			      },
-			
+						// 获取搜索词数据源列表
+			getSearchWordSources(primaryUrl) {
+				const sources = [];
+				const githubRepo = 'awadwd/ArknightsAuthorization_Series-mirror';
+				const swFile = 'searchWord.json';
+				if (primaryUrl) sources.push({ name: '知晓云', url: primaryUrl });
+				sources.push({ name: 'GitCode', url: FIXED_SEARCH_URL });
+				sources.push({ name: 'jsDelivr(CDN)', url: 'https://cdn.jsdelivr.net/gh/' + githubRepo + '@main/' + swFile });
+				sources.push({ name: 'GitHub Raw', url: 'https://raw.githubusercontent.com/' + githubRepo + '/main/' + swFile });
+				return sources;
+			},
+
 			async downloadSearchData() {
-			        if (this.dataSource === 'github' || this.isDownloading || this.isUploading) {
-			          uni.showToast({
-			            title: this.isDownloading || this.isUploading ? '正在处理中，请稍候' : 'GitHub源不支持此功能',
-			            icon: 'none'
-			          });
-			          return;
-			        }
-			
-			        this.searchDataStatusMessage = '正在从知晓云获取搜索词数据信息...';
-			
-			        try {
-			          // 第一次尝试：从知晓云获取 URL 并下载
-			          let searchInfo = await this.getSearchDataUrlFromMinapp();
-			          let data = await this.downloadFromUrl(searchInfo.url);
-			
-			          // 如果数据为空，且当前 URL 不是固定 URL，则使用固定 URL 重试一次
-			          if ((!data || data.length === 0) && searchInfo.url !== FIXED_SEARCH_URL) {
-			            console.warn('知晓云返回的数据为空，尝试使用固定 URL 重试');
-			            this.searchDataStatusMessage = '知晓云数据为空，尝试使用备用源...';
-			            data = await this.downloadFromUrl(FIXED_SEARCH_URL);
-			          }
-			
-			          // 处理数据
-			          const processedData = this.processSearchWords(data || []);
-			
-			          if (processedData.length === 0) {
-			            // 最终数据仍然为空，提示用户
-			            this.searchDataStatusMessage = '搜索词获取失败，请重新获取';
-			            uni.showToast({
-			              title: '搜索词获取失败，请重新获取',
-			              icon: 'none',
-			              duration: 3000
-			            });
-			            return;
-			          }
-			
-			          // 保存数据
-			          uni.setStorageSync('searchWords', processedData);
-			          this.searchWordCount = processedData.length;
-			          this.searchDataStatusMessage = `搜索词数据下载成功 (${processedData.length} 个干员)`;
-			
-			          // 保存版本信息
-			          uni.setStorageSync('searchDataVersion', searchInfo.version || '未知版本');
-			          uni.setStorageSync('searchDataUpdateTime', searchInfo.updateTime || new Date().toISOString());
-			
-			          uni.showToast({
-			            title: '搜索词数据更新成功',
-			            icon: 'success',
-			            duration: 2000
-			          });
-			
-			          this.loadDataInfo();
-			        } catch (error) {
-			          console.error('下载搜索词数据失败:', error);
-			          this.searchDataStatusMessage = '下载失败，请检查网络连接';
-			          uni.showToast({
-			            title: '搜索词获取失败，请重试',
-			            icon: 'none',
-			            duration: 3000
-			          });
-			        }
-			      },
-				  
-				  /**
-				         * 根据 URL 下载数据（抽取为独立方法，便于重试）
-				         */
-				        downloadFromUrl(url) {
-				          return new Promise((resolve, reject) => {
-				            uni.request({
-				              url: url,
-				              method: 'GET',
-				              timeout: 10000,
-				              success: (res) => {
-				                if (res.statusCode === 200) {
-				                  let data = res.data;
-				                  if (typeof data === 'string') {
-				                    try {
-				                      data = JSON.parse(data);
-				                    } catch (e) {
-				                      console.error('JSON解析失败:', e);
-				                      reject(e);
-				                      return;
-				                    }
-				                  }
-				                  resolve(data);
-				                } else {
-				                  reject(new Error(`服务器错误: ${res.statusCode}`));
-				                }
-				              },
-				              fail: reject
-				            });
-				          });
-				        },
-			
-			// 处理搜索词数据 - 修复干员数量问题
-			processSearchWords(data) {
-			    const searchWordMap = {};
-			    let processedCount = 0;
-			    let totalItems = 0;
-			    
-			    console.log('开始处理搜索词数据，原始数据长度:', data.length);
-			    
-			    // 新的数据格式：数组中的每个对象包含 character1, character2, ..., character396
-			    // 或者是知晓云返回的标准格式
-			    data.forEach((item, index) => {
-			        totalItems++;
-			        
-			        // 方式1：检查是否是知晓云的标准格式（有name字段）
-			        if (item.name && item.name.trim() !== '') {
-			            const characterName = item.name.trim();
-			            
-			            if (!searchWordMap[characterName]) {
-			                searchWordMap[characterName] = {
-			                    name: characterName,
-			                    englishname: item.englishname || item.englishName || '',
-			                    japanesename: item.japanesename || item.japaneseName || '',
-			                    searchword: item.searchword || item.searchWord || []
-			                };
-			                processedCount++;
-			            } else {
-			                // 合并数据，避免重复
-			                if ((item.englishname || item.englishName) && !searchWordMap[characterName].englishname) {
-			                    searchWordMap[characterName].englishname = item.englishname || item.englishName;
-			                }
-			                if ((item.japanesename || item.japaneseName) && !searchWordMap[characterName].japanesename) {
-			                    searchWordMap[characterName].japanesename = item.japanesename || item.japaneseName;
-			                }
-			                if (item.searchword || item.searchWord) {
-			                    const searchWords = item.searchword || item.searchWord || [];
-			                    if (Array.isArray(searchWords)) {
-			                        searchWords.forEach(word => {
-			                            if (word && !searchWordMap[characterName].searchword.includes(word)) {
-			                                searchWordMap[characterName].searchword.push(word);
-			                            }
-			                        });
-			                    }
-			                }
-			            }
-			        }
-			        // 方式2：检查是否是character1-character396的格式
-			        else {
-			            // 遍历对象的所有属性
-			            Object.keys(item).forEach(key => {
-			                if (key.startsWith('character') && item[key] && item[key].name) {
-			                    const characterData = item[key];
-			                    const characterName = characterData.name.trim();
-			                    
-			                    if (!searchWordMap[characterName]) {
-			                        searchWordMap[characterName] = {
-			                            name: characterName,
-			                            englishname: characterData.englishname || characterData.englishName || '',
-			                            japanesename: characterData.japanesename || characterData.japaneseName || '',
-			                            searchword: characterData.searchword || characterData.serachword || characterData.searchWord || []
-			                        };
-			                        processedCount++;
-			                    } else {
-			                        // 合并数据，避免重复
-			                        if ((characterData.englishname || characterData.englishName) && !searchWordMap[characterName].englishname) {
-			                            searchWordMap[characterName].englishname = characterData.englishname || characterData.englishName;
-			                        }
-			                        if ((characterData.japanesename || characterData.japaneseName) && !searchWordMap[characterName].japanesename) {
-			                            searchWordMap[characterName].japanesename = characterData.japanesename || characterData.japaneseName;
-			                        }
-			                        if (characterData.searchword || characterData.serachword || characterData.searchWord) {
-			                            const searchWords = characterData.searchword || characterData.serachword || characterData.searchWord || [];
-			                            if (Array.isArray(searchWords)) {
-			                                searchWords.forEach(word => {
-			                                    if (word && !searchWordMap[characterName].searchword.includes(word)) {
-			                                        searchWordMap[characterName].searchword.push(word);
-			                                    }
-			                                });
-			                            }
-			                        }
-			                    }
-			                }
-			            });
-			        }
-			    });
-			    
-			    console.log(`处理搜索词数据: 遍历 ${totalItems} 个元素, 去重后 ${processedCount} 个干员`);
-			    
-			    const result = Object.values(searchWordMap);
-			    console.log('处理后的搜索词数据示例（前3个）:', result.slice(0, 3));
-			    
-			    return result;
-			},
-			
-			// 管理自定义搜索词
-			manageCustomSearchWords() {
 				if (this.dataSource === 'github' || this.isDownloading || this.isUploading) {
 					uni.showToast({
 						title: this.isDownloading || this.isUploading ? '正在处理中，请稍候' : 'GitHub源不支持此功能',
@@ -2711,167 +2981,148 @@
 					});
 					return;
 				}
-				
-				uni.navigateTo({
-					url: '/packageA/custom-words/custom-words'
-				});
-			},
-			
-			// 加载预测数据设置
-			loadGuessDataSetting() {
+
+				this.searchDataStatusMessage = '正在获取搜索词数据...';
+				let versionInfo = null;
+
 				try {
-					const enableGuessData = uni.getStorageSync('enableGuessData');
-					this.enableGuessData = enableGuessData === 'true';
-					
-					// 如果启用了预测数据但本地没有数据，自动下载
-					if (this.enableGuessData && this.guessDataCount === 0 && this.dataSource !== 'github') {
-						this.downloadGuessData();
-					}
+					versionInfo = await this.getSearchDataUrlFromMinapp();
 				} catch (e) {
-					console.error('加载预测数据设置失败:', e);
+					this.logError(e);
+					console.warn('知晓云版本查询失败:', e);
 				}
-			},
-			
-			// 预测数据开关变化
-			onGuessDataChange(e) {
-				if (this.dataSource === 'github' || this.isDownloading || this.isUploading) {
-					uni.showToast({
-						title: this.isDownloading || this.isUploading ? '正在处理中，请稍候' : 'GitHub源不支持此功能',
-						icon: 'none'
-					});
-					return;
-				}
-				
-				this.enableGuessData = e.detail.value;
-				
-				// 保存设置
-				uni.setStorageSync('enableGuessData', this.enableGuessData.toString());
-				
-				if (this.enableGuessData) {
-					// 如果启用预测数据，立即下载
-					this.downloadGuessData();
-				} else {
-					// 如果禁用预测数据，清除状态信息和缓存数据
-					this.guessDataStatusMessage = '预测数据已禁用';
-					uni.removeStorageSync('guessData');
-					this.guessDataCount = 0;
-					setTimeout(() => {
-						this.guessDataStatusMessage = '';
-					}, 2000);
-				}
-			},
-			
-			// ===================== 修改：下载预测数据（从知晓云获取URL） =====================
-			async downloadGuessData() {
-				if (this.dataSource === 'github' || this.isDownloading || this.isUploading) {
-					uni.showToast({
-						title: this.isDownloading || this.isUploading ? '正在处理中，请稍候' : 'GitHub源不支持此功能',
-						icon: 'none'
-					});
-					return;
-				}
-				
-				this.guessDataStatusMessage = '正在从知晓云获取预测数据信息...';
-				
-				try {
-					// 根据当前数据源决定 type：国内源用 'gitcode'，GitHub源用 'github'，但这里已排除 github 源，所以默认用 gitcode
-					const type = this.dataSource === 'github' ? 'github' : 'gitcode';
-					
-					// 先从知晓云获取数据URL
-					const guessInfo = await this.getGuessDataUrlFromMinapp(type);
-					const guessDataUrl = guessInfo.url;
-					
-					console.log(`获取到的预测数据URL (type=${type}):`, guessDataUrl);
-					
-					this.guessDataStatusMessage = '正在下载预测数据...';
-					
-					const res = await new Promise((resolve, reject) => {
-						uni.request({
-							url: guessDataUrl,
-							method: 'GET',
-							timeout: 10000,
-							success: resolve,
-							fail: reject
-						});
-					});
-					
-					if (res.statusCode === 200) {
-						let data = res.data;
-						
-						if (typeof data === 'string') {
-							try {
-								data = JSON.parse(data);
-							} catch (e) {
-								console.error('预测数据JSON解析失败:', e);
-								this.guessDataStatusMessage = '预测数据格式错误';
-								return;
-							}
+
+				const sources = this.getSearchWordSources(versionInfo ? versionInfo.url : null);
+				let data = null;
+				let successSource = null;
+
+				for (let i = 0; i < sources.length; i++) {
+					const src = sources[i];
+					this.searchDataStatusMessage = '正在从 ' + src.name + ' 下载...';
+					try {
+						data = await this.downloadFromUrl(src.url);
+						if (data && data.length > 0) {
+							successSource = src.name;
+							break;
 						}
-						
-						if (Array.isArray(data)) {
-							// 数据清洗：确保所有字段都是正确的类型
-							const cleanedData = data.map(box => {
-								const cleanedBox = {};
-								for (const key in box) {
-									if (key === 'Box_id') {
-										cleanedBox[key] = String(box[key] || '');
-									} else if (key.startsWith('character')) {
-										// 对于干员字段，保持原有结构
-										cleanedBox[key] = box[key];
-									} else if (key === 'Box_type') {
-										// 保留原始 Box_type 字段，不要覆盖
-										cleanedBox[key] = box[key] || 'normal';
-									} else {
-										cleanedBox[key] = String(box[key] || '');
-									}
-								}
-								// 如果原始数据没有 Box_type，才设置默认值
-								if (!cleanedBox.Box_type) {
-									cleanedBox.Box_type = 'normal';
-								}
-								return cleanedBox;
-							});
-							
-							// 保存预测数据到统一位置
-							uni.setStorageSync('guessData', cleanedData);
-							this.guessDataCount = cleanedData.length;
-							this.guessDataStatusMessage = `预测数据下载成功 (${cleanedData.length} 个预测盒号)`;
-							
-							// 保存版本信息
-							uni.setStorageSync('guessDataVersion', guessInfo.version || '未知版本');
-							uni.setStorageSync('guessDataUpdateTime', guessInfo.updateTime || new Date().toISOString());
-							
-							uni.showToast({
-								title: '预测数据更新成功',
-								icon: 'success',
-								duration: 2000
-							});
-							
-							// 更新数据信息
-							this.loadDataInfo();
-						} else {
-							this.guessDataStatusMessage = '预测数据格式不正确';
-						}
-					} else {
-						this.guessDataStatusMessage = `服务器错误: ${res.statusCode}`;
+					} catch (err) {
+						this.logError(err);
+						console.warn('[搜索词] 源 ' + src.name + ' 失败:', err.message || err);
 					}
-				} catch (error) {
-					console.error('下载预测数据失败:', error);
-					this.guessDataStatusMessage = '下载失败，请检查网络连接';
 				}
+
+				const processedData = this.processSearchWords(data || []);
+
+				if (processedData.length === 0) {
+					this.searchDataStatusMessage = '搜索词获取失败，请重新获取';
+					uni.showToast({ title: '搜索词获取失败，请重新获取', icon: 'none', duration: 3000 });
+					return;
+				}
+
+				uni.setStorageSync('searchWords', processedData);
+				this.searchWordCount = processedData.length;
+				this.searchDataStatusMessage = '搜索词数据下载成功 (' + processedData.length + ' 个干员)';
+				uni.setStorageSync('searchDataVersion', versionInfo ? (versionInfo.version || '未知版本') : '未知版本');
+				uni.setStorageSync('searchDataUpdateTime', versionInfo ? (versionInfo.updateTime || new Date().toISOString()) : new Date().toISOString());
+				uni.showToast({ title: '搜索词数据更新成功 [' + successSource + ']', icon: 'success', duration: 2000 });
+				this.loadDataInfo();
 			},
-			
-			// ===================== 自动更新相关方法 =====================
+
+			// 获取预测数据源列表
+			getGuessDataSources(primaryUrl) {
+				const sources = [];
+				const githubRepo = 'awadwd/ArknightsAuthorization_Series-mirror';
+				const gbFile = 'guessNew_Box_Id.json';
+				if (primaryUrl) sources.push({ name: '知晓云', url: primaryUrl });
+				sources.push({ name: 'GitCode', url: FALLBACK_GUESS_URL });
+				sources.push({ name: 'jsDelivr(CDN)', url: 'https://cdn.jsdelivr.net/gh/' + githubRepo + '@main/' + gbFile });
+				sources.push({ name: 'GitHub Raw', url: 'https://raw.githubusercontent.com/' + githubRepo + '/main/' + gbFile });
+				return sources;
+			},
+
+
+async downloadGuessData() {
+				if (this.dataSource === 'github' || this.isDownloading || this.isUploading) {
+					uni.showToast({
+						title: this.isDownloading || this.isUploading ? '正在处理中，请稍候' : 'GitHub源不支持此功能',
+						icon: 'none'
+					});
+					return;
+				}
+
+				this.guessDataStatusMessage = '正在获取预测数据...';
+				let versionInfo = null;
+
+				try {
+					const type = this.dataSource === 'github' ? 'github' : 'gitcode';
+					versionInfo = await this.getGuessDataUrlFromMinapp(type);
+				} catch (e) {
+					this.logError(e);
+					console.warn('知晓云版本查询失败:', e);
+				}
+
+				const sources = this.getGuessDataSources(versionInfo ? versionInfo.url : null);
+				let data = null;
+				let successSource = null;
+
+				for (let i = 0; i < sources.length; i++) {
+					const src = sources[i];
+					this.guessDataStatusMessage = '正在从 ' + src.name + ' 下载...';
+					try {
+						data = await this.downloadFromUrl(src.url);
+						if (data && data.length > 0) {
+							successSource = src.name;
+							break;
+						}
+					} catch (err) {
+						this.logError(err);
+						console.warn('[预测数据] 源 ' + src.name + ' 失败:', err.message || err);
+					}
+				}
+
+				if (!data || data.length === 0) {
+					this.guessDataStatusMessage = '预测数据获取失败，请检查网络';
+					uni.showToast({ title: '预测数据获取失败', icon: 'none', duration: 3000 });
+					return;
+				}
+
+				const processedData = (data || []).map(box => {
+					const cleaned = {};
+					for (const key in box) {
+						if (key === 'Box_id') {
+							cleaned[key] = String(box[key] || '');
+						} else if (key.startsWith('character')) {
+							cleaned[key] = box[key];
+						} else {
+							cleaned[key] = String(box[key] || '');
+						}
+					}
+					cleaned.Box_type = cleaned.Box_type || 'normal';
+					return cleaned;
+				});
+
+				uni.setStorageSync('guessData', processedData);
+				this.guessDataCount = processedData.length;
+				this.guessDataStatusMessage = '预测数据下载成功 (' + processedData.length + ' 个预测盒号)';
+				uni.setStorageSync('guessDataVersion', versionInfo ? (versionInfo.version || '未知版本') : '未知版本');
+				uni.setStorageSync('guessDataUpdateTime', versionInfo ? (versionInfo.updateTime || new Date().toISOString()) : new Date().toISOString());
+				uni.showToast({ title: '预测数据更新成功 [' + successSource + ']', icon: 'success', duration: 2000 });
+				this.loadDataInfo();
+			},// ===================== 自动更新相关方法 =====================
 			
 			// 加载自动更新设置
 			loadAutoUpdateSetting() {
+			    console.log('[Setting] loadAutoUpdateSetting raw =', uni.getStorageSync('autoUpdateSetting'));
 			    try {
 			        const autoUpdateSetting = uni.getStorageSync('autoUpdateSetting');
 			        console.log('从存储加载的自动更新设置:', autoUpdateSetting);
 			        
 			        if (autoUpdateSetting) {
 			            // 更新本地数据状态
-			            this.enableAutoUpdate = autoUpdateSetting.enabled || false;
+			            const _auEnabled = (typeof autoUpdateSetting === 'object' && autoUpdateSetting !== null)
+						? (autoUpdateSetting.enabled === true || autoUpdateSetting.enabled === 'true')
+						: (autoUpdateSetting === true || autoUpdateSetting === 'true');
+					this.enableAutoUpdate = _auEnabled;
 			            this.lastAutoUpdateTime = autoUpdateSetting.lastCheckTime || '';
 			            
 			            console.log('加载后 enableAutoUpdate:', this.enableAutoUpdate);
@@ -2912,6 +3163,7 @@
 			            this.autoUpdateStatusMessage = '自动更新未配置';
 			        }
 			    } catch (e) {
+			    	this.logError(e);
 			        console.error('加载自动更新设置失败:', e);
 			        // 出错时使用默认值
 			        this.enableAutoUpdate = false;
@@ -2970,6 +3222,7 @@
 			        
 			        return true;
 			    } catch (e) {
+			    	this.logError(e);
 			        console.error('保存自动更新设置失败:', e);
 			        return false;
 			    }
@@ -3314,6 +3567,7 @@
 					this.localDataSize = `${sizeInKB} KB`;
 					
 				} catch (e) {
+					this.logError(e);
 					console.error('计算数据大小失败:', e);
 					this.localDataSize = '未知';
 				}
@@ -3326,6 +3580,7 @@
 					const date = new Date(isoTime);
 					return `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
 				} catch (e) {
+					this.logError(e);
 					console.error('格式化云端时间失败:', e);
 					return isoTime;
 				}
@@ -3356,11 +3611,13 @@
 			
 			// 加载市价设置
 			loadMarketPriceSetting() {
+			  console.log('[Setting] loadMarketPriceSetting raw =', uni.getStorageSync('showMarketPrice'));
 			  try {
 			    const showMarketPrice = uni.getStorageSync('showMarketPrice');
-			    this.showMarketPrice = showMarketPrice === 'true';
+			    this.showMarketPrice = showMarketPrice === true || showMarketPrice === 'true';
 			    console.log('加载市价设置:', this.showMarketPrice);
 			  } catch (e) {
+			  	this.logError(e);
 			    console.error('加载市价设置失败:', e);
 			    this.showMarketPrice = false;
 			  }
@@ -3480,6 +3737,7 @@
 					}, 1500);
 					
 				} catch (e) {
+					this.logError(e);
 					console.error('删除数据失败:', e);
 					uni.showToast({
 						title: '删除失败',
@@ -3498,6 +3756,37 @@
 		background-color: #f5f5f5;
 		min-height: 100vh;
 	}
+
+	.data-source-item.dragging {
+		background-color: #f0f8ff !important;
+		box-shadow: 0 12rpx 30rpx rgba(64, 158, 255, 0.45);
+		opacity: 0.95;
+		z-index: 10;
+	}
+	.data-source-item.active {
+		border-left: 6rpx solid #409EFF;
+		background-color: #eaf4ff;
+	}
+	.drag-handle {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 56rpx;
+		height: 56rpx;
+		transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+	}
+	.drag-handle.dragging {
+		background-color: #409EFF !important;
+		color: #fff !important;
+		transform: scale(1.3);
+		box-shadow: 0 4rpx 12rpx rgba(64, 158, 255, 0.5);
+		border-radius: 8rpx;
+	}
+	.drag-handle.dragging {
+		background-color: #409EFF !important;
+		color: #fff !important;
+	}
+
 	
 	.header {
 		text-align: center;
@@ -3601,17 +3890,7 @@
 		margin-top: 5rpx;
 	}
 	
-	.data-source-radio {
-		width: 40rpx;
-		height: 40rpx;
-		border: 2rpx solid #ddd;
-		border-radius: 50%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		margin-left: 20rpx;
-		position: relative;
-	}
+	
 	
 	.data-source-item.active .data-source-radio {
 		border-color: #409EFF;
@@ -4805,4 +5084,195 @@
 	.container.theme-jieyuan .progress-bar { background-color: rgba(226, 88, 132, 0.1); }
 	.container.theme-jieyuan .progress-inner { background: linear-gradient(90deg, #e25884, #399383); }
 	.container.theme-jieyuan .data-source-warning { color: #e25884; }
-</style>
+
+	/* 隐私协议弹窗 */
+	
+	
+	
+	
+	
+	
+	
+	
+	.privacy-btn.cancel { background-color: #f0f0f0; }
+	.privacy-btn.confirm { background-color: #409EFF; }
+	.privacy-btn .btn-text { font-size: 28rpx; color: #666; }
+	.privacy-btn.confirm .btn-text { color: #fff; }
+	.theme-ark 
+	.theme-ark 
+	.theme-ark .privacy-btn.cancel { background-color: #444; }
+	.theme-ark .privacy-btn.cancel .btn-text { color: #ccc; }
+
+	.data-source-item {
+		transition: transform 0.22s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+		will-change: transform;
+	}
+
+				/* ========== 报错日志自定义弹窗样式 ========== */
+		.errorlog-badge-inline {
+			background-color: #FA5151;
+			color: #fff;
+			font-size: 22rpx;
+			min-width: 36rpx;
+			height: 36rpx;
+			line-height: 36rpx;
+			text-align: center;
+			padding: 0 12rpx;
+			border-radius: 18rpx;
+			margin-left: 12rpx;
+		}
+		.errorlog-modal-mask {
+			position: fixed;
+			top: 0; left: 0; right: 0; bottom: 0;
+			background: rgba(0, 0, 0, 0.5);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			z-index: 9999;
+		}
+		.errorlog-modal {
+			width: 80%;
+			max-width: 600rpx;
+			max-height: 80vh;
+			background: #fff;
+			border-radius: 16rpx;
+			display: flex;
+			flex-direction: column;
+			overflow: hidden;
+			box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.2);
+		}
+		.errorlog-modal-title {
+			padding: 28rpx 24rpx;
+			font-size: 30rpx;
+			font-weight: 600;
+			color: #333;
+			text-align: center;
+			border-bottom: 1rpx solid #eee;
+		}
+		.errorlog-modal-body {
+			flex: 1;
+			padding: 16rpx 24rpx;
+			max-height: 60vh;
+		}
+		.errorlog-modal-item {
+			background: #1e1e1e;
+			color: #d4d4d4;
+			font-family: 'Courier New', Consolas, 'Liberation Mono', monospace;
+			font-size: 22rpx;
+			padding: 16rpx;
+			border-radius: 8rpx;
+			margin-bottom: 12rpx;
+			line-height: 1.6;
+			word-break: break-all;
+			white-space: pre-wrap;
+		}
+		.errorlog-modal-item:last-child {
+			margin-bottom: 0;
+		}
+		.errorlog-modal-meta {
+			display: block;
+			color: #9cdcfe;
+			font-size: 20rpx;
+			margin-bottom: 6rpx;
+		}
+		.errorlog-modal-msg {
+			display: block;
+			color: #ce9178;
+			font-size: 22rpx;
+		}
+		.errorlog-modal-btns {
+			display: flex;
+			gap: 12rpx;
+			padding: 20rpx 24rpx;
+			border-top: 1rpx solid #eee;
+			background: #fafafa;
+		}
+		.errorlog-modal-btns button {
+			flex: 1;
+			margin: 0;
+		}
+			/* ========== 报错日志 section 按钮层级 (主/次/调试) ========== */
+		.errorlog-section-desc {
+			display: block;
+			font-size: 24rpx;
+			color: #999;
+			line-height: 1.5;
+			margin-bottom: 24rpx;
+			padding: 0 4rpx;
+		}
+		.errorlog-primary-btn {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 100%;
+			background: linear-gradient(135deg, #409EFF 0%, #2b7ed3 100%);
+			color: #fff;
+			border: none;
+			border-radius: 12rpx;
+			font-size: 30rpx;
+			font-weight: 500;
+			height: 88rpx;
+			line-height: 88rpx;
+			padding: 0;
+			margin: 0 0 16rpx 0;
+			box-shadow: 0 4rpx 12rpx rgba(64, 158, 255, 0.25);
+		}
+		.errorlog-primary-btn:active {
+			opacity: 0.85;
+		}
+		.errorlog-secondary-btn {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 100%;
+			background-color: #fff;
+			color: #FA5151;
+			border: 1rpx solid #FA5151;
+			border-radius: 12rpx;
+			font-size: 26rpx;
+			height: 72rpx;
+			line-height: 72rpx;
+			padding: 0;
+			margin: 0 0 12rpx 0;
+		}
+		.errorlog-secondary-btn:active {
+			background-color: #fef0f0;
+		}
+		.errorlog-debug-btn {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 100%;
+			background-color: transparent;
+			color: #999;
+			border: 1rpx dashed #ccc;
+			border-radius: 8rpx;
+			font-size: 22rpx;
+			height: 56rpx;
+			line-height: 56rpx;
+			padding: 0;
+			margin: 0;
+		}
+		.errorlog-debug-btn:active {
+			background-color: #f5f5f5;
+		}
+
+		/* 标题行 (含警示标签) */
+		.section-title-row {
+			display: flex;
+			flex-direction: row;
+			align-items: center;
+			justify-content: space-between;
+			width: 100%;
+		}
+		.section-warning-tag {
+			background-color: #FA5151;
+			color: #fff;
+			font-size: 22rpx;
+			padding: 4rpx 14rpx;
+			border-radius: 6rpx;
+			line-height: 1.4;
+			display: inline-block;
+			max-width: 70%;
+		}
+	</style>

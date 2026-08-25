@@ -1,6 +1,6 @@
 {
     "name" : "方舟通行证谷子查询工具",
-    "appid" : "__UNI__0E47E24",
+    "appid" : "__UNI__XXXXXXX",
     "description" : "明日方舟通行证查询app",
     "versionName" : "1.4.8.85.fix",
     "versionCode" : 150,
@@ -89,11 +89,14 @@
     "quickapp" : {},
     /* 小程序特有相关 */
     "mp-weixin" : {
-        "appid" : "wxf44733fe3bc08ad9",
+        "appid" : "YOUR_WECHAT_APPID",
         "setting" : {
-            "urlCheck" : false
+            "urlCheck" : false,
+			"minified": true
+			
         },
-        "usingComponents" : true
+        "usingComponents" : true,
+		"__usePrivacyCheck__": true
     },
     "mp-alipay" : {
         "usingComponents" : true
@@ -119,17 +122,17 @@
             "disableHostCheck" : true,
             "proxy" : {
                 "/api" : {
-                    "target" : "https://raw.githubusercontent.com/awadwd/ArknightsAuthorization_Series-mirror/refs/heads/main",
+                    "target" : "https://YOUR_KNOW_CLOUD_CLIENT_ID.myminapp.com",
                     "changeOrigin" : true,
-                    "secure" : true,
+                    "secure" : false,
                     "pathRewrite" : {
-                        "^/api" : ""
+                        "^/api" : "/hserve/v2.2"
                     }
                 },
                 "/gitcode" : {
                     "target" : "https://raw.gitcode.com",
                     "changeOrigin" : true,
-                    "secure" : true,
+                    "secure" : false,
                     "pathRewrite" : {
                         "^/gitcode" : ""
                     }

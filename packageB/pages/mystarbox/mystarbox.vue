@@ -292,6 +292,7 @@
 </template>
 
 <script>
+	import errorLog from "@/utils/errorLog.js";
 	export default {
 		data() {
 			return {
@@ -346,6 +347,13 @@
 			}
 		},
 		methods: {
+			logError(e, ctx) {
+				try {
+					errorLog.logError(e, ctx);
+				} catch (logErr) {
+					console.error('[logError] storage failed:', logErr);
+				}
+			},
 			// 加载主题设置
 				loadThemeSetting() {
 					try {
@@ -380,6 +388,7 @@
 						}
 						console.log('加载主题设置:', this.themeMode);
 					} catch (e) {
+						this.logError(e);
 						console.error('加载主题设置失败:', e);
 						this.themeMode = 'simple';
 					}
@@ -399,7 +408,7 @@
 						this.showMarketPrice = false;
 						uni.setStorageSync('showMarketPrice', 'false'); // 确保有一个默认值
 					} else {
-						this.showMarketPrice = showMarketPrice === 'true';
+						this.showMarketPrice = showMarketPrice === true || showMarketPrice === 'true';
 					}
 					
 					console.log('加载后的市价设置:', this.showMarketPrice);
@@ -407,6 +416,7 @@
 					// 检查是否有市价数据
 					this.checkMarketPriceData();
 				} catch (e) {
+					this.logError(e);
 					console.error('加载市价设置失败:', e);
 					this.showMarketPrice = false; // 默认关闭
 				}
@@ -547,6 +557,7 @@
 					this.checkMarketPriceData();
 					
 				} catch (error) {
+					this.logError(error);
 					console.error('加载收藏数据失败:', error);
 					uni.showToast({
 						title: '加载收藏失败',
@@ -706,6 +717,7 @@
 					this.loadFavorites();
 					
 				} catch (error) {
+					this.logError(error);
 					console.error('操作失败:', error);
 					uni.showToast({
 						title: '操作失败',
@@ -747,6 +759,7 @@
 					this.loadFavorites();
 					
 				} catch (error) {
+					this.logError(error);
 					console.error('操作失败:', error);
 					uni.showToast({
 						title: '操作失败',
@@ -853,6 +866,7 @@
 						icon: 'success'
 					});
 				} catch (error) {
+					this.logError(error);
 					console.error('清空收藏失败:', error);
 					uni.showToast({
 						title: '清空收藏失败',

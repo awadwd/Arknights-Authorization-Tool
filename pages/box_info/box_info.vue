@@ -1,4 +1,4 @@
-<template>
+﻿<template>
 	<view :class="['container', 'theme-' + themeMode]">
 		<!-- 头部盒号信息 -->
 		<view class="header">
@@ -91,6 +91,7 @@
 </template>
 
 <script>
+	import errorLog from "@/utils/errorLog.js";
 	export default {
 		data() {
 			return {
@@ -145,6 +146,13 @@
 		},
 		
 		methods: {
+			logError(e, ctx) {
+				try {
+					errorLog.logError(e, ctx);
+				} catch (logErr) {
+					console.error('[logError] storage failed:', logErr);
+				}
+			},
 			// 加载主题设置
 				loadThemeSetting() {
 					try {
@@ -179,6 +187,7 @@
 						}
 						console.log('加载主题设置:', this.themeMode);
 					} catch (e) {
+						this.logError(e);
 						console.error('加载主题设置失败:', e);
 						this.themeMode = 'simple';
 					}
@@ -191,7 +200,9 @@
 					// 微信小程序跳转方法
 					if (wx && wx.openEmbeddedMiniProgram) {
 						wx.openEmbeddedMiniProgram({
-							appId: 'wxebadf544ddae62cb',
+							
+				// NOTE: Replace with your own mini-program AppID for navigation
+				appId: 'wxebadf544ddae62cb',
 							path: 'pages/webview/index?sid=25733968&hash=15bc&navigateBackMiniProgram=true',
 							success: (res) => {
 								console.log('跳转问卷成功:', res);
@@ -213,6 +224,7 @@
 						});
 					}
 				} catch (error) {
+					this.logError(error);
 					console.error('跳转问卷异常:', error);
 					uni.showToast({
 						title: '跳转失败',
@@ -300,6 +312,7 @@
 						this.loadDataFromNetwork();
 					}
 				} catch (error) {
+					this.logError(error);
 					console.error('加载数据失败:', error);
 					uni.showToast({
 						title: '数据加载失败',
@@ -332,6 +345,7 @@
 					
 					return allData;
 				} catch (e) {
+					this.logError(e);
 					console.error('加载本地数据失败:', e);
 					return [];
 				}
@@ -389,6 +403,7 @@
 									try {
 										data = JSON.parse(data);
 									} catch (e) {
+										this.logError(e);
 										console.error('JSON解析失败:', e);
 										uni.showToast({
 											title: '数据格式错误',

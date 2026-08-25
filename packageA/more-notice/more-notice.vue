@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view :class="['container', 'theme-' + themeMode]">
     <view class="content-wrapper">
       <!-- 左侧标题列表 -->
@@ -74,12 +74,13 @@
 </template>
 
 <script>
+import errorLog from "@/utils/errorLog.js";
 // 开源版本：知晓云配置已禁用，商业版请配置知晓云
 const KNOW_CLOUD_CONFIG = {
-  clientId: '',
-  baseUrl: 'https://raw.githubusercontent.com/awadwd/ArknightsAuthorization_Series-mirror/refs/heads/main',
+  clientId: 'YOUR_KNOW_CLOUD_CLIENT_ID',
+  baseUrl: 'https://YOUR_KNOW_CLOUD_CLIENT_ID.myminapp.com/hserve/v2.2',
   tableNames: {
-    more_notice: '' // 开源版本禁用
+    more_notice: 'more_notice'
   }
 };
 
@@ -152,6 +153,13 @@ export default {
   },
   
   methods: {
+    logError(e, ctx) {
+				try {
+					errorLog.logError(e, ctx);
+				} catch (logErr) {
+					console.error('[logError] storage failed:', logErr);
+				}
+			},
     // 加载主题设置
     	loadThemeSetting() {
     		try {
@@ -186,6 +194,7 @@ export default {
     			}
     			console.log('加载主题设置:', this.themeMode);
     		} catch (e) {
+    			this.logError(e);
     			console.error('加载主题设置失败:', e);
     			this.themeMode = 'simple';
     		}
@@ -249,6 +258,7 @@ export default {
           throw new Error(`请求失败: ${res.statusCode}`);
         }
       } catch (error) {
+      	this.logError(error);
         console.error(`知晓云请求失败 (${tableName}):`, error);
         // 如果还有重试次数，则重试
         if (retryCount < 3) {
@@ -309,6 +319,7 @@ export default {
           }
         }
       } catch (error) {
+      	this.logError(error);
         console.error('获取公告列表失败:', error);
         uni.showToast({
           title: '获取公告失败',
@@ -354,6 +365,7 @@ export default {
           return date.getTime();
         }
       } catch (e) {
+      	this.logError(e);
         console.error('解析时间失败:', e, '原始时间:', time);
         return 0;
       }
@@ -381,6 +393,7 @@ export default {
         
         return `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
       } catch (e) {
+      	this.logError(e);
         console.error('格式化时间失败:', e, '原始时间:', time);
         return typeof time === 'string' ? time : '时间格式错误';
       }

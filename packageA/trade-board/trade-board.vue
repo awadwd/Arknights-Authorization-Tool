@@ -1,7 +1,8 @@
 <template>
-	<view class="trade-container">
+	</template>
+	<!-- <view class="trade-container"> -->
 		<!-- 筛选标签 -->
-		<view class="filter-tabs">
+		<!-- <view class="filter-tabs">
 			<view 
 				class="filter-tab" 
 				v-for="(tab, idx) in filterTabs" 
@@ -11,15 +12,15 @@
 			>
 				<text>{{ tab.label }}</text>
 			</view>
-		</view>
+		</view> -->
 
 		<!-- 发帖按钮 -->
-		<view class="post-btn-wrapper">
+		<!-- <view class="post-btn-wrapper">
 			<button class="post-btn" @click="showPostModal = true">+ 发布信息</button>
-		</view>
+		</view> -->
 
 		<!-- 帖子列表 -->
-		<scroll-view scroll-y class="post-list" @scrolltolower="loadMore">
+		<!-- <scroll-view scroll-y class="post-list" @scrolltolower="loadMore">
 			<view class="post-card" v-for="(post, index) in filteredPosts" :key="index">
 				<view class="post-header">
 					<view class="post-type-tag" :class="'type-' + post.type">
@@ -47,10 +48,10 @@
 				<text class="empty-icon">💬</text>
 				<text class="empty-text">暂无帖子，快来发布第一条吧</text>
 			</view>
-		</scroll-view>
+		</scroll-view> -->
 
 		<!-- 发帖弹窗 -->
-		<view class="modal-mask" v-if="showPostModal" @click="showPostModal = false">
+		<!-- <view class="modal-mask" v-if="showPostModal" @click="showPostModal = false">
 			<view class="modal-content" @click.stop>
 				<text class="modal-title">发布交换信息</text>
 				
@@ -112,12 +113,13 @@
 					<button class="modal-btn cancel-btn" @click="showPostModal = false">取消</button>
 					<button class="modal-btn submit-btn" @click="submitPost">发布</button>
 				</view>
-			</view>
-		</view>
+			</view> -->
+		<!-- </view>
 	</view>
 </template>
 
-<script>
+<!-- <script>
+import errorLog from "@/utils/errorLog.js";
 export default {
 	data() {
 		return {
@@ -155,6 +157,13 @@ export default {
 		this.loadPosts();
 	},
 	methods: {
+		logError(e, ctx) {
+				try {
+					errorLog.logError(e, ctx);
+				} catch (logErr) {
+					console.error('[logError] storage failed:', logErr);
+				}
+			},
 		loadPosts() {
 			try {
 				const saved = uni.getStorageSync('tradeBoardPosts') || [];
@@ -163,6 +172,7 @@ export default {
 					timeText: this.formatTime(p.timestamp)
 				}));
 			} catch (e) {
+				this.logError(e);
 				this.posts = [];
 			}
 		},
@@ -232,10 +242,10 @@ export default {
 			// 预留分页加载
 		}
 	}
-};
-</script>
+}; -->
+<!-- </script> -->
 
-<style scoped>
+<!-- <style scoped>
 .trade-container {
     min-height: 100vh;
     background: #f5f5f5;
@@ -525,4 +535,4 @@ export default {
     color: #fff;
     box-shadow: 0 4rpx 12rpx rgba(255, 107, 53, 0.3);
 }
-</style>
+</style> -->

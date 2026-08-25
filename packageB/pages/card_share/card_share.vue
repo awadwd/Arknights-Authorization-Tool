@@ -462,6 +462,7 @@
 </template>
 
 <script>
+import errorLog from "@/utils/errorLog.js";
 export default {
 	data() {
 		return {
@@ -563,6 +564,13 @@ export default {
 		this.loadUserData();
 	},
 	methods: {
+			logError(e, ctx) {
+				try {
+					errorLog.logError(e, ctx);
+				} catch (logErr) {
+					console.error('[logError] storage failed:', logErr);
+				}
+			},
 			// 加载角色数据 - 添加调试信息
 			async loadData() {
 				try {
@@ -604,6 +612,7 @@ export default {
 						});
 					}
 				} catch (e) {
+					this.logError(e);
 					console.error('加载数据失败:', e);
 					uni.showToast({
 						title: '加载数据失败',
@@ -635,6 +644,7 @@ export default {
 					console.log('用户数据加载完成');
 					this.calculateStatistics();
 				} catch (e) {
+					this.logError(e);
 					console.error('加载用户数据失败:', e);
 				}
 			},
@@ -647,6 +657,7 @@ export default {
 				uni.setStorageSync('tradeCharacters', this.tradeCharacters);
 				console.log('用户数据保存成功');
 			} catch (e) {
+				this.logError(e);
 				console.error('保存用户数据失败:', e);
 			}
 		},
@@ -686,6 +697,7 @@ export default {
 					icon: 'success'
 				});
 			} catch (e) {
+				this.logError(e);
 				console.error('同步失败:', e);
 				uni.showToast({
 					title: '同步失败',
@@ -1596,6 +1608,7 @@ async generateShareImage() {
             currentY += imgHeight + 10;
             
         } catch (imgError) {
+        	this.logError(imgError);
             console.error('加载Searchus.png失败:', imgError);
             // 如果图片加载失败，绘制文字代替
             ctx.setFontSize(11);
@@ -1643,6 +1656,7 @@ async generateShareImage() {
         });
         
     } catch (error) {
+    	this.logError(error);
         console.error('生成分享图失败:', error);
         uni.showToast({
             title: '生成分享图失败，请重试',

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
 	<view :class="['container', 'theme-' + themeMode]">
 		<!-- 顶部Logo和名称 -->
 		<view class="header-section">
@@ -13,6 +13,12 @@
 			<text class="app-version-link" @click="gotoNotice('697a057b1f9139d2e7b9b6a7')">免责声明</text>
 			<text class="app-version-link" @click="gotoNotice('697a059bf07d9206ee9a9550')">长期公告</text>
 			<text class="app-version-link" @click="gotoNotice('697a04d052987431f1b5d5a7')">隐私政策</text>
+			<p></p>
+			<text class="app-version">欢迎拥有开发能力的博士们参与开发哦~</text>
+			<p></p>
+			<image class="qq-logo" src="/static/github.png"></image><text class="app-version-link" @click="gotogithubmainrepo()">Github项目地址</text>
+			<image class="qq-logo" src="/static/github.png"></image><text class="app-version-link" @click="gotogithubdatabaserepo()">Github数据仓库</text>
+			
 		</view>
 
 		<!-- 开发者信息 -->
@@ -155,6 +161,7 @@
 </template>
 
 <script>
+	import errorLog from "@/utils/errorLog.js";
 	export default {
 		data() {
 			return {
@@ -223,9 +230,18 @@
 			  },
 		
 		methods: {
+			logError(e, ctx) {
+				try {
+					errorLog.logError(e, ctx);
+				} catch (logErr) {
+					console.error('[logError] storage failed:', logErr);
+				}
+			},
 			gotofeedback() {
 				// #ifdef MP-WEIXIN	
 				wx.openEmbeddedMiniProgram({
+				
+				// NOTE: Replace with your own mini-program AppID for navigation
 				appId: 'wxebadf544ddae62cb',
 				path: 'pages/webview/index?sid=24775309&hash=7022&navigateBackMiniProgram=true',});
 				// #endif
@@ -265,6 +281,58 @@
 					window.open('https://pd.qq.com/s/3rv2ash1h?b=9');
 					// #endif
 				
+			},
+			
+			gotogithubmainrepo() {
+				// #ifdef MP-WEIXIN
+				  wx.setClipboardData({
+					  data: "https://github.com/awadwd/Arknights-Authorization-Tool",
+					  success: ()=>{
+						  uni.showToast({
+						  	title: '链接复制成功，请前往浏览器打开'
+						  });
+					  },
+					  fail(err) {
+					  	console.error('复制失败:',err)
+						uni.showToast({
+							title: err,
+						})
+					  }
+				  })
+				// #endif
+				// #ifdef APP-PLUS
+				plus.runtime.openURL('https://github.com/awadwd/Arknights-Authorization-Tool');
+				// #endif
+				
+				// #ifdef H5
+				window.open('https://github.com/awadwd/Arknights-Authorization-Tool');
+				// #endif
+			},
+			
+			gotogithubdatabaserepo() {
+				// #ifdef MP-WEIXIN
+				  wx.setClipboardData({
+					  data: "https://github.com/awadwd/ArknightsAuthorization_Series-mirror",
+					  success: ()=>{
+						  uni.showToast({
+						  	title: '链接复制成功，请前往浏览器打开'
+						  });
+					  },
+					  fail(err) {
+					  	console.error('复制失败:',err)
+						uni.showToast({
+							title: err,
+						})
+					  }
+				  })
+				// #endif
+				// #ifdef APP-PLUS
+				plus.runtime.openURL('https://github.com/awadwd/ArknightsAuthorization_Series-mirror');
+				// #endif
+				
+				// #ifdef H5
+				window.open('https://github.com/awadwd/ArknightsAuthorization_Series-mirror');
+				// #endif
 			},
 			
 			// 跳转到公告页面（新增方法）
@@ -319,6 +387,7 @@
 						}
 						console.log('加载主题设置:', this.themeMode);
 					} catch (e) {
+						this.logError(e);
 						console.error('加载主题设置失败:', e);
 						this.themeMode = 'simple';
 					}
@@ -358,6 +427,8 @@
 			gotoquestionnaire() {
 				// #ifdef MP-WEIXIN
 				wx.openEmbeddedMiniProgram({
+				
+				// NOTE: Replace with your own mini-program AppID for navigation
 				appId: 'wxebadf544ddae62cb',
 				path: 'pages/webview/index?sid=25128247&hash=3578&navigateBackMiniProgram=true',});
 				// #endif
@@ -373,7 +444,9 @@
 			gotoCustomSerachWordquestionnaire(){
 				// #ifdef MP-WEIXIN
 				wx.openEmbeddedMiniProgram({
-					appId: 'wxebadf544ddae62cb',
+					
+				// NOTE: Replace with your own mini-program AppID for navigation
+				appId: 'wxebadf544ddae62cb',
 					path: 'pages/webview/index?sid=24662080&hash=738a&navigateBackMiniProgram=true',
 				});
 				// #endif

@@ -158,6 +158,7 @@
 </template>
 
 <script>
+	import errorLog from "@/utils/errorLog.js";
 	export default {
 		data() {
 			return {
@@ -215,6 +216,13 @@
 				  }
 		},
 		methods: {
+			logError(e, ctx) {
+				try {
+					errorLog.logError(e, ctx);
+				} catch (logErr) {
+					console.error('[logError] storage failed:', logErr);
+				}
+			},
 			// 加载主题设置
 				loadThemeSetting() {
 					try {
@@ -249,6 +257,7 @@
 						}
 						console.log('加载主题设置:', this.themeMode);
 					} catch (e) {
+						this.logError(e);
 						console.error('加载主题设置失败:', e);
 						this.themeMode = 'simple';
 					}
@@ -275,6 +284,7 @@
 
 					console.log(`加载数据: ${this.allCharacters.length} 个干员, ${this.customWords.length} 个自定义词`);
 				} catch (e) {
+					this.logError(e);
 					console.error('加载数据失败:', e);
 					uni.showToast({
 						title: '加载数据失败',

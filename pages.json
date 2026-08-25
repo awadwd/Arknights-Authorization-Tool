@@ -4,7 +4,20 @@
 			"path": "pages/index/index",
 			"style": {
 				"navigationBarTitleText": "",
-				"enablePullDownRefresh": true
+				"enablePullDownRefresh": true,
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/func_search/func_search",
+			"style": {
+				"navigationBarTitleText": "搜索功能"
+			}
+		},
+		{
+			"path": "pages/daily_recommend/daily_recommend",
+			"style": {
+				"navigationBarTitleText": "今日宜挂"
 			}
 		},
 		{
@@ -20,23 +33,41 @@
 			}
 		},
 		{
-			"path": "pages/box_info/box_info",
+			"path": "pages/box_feedback_new/box_feedback_new",
 			"style": {
-				"navigationBarTitleText": "",
-				"enablePullDownRefresh": true
+				"navigationBarTitleText": "数据反馈",
+				"enablePullDownRefresh": false
 			}
 		},
 		{
 					"path": "pages/card_share/card_share",
 					"style": {
-						"navigationBarTitleText": "分享我的通行证"
+						"navigationBarTitleText": "通行证展柜"
 			}
 		},
 		{
-			"path" : "pages/Ai_Search/Ai_Search",
-			"style" :
-			{
-				"navigationBarTitleText" : "辅助快查Test"
+			"path": "pages/scan_barcode/scan_barcode",
+			"style": {
+				"navigationBarTitleText": "条码扫描"
+			}
+		},
+		{
+			"path": "pages/incomplete_list/incomplete_list",
+			"style": {
+				"navigationBarTitleText": "数据不全盒号列表"
+			}
+		},
+		{
+			"path": "pages/image_viewer/image_viewer",
+			"style": {
+				"navigationBarTitleText": "图片预览",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/friend_links/friend_links",
+			"style": {
+				"navigationBarTitleText": "舟批の通行证友情小工具"
 			}
 		}
 	],
@@ -83,6 +114,12 @@
 					"style": {
 						"navigationBarTitleText": "交换信息"
 					}
+				},
+				{
+					"path": "PRTS_Search/PRTS_Search",
+					"style": {
+						"navigationBarTitleText": "交换信息"
+					}
 				}
 			]
 		},
@@ -104,7 +141,7 @@
 				{
 					"path": "pages/card_share/card_share",
 					"style": {
-						"navigationBarTitleText": "分享我的通行证"
+						"navigationBarTitleText": "通行证展柜"
 					}
 				}
 			]
@@ -117,13 +154,13 @@
 		"backgroundColor": "#F8F8F8"
 	},
 	"uniIdRouter": {},
-	"condition" : { //模式配置，仅开发期间生效
-		"current": 0, //当前激活的模式(list 的索引项)
+	"condition" : {
+		"current": 0,
 		"list": [
 			{
-				"name": "", //模式名称
-				"path": "", //启动页面，必选
-				"query": "" //启动参数，在页面的onLoad函数里面得到
+				"name": "",
+				"path": "",
+				"query": ""
 			}
 		]
 	}

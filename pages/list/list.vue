@@ -1,4 +1,4 @@
-<template>
+﻿<template>
 	<view :class="['container', 'theme-' + themeMode]">
 		<!-- 筛选和排序控制区域 -->
 		<view class="toolbar-toggle" @click="toggleToolbar">
@@ -81,6 +81,16 @@
 				>
 					上一页
 				</button>
+				<!-- 跳转至指定页 -->
+				<view class="jump-vertical">
+					<input
+						class="jump-input"
+						type="number"
+						v-model="jumpPageInput"
+						placeholder="页码"
+					/>
+					<button class="jump-btn" @click="handleJumpPage">跳转</button>
+				</view>
 				<button 
 					class="page-btn" 
 					:disabled="currentPage >= totalPages"
@@ -118,49 +128,84 @@
 		<!-- 盒号与干员列表 -->
 		<view class="boxes-list" v-if="currentPageData.length > 0">
 			<view 
-				class="box-item" 
+				class="box-item box-card" 
 				v-for="(box, index) in currentPageData" 
 				:key="index"
 			>
-				<view class="box-header">
-					<view class="box-header-left">
-						<text class="box-id">盒号 {{ box.Box_id }}</text>
-						<text class="box-type" :class="getBoxTypeClass(box.Box_type)">{{ getBoxTypeText(box.Box_type) }}</text>
+				<!-- 卡片头部：盒号标题 -->
+				<view class="box-card-header">
+					<text class="box-card-title">盒号 {{ box.Box_id }}</text>
+					<text class="box-card-type" :class="getBoxTypeClass(box.Box_type)">
+						{{ getBoxTypeText(box.Box_type) }}
+					</text>
+				</view>
+				
+				<!-- 官方图片 -->
+				<view class="box-image-section" v-if="box.Box_ImageUrl">
+					<view 
+						class="box-image-wrapper"
+						:class="{ 'expanded': expandedBoxes[box.Box_id] }"
+						@click="previewBoxImage(box.Box_ImageUrl)"
+					>
+						<image 
+							class="box-official-image" 
+							:src="box.Box_ImageUrl" 
+							mode="widthFix"
+							@load="onBoxImageLoad(box.Box_id, $event)"
+						></image>
+						<view class="image-preview-hint">
+							<text class="preview-hint-text">🔍 点击查看大图</text>
+						</view>
 					</view>
-					<view class="box-header-right">
-						<!-- 收藏盒内干员按钮 -->
-						<button 
-							class="favorite-characters-btn" 
-							@click="openBoxCharactersModal(box.Box_id, getBoxCharacters(box))"
-						>
-							收藏
-						</button>
-						<!-- 查看详情按钮 -->
-						<button 
-							class="view-info-btn" 
-							@click="goToBoxInfo(box.Box_id)"
-						>
-							本盒信息
-						</button>
+					<!-- 展开/收起按钮 -->
+					<view 
+						class="image-expand-btn"
+						v-if="expandedBoxes[box.Box_id] !== undefined"
+						@click.stop="toggleImageExpand(box.Box_id)"
+					>
+						<text class="expand-icon">{{ expandedBoxes[box.Box_id] ? '▲' : '▼' }}</text>
+						<text class="expand-text">{{ expandedBoxes[box.Box_id] ? '收起' : '展开' }}</text>
 					</view>
 				</view>
 				
-				<view class="characters-grid">
+				<!-- 基本信息网格 -->
+				<view class="box-info-grid">
+					<view class="info-item">
+						<text class="info-label">首发日期</text>
+						<text class="info-value">{{ formatDate(box.release_date) }}</text>
+					</view>
+					<view class="info-item">
+						<text class="info-label">价格</text>
+						<text class="info-value">{{ box.retail_price || '未知' }}</text>
+					</view>
+					<view class="info-item">
+						<text class="info-label">类型</text>
+						<text class="info-value">{{ box.type === true || box.type === 'true' ? '盲抽' : '单领' }}</text>
+					</view>
+					<view class="info-item">
+						<text class="info-label">复刻时间</text>
+						<text class="info-value" v-if="!getReplicateRecords(box).length">暂无记录</text>
+						<view class="replicate-records" v-else>
+							<text class="replicate-line" v-for="(rec, rIdx) in getReplicateRecords(box)" :key="rIdx">{{ rec }}</text>
+						</view>
+					</view>
+				</view>
+				
+				<!-- 干员网格（紧凑尺寸） -->
+				<view class="characters-grid-compact">
 					<view 
-						class="character-card" 
+						class="character-item-compact" 
 						v-for="(character, charIndex) in getBoxCharacters(box)" 
 						:key="charIndex"
 						@click="toggleFavoriteCharacterDirectly(character.name)"
 					>
-						<view class="character-avatar-container">
+						<view class="character-avatar-wrap">
 							<image 
-								class="character-avatar" 
+								class="character-avatar-compact" 
 								:src="character.avatar" 
-								mode="aspectFit" 
+								mode="aspectFit"
 								@error="onAvatarError(box.Box_id, charIndex)"
-								@load="onAvatarLoad(box.Box_id, charIndex)"
 							></image>
-							<!-- 热门干员图标 -->
 							<image 
 								v-if="character.hotcharacter" 
 								class="hot-character-icon" 
@@ -169,47 +214,23 @@
 							></image>
 							<!-- 收藏状态指示器 -->
 							<view 
-								class="favorite-indicator" 
+								class="favorite-indicator"
 								:class="isFavoriteCharacter(character.name) ? 'favorited' : ''"
 							>
 								{{ isFavoriteCharacter(character.name) ? '★' : '☆' }}
 							</view>
 						</view>
-						<view class="character-info">
-							<view class="character-name-line">
-								<text class="character-name">{{ character.name }}</text>
-								<!-- 仅精一标签 -->
-								<text v-if="character.nolyELITE1" class="elite-tag">仅精一</text>
-							</view>
-							<!-- 市场价显示小标签 - 根据showMarketPrice决定是否显示 -->
-							<view class="market-price-tags" v-if="showMarketPrice && character.market_price">
-								<text 
-									class="price-tag elite1-tag" 
-									v-if="character.market_price.ELITE1"
-								>
-									精一 {{ character.market_price.ELITE1 }}元
-								</text>
-								<text 
-									class="price-tag elite2-tag" 
-									v-if="character.market_price.ELITE2 && !character.nolyELITE1"
-								>
-									精二 {{ character.market_price.ELITE2 }}元
-								</text>
-							</view>
-							<!-- 市价关闭时的提示 -->
-							<view class="price-disabled-hint" v-else-if="character.hasMarketPrice && !showMarketPrice">
-								<text class="hint-text-small">市价信息已隐藏</text>
-							</view>
+						<view class="character-info-compact">
+							<text class="character-name-compact">{{ character.name }}</text>
+							<text v-if="character.nolyELITE1" class="elite-tag-compact">仅精一</text>
+						<!-- 市价信息（仅开启时显示，灰色紧凑） -->
+						<view class="character-market-price" v-if="showMarketPrice && character.market_price">
+							<text class="market-price-tag-c">精一:<text class="mp-value-c">{{ character.market_price.ELITE1 || 0 }}</text><text v-if="character.market_price.ELITE2 && !character.nolyELITE1"> | 精二:<text class="mp-value-c">{{ character.market_price.ELITE2 }}</text></text>
+							</text>
 						</view>
 					</view>
 				</view>
 			</view>
-		</view>
-		
-		<!-- 空状态 -->
-		<view class="empty-state" v-if="filteredData.length === 0 && !dataStatusMessage.includes('正在')">
-			<image class="empty-icon" src="/static/empty-icon.png"></image>
-			<text class="empty-text">暂无数据</text>
 			<button class="update-btn" @click="loadData">加载数据</button>
 		</view>
 		
@@ -373,9 +394,11 @@
 			</view>
 		</view>
 	</view>
+	</view>
 </template>
 
 <script>
+	import errorLog from "@/utils/errorLog.js";
 	// 开源版本：知晓云配置已禁用，使用 GitHub 直链
 	const GITHUB_DATA_SOURCES = {
 		boxIdUrl: 'https://raw.githubusercontent.com/awadwd/ArknightsAuthorization_Series-mirror/refs/heads/main/Box_Id.json'
@@ -383,7 +406,7 @@
 	
 	// 知晓云配置 - 开源版本clientId为空，商业版请配置知晓云
 	const KNOW_CLOUD_CONFIG = {
-		clientId: '',
+		clientId: 'YOUR_KNOW_CLOUD_CLIENT_ID',
 		baseUrl: 'https://raw.githubusercontent.com/awadwd/ArknightsAuthorization_Series-mirror/refs/heads/main',
 		tableNames: {
 			Version: ''          // 开源版本使用 GitHub 直链
@@ -400,6 +423,7 @@
 				filteredData: [],
 				currentPage: 1,
 				pageSize: 5,
+        jumpPageInput: '',
 				dataStatusMessage: '',
 				cloudUpdateTime: '',
 				localUpdateTime: '',
@@ -454,6 +478,7 @@
 				filterReplicate: '',                     // ''全部，'true'有复刻，'false'无复刻
 				// 盲抽/单领筛选
 				filterType: '',                           // ''全部，'true'盲抽，'false'单领/赠品
+				expandedBoxes: {},
 			}
 		},
 		computed: {
@@ -509,8 +534,15 @@
 				deep: true
 			}
 		},
-		onLoad() {
-			
+		onLoad(options) {
+			// 恢复分享链接参数
+			if (typeof options !== "undefined" && options) {
+				if (options.filterType !== undefined && options.filterType !== '') this.filterType = decodeURIComponent(options.filterType);
+				if (options.filterIndex !== undefined) this.filterIndex = parseInt(options.filterIndex);
+				if (options.sortIndex !== undefined) this.sortIndex = parseInt(options.sortIndex);
+				if (options.sortOrder) this.sortOrder = options.sortOrder;
+				if (options.page !== undefined) this.currentPage = parseInt(options.page);
+			}
 			// 加载主题设置
 			this.loadThemeSetting();
 
@@ -520,31 +552,86 @@
 			});
 
 			console.log('盒号列表页面加载，开始初始化数据...');
-			this.loadLocalData();
-			this.loadFavorites();
+			this.loadLocalData().then(() => {
+				this.loadFavorites();
+        this.applyFilterAndSort(true);
+        // 恢复分享时的页码（在筛选排序完成后）
+        if (typeof options !== "undefined" && options && options.page !== undefined) {
+          const savedPage = parseInt(options.page);
+          if (savedPage >= 1 && savedPage <= this.totalPages) {
+            this.currentPage = savedPage;
+            console.log("[DEBUG] Restored page from share:", savedPage);
+          }
+        }
+			});
 		},
 		onShow() {
 			// 页面显示时重新加载收藏数据
-			  this.loadFavorites();
-			  this.loadMarketPriceSetting(); // 确保每次显示都重新加载市价设置
+			this.loadFavorites();
+			this.loadMarketPriceSetting(); // 确保每次显示都重新加载市价设置
 		},
 		onShareAppMessage() {
 			return {
-				title: '方舟通行证谷子查询工具-通行证盒号列表',
-				path: '/pages/list/list',
+				title: '方舟通行证谷子查询工具-通行证盒号列表' + (this.filterType === 'true' ? ' [盲抽]' : this.filterType === 'false' ? ' [单领/赠品]' : '') + ' p' + this.currentPage,
+				path: '/pages/list/list?filterType=' + encodeURIComponent(this.filterType) + '&filterIndex=' + this.filterIndex + '&sortIndex=' + this.sortIndex + '&sortOrder=' + this.sortOrder + '&page=' + this.currentPage,
 				imageUrl: ''
 			}
 		},
 		onShareTimeline() {
 			return {
-				title: '方舟通行证谷子查询工具-通行证盒号列表',
+				title: '方舟通行证谷子查询工具-通行证盒号列表' + (this.filterType === 'true' ? ' [盲抽]' : this.filterType === 'false' ? ' [单领/赠品]' : '') + ' p' + this.currentPage,
 				imageUrl: ''
 			}
 		},
 		methods: {
-			toggleToolbar() {
-				this.toolbarCollapsed = !this.toolbarCollapsed;
+			logError(e, ctx) {
+				try {
+					errorLog.logError(e, ctx);
+				} catch (logErr) {
+					console.error('[logError] storage failed:', logErr);
+				}
 			},
+
+			// 切换官方大图展开/收起
+			toggleImageExpand(boxId) {
+				this.$set(this.expandedBoxes, boxId, !this.expandedBoxes[boxId]);
+			},
+
+			// 大图加载回调
+			onBoxImageLoad(boxId, e) {
+				this.$set(this.expandedBoxes, boxId, false);
+			},
+
+			// 获取复刻记录数组
+			getReplicateRecords(box) {
+				const list = [];
+				const base = box.replicate_date;
+				if (base) list.push(base + " 第一次复刻");
+				for (let i = 1; i <= 5; i++) {
+					const v = box["replicate_date_0" + i];
+					if (v) list.push(v + " " + ["", "第一次", "第二次", "第三次", "第四次", "第五次"][i] + "复刻");
+				}
+				return list;
+			},
+
+			// 数字转中文序数
+			toChineseOrdinal(n) {
+			        const arr = ["", "一", "二", "三", "四", "五"];
+			        return arr[n] || String(n);
+			    },
+			    formatDate(dateStr) {
+			        if (!dateStr) return '—';
+			        return dateStr;
+			    },
+			    previewBoxImage(imageUrl) {
+			        uni.previewImage({ urls: [imageUrl], current: imageUrl });
+			    },
+			    goToBoxFeedback(boxId) {
+			        uni.navigateTo({ url: '/pages/box_feedback_new/box_feedback_new?boxId=' + boxId });
+			    },
+			    toggleToolbar() {
+			        this.toolbarCollapsed = !this.toolbarCollapsed;
+			    },
 			// 加载主题设置
 				loadThemeSetting() {
 					try {
@@ -579,6 +666,7 @@
 						}
 						console.log('加载主题设置:', this.themeMode);
 					} catch (e) {
+						this.logError(e);
 						console.error('加载主题设置失败:', e);
 						this.themeMode = 'simple';
 					}
@@ -642,6 +730,7 @@
 						throw new Error(`请求失败: ${res.statusCode}`);
 					}
 				} catch (error) {
+					this.logError(error);
 					console.error(`知晓云请求失败 (${tableName}):`, error);
 					// 如果还有重试次数，则重试
 					if (retryCount < 3) {
@@ -653,34 +742,36 @@
 			},
 			
 			// 从知晓云获取数据URL和版本信息
-			async getDataUrlFromMinapp() {
-				try {
-					const res = await this.knowCloudRequest('Version', {
-						data: {
-							limit: 1,
-							offset: 0
-						}
-					});
-					
-					console.log('知晓云版本信息响应:', res);
-					
-					if (res && res.objects && res.objects.length > 0) {
-						const versionData = res.objects[0];
-						console.log('版本数据:', versionData);
-						return {
-							url: versionData.url || '',
-							version: versionData.version || versionData.Version || '',
-							cloudUpdateTime: versionData.updated_at || versionData.created_at || ''
-						};
-					} else {
-						console.error('知晓云返回数据格式不正确:', res);
-						throw new Error('未找到版本数据或数据格式不正确');
-					}
-				} catch (error) {
-					console.error('从知晓云获取URL失败:', error);
-					throw error;
+		async getDataUrlFromMinapp() {
+			try {
+				const res = await uni.request({
+					url: 'https://YOUR_KNOW_CLOUD_CLIENT_ID.myminapp.com/hserve/v2.2/table/Version/record/?limit=1',
+					method: 'GET',
+					header: {
+						'X-Hydrogen-Client-ID': 'YOUR_KNOW_CLOUD_CLIENT_ID',
+						'Content-Type': 'application/json'
+					},
+					timeout: 10000
+				});
+				if (res.statusCode === 200 && res.data && res.data.objects && res.data.objects.length > 0) {
+					const versionData = res.data.objects[0];
+					return {
+						url: versionData.url || '',
+						version: versionData.version || versionData.Version || '',
+						cloudUpdateTime: versionData.updated_at || versionData.created_at || ''
+					};
 				}
-			},
+				throw new Error('未找到版本数据');
+			} catch (error) {
+				this.logError(error);
+				console.error('从知晓云获取URL失败:', error);
+				return {
+					url: 'https://raw.gitcode.com/huangjinzhou1/ArknightsAuthorization_Series/raw/main/Box_Id.json',
+					version: 'v1.9.2.0',
+					cloudUpdateTime: ''
+				};
+			}
+		},
 			
 			// ============= 新增：市价相关方法 =============
 						
@@ -696,7 +787,7 @@
 			      this.showMarketPrice = false;
 			      uni.setStorageSync('showMarketPrice', 'false'); // 确保有一个默认值
 			    } else {
-			      this.showMarketPrice = showMarketPrice === 'true';
+			      this.showMarketPrice = showMarketPrice === true || showMarketPrice === 'true';
 			    }
 			    
 			    console.log('加载后的市价设置:', this.showMarketPrice);
@@ -704,6 +795,7 @@
 			    // 检查是否有市价数据
 			    this.checkMarketPriceData();
 			  } catch (e) {
+			  	this.logError(e);
 			    console.error('加载市价设置失败:', e);
 			    this.showMarketPrice = false; // 默认关闭
 			  }
@@ -838,6 +930,7 @@
 					this.checkMarketPriceData();
 					
 				} catch (error) {
+					this.logError(error);
 					console.error('数据存储失败:', error);
 					this.dataStatusMessage = '数据存储失败';
 				}
@@ -866,6 +959,7 @@
 						this.checkMarketPriceData();
 					}
 				} catch (error) {
+					this.logError(error);
 					console.error('字符串存储失败:', error);
 					this.dataStatusMessage = '数据存储失败';
 				}
@@ -885,6 +979,7 @@
 					const date = new Date(isoTime);
 					return `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
 				} catch (e) {
+					this.logError(e);
 					console.error('格式化云端时间失败:', e);
 					return isoTime;
 				}
@@ -946,6 +1041,7 @@
 						this.checkForUpdates();
 					}
 				} catch (e) {
+					this.logError(e);
 					console.error('加载本地数据失败:', e);
 					this.dataStatusMessage = '加载本地数据失败，正在尝试获取最新数据...';
 					this.checkForUpdates();
@@ -981,6 +1077,7 @@
 						}
 					}
 				} catch (error) {
+					this.logError(error);
 					console.error('检查更新失败:', error);
 					this.dataStatusMessage = '检查更新失败，使用备用URL';
 					
@@ -998,10 +1095,11 @@
 					}
 				}
 			},
-			
-			// 加载数据
+
+// 加载数据 - 多源降级策略
+// 优先级：知晓云 → GitCode Raw → jsDelivr CDN → GitHub Raw → 固定死链接
 			async loadData() {
-				// 确保有最新的版本信息
+				// 1. 获取版本信息（以知晓云为主）
 				if (!this.latestVersion) {
 					try {
 						const versionInfo = await this.getDataUrlFromMinapp();
@@ -1009,75 +1107,153 @@
 						this.latestVersion = versionInfo.version;
 						this.cloudUpdateTime = versionInfo.cloudUpdateTime || this.cloudUpdateTime;
 					} catch (error) {
+						this.logError(error);
 						console.error('获取数据URL失败:', error);
-						// 如果获取失败，使用备用URL
 						this.dataUrl = 'https://raw.gitcode.com/huangjinzhou1/ArknightsAuthorization_Series/raw/main/Box_Id.json';
 						this.latestVersion = this.latestVersion || '未知版本';
 					}
 				}
 				
-				// 如果没有设置dataUrl，使用备用URL
 				if (!this.dataUrl) {
 					this.dataUrl = 'https://raw.gitcode.com/huangjinzhou1/ArknightsAuthorization_Series/raw/main/Box_Id.json';
 				}
 				
+				// 2. 构建多源列表
+				const sourceList = this.buildDataSourceList(this.dataUrl);
 				this.dataStatusMessage = '正在下载干员数据...';
 				
-				uni.request({
-					url: this.dataUrl,
-					method: 'GET',
-					timeout: 15000,
-					success: (res) => {
-						if (res.statusCode === 200) {
-							let data = res.data;
-							
-							if (typeof data === 'string') {
-								try {
-									data = JSON.parse(data);
-								} catch (e) {
-									console.error('JSON解析失败:', e);
-									this.dataStatusMessage = '数据格式错误';
-									return;
-								}
-							}
-							
-							if (Array.isArray(data)) {
-								console.log('原始数据类型:', typeof data);
-								console.log('原始数据第一个元素:', data[0]);
-								console.log('Box_info 原始类型:', typeof data[0]?.Box_info);
-								console.log('Box_info 原始值:', data[0]?.Box_info);
-								
-								// 验证数据完整性
-								this.validateDataStructure(data);
-								
-								// 使用新的存储方式
-								this.saveDataWithValidation(data);
-								
-							} else {
-								this.dataStatusMessage = '数据格式不正确';
-							}
-						} else {
-							this.dataStatusMessage = `服务器错误: ${res.statusCode}`;
+				// 3. 依次尝试各数据源
+				for (let i = 0; i < sourceList.length; i++) {
+					const source = sourceList[i];
+					console.log('[加载数据] 尝试源 ' + (i + 1) + '/' + sourceList.length + ': ' + source.name);
+					try {
+						const data = await this.tryDownloadFromSource(source.url);
+						if (data) {
+							await this.handleListDownloadSuccess(data, source.name);
+							return;
 						}
-					},
-					fail: (err) => {
-						console.error('下载数据失败:', err);
-						this.dataStatusMessage = '下载失败，请检查网络连接';
+					} catch (err) {
+						this.logError(err);
+						console.warn('[加载数据] 源 ' + source.name + ' 失败:', err.message || err);
 					}
+				}
+				
+				// 4. 所有源都失败
+				this.dataStatusMessage = '下载失败，所有数据源均不可用';
+			},
+			
+			// 构建数据源列表
+			buildDataSourceList(primaryUrl) {
+				const sources = [];
+				const githubRepo = 'awadwd/ArknightsAuthorization_Series-mirror';
+				const boxFile = 'Box_Id.json';
+				
+				// #ifdef H5
+				if (primaryUrl.includes('raw.gitcode.com')) {
+					sources.push({ name: 'GitCode(H5代理)', url: primaryUrl.replace('https://raw.gitcode.com', '/gitcode') });
+				} else {
+					sources.push({ name: '知晓云', url: primaryUrl });
+				}
+				// #endif
+				
+				// #ifndef H5
+				if (primaryUrl.includes('gitcode.com')) {
+					sources.push({ name: 'GitCode', url: primaryUrl });
+				}
+				sources.push({ name: 'jsDelivr(CDN)', url: 'https://cdn.jsdelivr.net/gh/' + githubRepo + '@main/' + boxFile });
+				sources.push({ name: 'GitHub Raw', url: 'https://raw.githubusercontent.com/' + githubRepo + '/main/' + boxFile });
+				sources.push({ name: 'GitCode(固定)', url: 'https://raw.gitcode.com/huangjinzhou1/ArknightsAuthorization_Series/blobs/305677c26b71ba53f916c48112b2b17afb23d32e/Box_Id.json' });
+				// #endif
+				
+				if (primaryUrl && !primaryUrl.includes('gitcode.com')) {
+					sources.push({ name: 'GitCode(备用)', url: 'https://raw.gitcode.com/huangjinzhou1/ArknightsAuthorization_Series/raw/main/Box_Id.json' });
+				}
+				
+
+				
+				// 读取用户在设置页保存的数据源顺序，按用户偏好重排备选源
+				try {
+					const order = uni.getStorageSync('dataSourceOrder');
+					if (Array.isArray(order) && order.length) {
+						const orderMap = { 'knowCloud':0, 'domestic':1, 'github':2, 'local':3, 'custom':4 };
+						const orderIdx = v => (orderMap[v] !== undefined ? orderMap[v] : 99);
+						const bucket = { knowCloud:[], domestic:[], github:[], local:[], custom:[] };
+						sources.forEach(s => {
+							let k = 'github';
+							if (s.name === '知晓云') k = 'knowCloud';
+							else if (s.name.startsWith('GitCode')) k = 'domestic';
+							else if (s.name === 'jsDelivr(CDN)' || s.name === 'GitHub Raw') k = 'github';
+							else if (s.name.includes('GitHub')) k = 'github';
+							(bucket[k] = bucket[k] || []).push(s);
+						});
+						const sortedKeys = order.slice().sort((a,b) => orderIdx(a) - orderIdx(b));
+						const reordered = [];
+						sortedKeys.forEach(k => { (bucket[k]||[]).forEach(s => reordered.push(s)); });
+						sources.splice(0, sources.length, ...reordered);
+					}
+				} catch (e) {
+					this.logError(e);
+					
+				}
+				
+				return sources;
+			},
+			
+			// 尝试从单个源下载
+			tryDownloadFromSource(url) {
+				return new Promise((resolve, reject) => {
+					uni.request({
+						url: url,
+						method: 'GET',
+						timeout: 15000,
+						success: (res) => {
+							if (res.statusCode === 200) {
+								let data = res.data;
+								if (typeof data === 'string') {
+									try { data = JSON.parse(data); } catch (e) {
+										this.logError(e);
+										reject(new Error('JSON解析失败')); return; 
+									}
+								}
+								if (Array.isArray(data)) { resolve(data); } else { reject(new Error('数据格式不正确')); }
+							} else if (res.statusCode === 429) {
+								reject(new Error('429 Rate Limited'));
+							} else {
+								reject(new Error('HTTP ' + res.statusCode));
+							}
+						},
+						fail: (err) => reject(err)
+					});
 				});
 			},
 			
-			// 验证数据结构
+			// 处理下载成功
+			async handleListDownloadSuccess(rawData, sourceName) {
+				let data = rawData;
+				
+				// 验证数据完整性
+				this.validateDataStructure(data);
+				
+			// 存储成功使用的源信息
+			this.currentVersion = this.latestVersion || this.currentVersion || '未知版本';
+			console.log('[加载数据] 成功从 ' + sourceName + ' 获取数据');
+				
+			// 使用新的存储方式
+				this.saveDataWithValidation(data);
+				
+				uni.showToast({ title: '更新成功 [' + sourceName + ']', icon: 'success', duration: 2000 });
+			},
+			
 			validateDataStructure(data) {
 				if (!Array.isArray(data)) {
-					console.error('数据不是数组');
-					return;
+				console.error('数据不是数组');
+				return;
 				}
 				
 				const sampleBox = data[0];
 				if (!sampleBox) {
-					console.error('数据为空');
-					return;
+				console.error('数据为空');
+				return;
 				}
 				
 				console.log('=== 数据结构验证 ===');
@@ -1118,6 +1294,7 @@
 					this.dataStatusMessage = `数据加载成功 (${savedData.length} 个盒号)`;
 					
 				} catch (error) {
+					this.logError(error);
 					console.error('数据存储失败:', error);
 					this.dataStatusMessage = '数据存储失败';
 				}
@@ -1143,6 +1320,7 @@
 						this.dataStatusMessage = `数据加载成功 (${parsedData.length} 个盒号)`;
 					}
 				} catch (error) {
+					this.logError(error);
 					console.error('字符串存储失败:', error);
 					this.dataStatusMessage = '数据存储失败';
 				}
@@ -1173,6 +1351,7 @@
 						let nolyELITE1 = false;
 						let hotcharacter = false;
 						let market_price = null;
+						let hasMarketPrice = false;
 						
 						if (typeof box[charKey] === 'string') {
 							characterName = box[charKey];
@@ -1180,21 +1359,25 @@
 							nolyELITE1 = false;
 							hotcharacter = false;
 							market_price = null;
+							hasMarketPrice = false;
 						} else if (box[charKey].name) {
 							characterName = box[charKey].name;
 							imageUrl = box[charKey].imageUrl || '';
 							nolyELITE1 = box[charKey].nolyELITE1 === true;
 							hotcharacter = box[charKey].hotcharacter === true;
 							market_price = box[charKey].market_price || null;
+							hasMarketPrice = !!(market_price && (market_price.ELITE1 || market_price.ELITE2));
 						}
 						
 						if (characterName && characterName.trim()) {
+							console.log(`[getBox] ${characterName}: market_price=`, market_price, 'hasMP:', hasMarketPrice);
 							characters.push({
 								name: characterName,
 								avatar: imageUrl || this.defaultAvatar,
 								nolyELITE1: nolyELITE1,
 								hotcharacter: hotcharacter,
-								market_price: market_price
+								market_price: market_price,
+								hasMarketPrice: hasMarketPrice
 							});
 						}
 					}
@@ -1228,7 +1411,7 @@
 			},
 			
 			// 应用筛选和排序
-			applyFilterAndSort() {
+			applyFilterAndSort(preservePage = false) {
 				let filtered = [...this.characterData];
 				
 				// 盒类型筛选
@@ -1330,7 +1513,7 @@
 				
 				this.filteredData = filtered;
 				// 应用筛选后重置页码
-				this.currentPage = 1;
+				if (!preservePage) this.currentPage = 1;
 			},
 			
 			// 盒比较算法
@@ -1443,6 +1626,7 @@
 					console.log('已收藏的盒号:', this.favoriteBoxIds);
 					console.log('已收藏的干员:', this.favoriteCharacterNames);
 				} catch (error) {
+					this.logError(error);
 					console.error('加载收藏数据失败:', error);
 					this.favoriteBoxIds = [];
 					this.favoriteCharacterNames = [];
@@ -1473,6 +1657,7 @@
 					// 强制更新视图
 					this.$forceUpdate();
 				} catch (error) {
+					this.logError(error);
 					console.error('操作收藏失败:', error);
 					uni.showToast({
 						title: '操作失败',
@@ -1506,6 +1691,7 @@
 					uni.setStorageSync('favoriteCharacterNames', this.favoriteCharacterNames);
 					this.$forceUpdate();
 				} catch (error) {
+					this.logError(error);
 					uni.showToast({
 						title: '操作失败',
 						icon: 'none'
@@ -1582,6 +1768,21 @@
 			},
 			
 			// 首页
+        handleJumpPage() {
+            const page = parseInt(this.jumpPageInput);
+            if (!page || page < 1) {
+                uni.showToast({ title: '请输入有效页码', icon: 'none' });
+                return;
+            }
+            const maxPage = this.totalPages;
+            if (page > maxPage) {
+                uni.showToast({ title: '超过最大页数(' + maxPage + ')', icon: 'none' });
+                return;
+            }
+            this.currentPage = page;
+            this.jumpPageInput = '';
+        },
+
 			goToFirstPage() {
 				this.currentPage = 1;
 			},
@@ -1815,15 +2016,18 @@
 	
 	.pagination-controls {
 		display: flex;
+		align-items: center;
+		gap: 6rpx;
+		flex-wrap: nowrap;
 	}
 	
 	.page-btn {
 		background-color: #409EFF;
 		color: #fff;
-		border-radius: 10rpx;
-		font-size: 24rpx;
-		padding: 12rpx 16rpx;
-		margin-left: 10rpx;
+		border-radius: 8rpx;
+		font-size: 22rpx;
+		padding: 10rpx 14rpx;
+		margin: 0;
 	}
 	
 	.page-btn:disabled {
@@ -1832,6 +2036,33 @@
 		opacity: 0.6;
 	}
 	
+	.jump-vertical {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 4rpx;
+		margin: 0 6rpx;
+	}
+
+	.jump-input {
+		border: 1px solid #dcdfe6;
+		border-radius: 6rpx;
+		padding: 4rpx 6rpx;
+		font-size: 20rpx;
+		width: 70rpx;
+		text-align: center;
+		background-color: #fff;
+	}
+
+	.jump-btn {
+		background-color: #67C23A;
+		color: #fff;
+		border-radius: 6rpx;
+		font-size: 18rpx;
+		padding: 4rpx 12rpx;
+		margin: 0;
+	}
+
 	.data-status {
 		background-color: #e8f4ff;
 		border-radius: 16rpx;
@@ -2596,4 +2827,288 @@
 	.container.theme-jieyuan .modal-title { color: #399383; }
 	.container.theme-jieyuan .advanced-filter-section { background: rgba(255, 255, 255, 0.95); border-color: rgba(226, 88, 132, 0.15); }
 	.container.theme-jieyuan .advanced-filter-title { background: linear-gradient(90deg, #e25884, #399383); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+	/* ========== 卡片大图与基本信息 ========== */
+	.box-image-wrapper {
+		position: relative;
+		margin: 16rpx 20rpx 8rpx;
+		background: #f5f5f5;
+		border-radius: 12rpx;
+		overflow: hidden;
+		max-height: 240rpx;
+		transition: max-height 0.3s ease;
+	}
+	.box-image-wrapper.expanded {
+		max-height: 1200rpx;
+	}
+	.box-image {
+		width: 100%;
+		display: block;
+	}
+	.image-toggle-hint {
+		position: absolute;
+		bottom: 8rpx;
+		right: 16rpx;
+		background: rgba(0,0,0,0.5);
+		padding: 4rpx 16rpx;
+		border-radius: 20rpx;
+		font-size: 22rpx;
+	}
+	.toggle-text { color: #fff; }
+
+	.box-info-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 12rpx 24rpx;
+		margin: 12rpx 20rpx 20rpx;
+		padding: 16rpx;
+		background: #fafafa;
+		border-radius: 12rpx;
+	}
+	.info-item {
+		display: flex;
+		flex-direction: column;
+		gap: 4rpx;
+	}
+	.info-replicate { grid-column: 1 / span 2; }
+	.info-label { font-size: 22rpx; color: #999; }
+	.info-value { font-size: 26rpx; color: #333; }
+	.info-replicate-list { display: flex; flex-direction: column; }
+	.replicate-line { font-size: 24rpx; color: #666; }
+
+/* ========== Search.vue 风格卡片样式 ========== */
+.box-card-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 20rpx;
+	padding-bottom: 15rpx;
+	border-bottom: 2rpx solid #f0f0f0;
+}
+
+.box-card-title {
+	font-size: 36rpx;
+	font-weight: bold;
+	color: #409EFF;
+}
+
+.box-card-type {
+	font-size: 22rpx;
+	padding: 6rpx 16rpx;
+	border-radius: 20rpx;
+	color: #fff;
+	font-weight: 500;
+}
+
+.box-image-section {
+	margin: 0 -30rpx 20rpx;
+	background: linear-gradient(135deg, #f5f7fa 0%, #e4e7ed 100%);
+	position: relative;
+}
+
+.box-image-wrapper {
+	max-height: 300rpx;
+	overflow: hidden;
+	transition: max-height 0.3s ease;
+}
+
+.box-image-wrapper.expanded {
+	max-height: 1200rpx;
+}
+
+.box-official-image {
+	width: 100%;
+	display: block;
+}
+
+.image-preview-hint {
+	position: absolute;
+	bottom: 60rpx;
+	left: 50%;
+	transform: translateX(-50%);
+	background: rgba(0, 0, 0, 0.5);
+	padding: 8rpx 20rpx;
+	border-radius: 20rpx;
+	opacity: 0;
+	transition: opacity 0.3s;
+}
+
+.box-image-wrapper:hover .image-preview-hint {
+	opacity: 1;
+}
+
+.image-expand-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 16rpx 0;
+	background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.9) 30%, #fff 100%);
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	cursor: pointer;
+}
+
+.expand-icon {
+	font-size: 24rpx;
+	color: #409EFF;
+	margin-right: 8rpx;
+}
+
+.expand-text {
+	font-size: 24rpx;
+	color: #409EFF;
+}
+
+.box-info-grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 20rpx;
+	margin-bottom: 25rpx;
+	padding: 20rpx;
+	background-color: #f8fafc;
+	border-radius: 12rpx;
+}
+
+.info-item {
+	display: flex;
+	flex-direction: column;
+	gap: 8rpx;
+}
+
+.info-label {
+	font-size: 24rpx;
+	color: #999;
+}
+
+.info-value {
+	font-size: 28rpx;
+	color: #333;
+	font-weight: 500;
+}
+
+.replicate-section {
+	grid-column: 1 / span 2;
+	margin-top: 8rpx;
+}
+
+.replicate-list {
+	display: flex;
+	flex-direction: column;
+	margin-top: 6rpx;
+}
+
+.replicate-line {
+	font-size: 24rpx;
+	color: #67C23A;
+	line-height: 1.6;
+}
+
+.replicate-line-empty {
+	font-size: 24rpx;
+	color: #999;
+	margin-top: 6rpx;
+}
+
+.characters-grid-compact {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 16rpx;
+	margin-bottom: 20rpx;
+}
+
+.character-item-compact {
+	display: flex;
+	align-items: center;
+	background-color: #f8fafc;
+	border-radius: 12rpx;
+	padding: 12rpx;
+	transition: all 0.2s;
+}
+
+.character-avatar-wrap {
+	position: relative;
+	margin-right: 12rpx;
+	flex-shrink: 0;
+}
+
+.character-avatar-compact {
+	width: 60rpx;
+	height: 60rpx;
+	border-radius: 8rpx;
+	border: 1rpx solid #e0e0e0;
+}
+
+.character-info-compact {
+	flex: 1;
+	min-width: 0;
+}
+
+.character-name-compact {
+	font-size: 26rpx;
+	color: #333;
+	font-weight: 600;
+	display: block;
+	margin-bottom: 4rpx;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.elite-tag-compact {
+	font-size: 20rpx;
+	color: #E6A23C;
+	background: rgba(230, 162, 60, 0.1);
+	padding: 2rpx 8rpx;
+	border-radius: 4rpx;
+}
+.character-market-price {
+  margin-top: 4rpx;
+  display: block;
+}
+
+.market-price-tag-c {
+  font-size: 20rpx;
+  color: #999;
+  line-height: 1.4;
+}
+
+.mp-value-c {
+  color: #666;
+  font-weight: 500;
+}
+
+.box-card-actions {
+	display: flex;
+	gap: 20rpx;
+	padding-top: 20rpx;
+	border-top: 1rpx solid #f0f0f0;
+}
+
+.action-btn {
+	flex: 1;
+	font-size: 26rpx;
+	padding: 16rpx 0;
+	border-radius: 10rpx;
+	text-align: center;
+	font-weight: 500;
+	border: none;
+	background: transparent;
+}
+
+.favorite-btn {
+	background-color: #f0f0f0;
+	color: #666;
+	font-size: 24rpx;
+	padding: 12rpx 20rpx;
+	border-radius: 8rpx;
+	transition: all 0.3s;
+	white-space: nowrap;
+}
+
+.feedback-btn {
+	background-color: #67C23A;
+	color: #fff;
+}
+
 </style>

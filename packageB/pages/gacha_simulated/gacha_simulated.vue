@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view :class="['container', 'theme-' + themeMode]">
     <!-- 页面标题 -->
     <view class="header">
@@ -377,6 +377,7 @@
 </template>
 
 <script>
+import errorLog from "@/utils/errorLog.js";
 export default {
   data() {
     return {
@@ -523,6 +524,13 @@ export default {
   },
 
   methods: {
+    logError(e, ctx) {
+				try {
+					errorLog.logError(e, ctx);
+				} catch (logErr) {
+					console.error('[logError] storage failed:', logErr);
+				}
+			},
     // 加载主题设置
     	loadThemeSetting() {
     		try {
@@ -557,6 +565,7 @@ export default {
     			}
     			console.log('加载主题设置:', this.themeMode);
     		} catch (e) {
+    			this.logError(e);
     			console.error('加载主题设置失败:', e);
     			this.themeMode = 'simple';
     		}
@@ -610,12 +619,94 @@ export default {
           this.filterBoxesByType();
           this.prepareSuperMixAllCards();
         } else {
-          uni.showToast({ title: '请先更新干员数据', icon: 'none' });
-          setTimeout(() => uni.navigateBack(), 1500);
+          this.promptDownloadData();
         }
       } catch (e) {
+      	this.logError(e);
         console.error('加载数据失败:', e);
         uni.showToast({ title: '数据加载失败', icon: 'none' });
+      }
+    },
+
+    // 未下载数据时提示下载干员数据
+    promptDownloadData() {
+      // 直接自动下载，无需弹窗确认
+      this.downloadCharacterData();
+    },
+
+    // 下载干员数据（首次打开或本地缺失时使用）
+    async downloadCharacterData() {
+      uni.showLoading({ title: '正在下载干员数据...' });
+      // 多源降级：知晓云URL → GitCode Raw → jsDelivr → GitHub Raw
+      const sourceUrls = [
+        () => {
+          let url = uni.getStorageSync('dataUrl');
+          if (!url) return null;
+          // #ifdef H5
+          if (url && url.includes('raw.gitcode.com')) url = url.replace('https://raw.gitcode.com', '/gitcode');
+          // #endif
+          return url;
+        },
+        () => {
+          // #ifdef H5
+          return '/gitcode/huangjinzhou1/ArknightsAuthorization_Series/raw/main/Box_Id.json';
+          // #else
+          return 'https://raw.gitcode.com/huangjinzhou1/ArknightsAuthorization_Series/raw/main/Box_Id.json';
+          // #endif
+        },
+        () => 'https://cdn.jsdelivr.net/gh/awadwd/ArknightsAuthorization_Series-mirror@main/Box_Id.json',
+        () => 'https://raw.githubusercontent.com/awadwd/ArknightsAuthorization_Series-mirror/refs/heads/main/Box_Id.json',
+      ];
+      let success = false;
+      for (const getUrl of sourceUrls) {
+        const url = getUrl();
+        if (!url) continue;
+        try {
+          const res = await new Promise((resolve, reject) => {
+            uni.request({ url, method: 'GET', timeout: 15000,
+              success: r => resolve(r),
+              fail: e => reject(e)
+            });
+          });
+          if (res.statusCode === 200) {
+            let data = res.data;
+            if (typeof data === 'string') {
+              try { data = JSON.parse(data); } catch (e) {
+              	this.logError(e);
+              	continue; 
+              }
+            }
+            if (Array.isArray(data) && data.length > 0) {
+              const cleanedData = data.map(box => {
+                const cleanedBox = {};
+                for (const key in box) {
+                  if (key === 'Box_id') cleanedBox[key] = String(box[key] || '');
+                  else if (key.startsWith('character')) cleanedBox[key] = box[key];
+                  else cleanedBox[key] = String(box[key] || '');
+                }
+                return cleanedBox;
+              });
+              const now = new Date();
+              const pad = n => (n < 10 ? '0' + n : '' + n);
+              const localUpdateTime = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+              uni.setStorageSync('arknightsData', cleanedData);
+              uni.setStorageSync('localUpdateTime', localUpdateTime);
+              uni.hideLoading();
+              uni.showToast({ title: '数据下载成功', icon: 'success', duration: 1500 });
+              this.loadLocalData();
+              success = true;
+              break;
+            }
+          }
+        } catch (e) {
+        	this.logError(e);
+          console.warn('数据源下载失败: ' + url, e);
+          continue;
+        }
+      }
+      if (!success) {
+        uni.hideLoading();
+        uni.showToast({ title: '下载失败，请检查网络', icon: 'none' });
       }
     },
 

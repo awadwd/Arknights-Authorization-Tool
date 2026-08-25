@@ -1,7 +1,29 @@
 ﻿<script>
+	import errorLog from "@/utils/errorLog.js";
 	export default {
+		logError(e, ctx) {
+				try {
+					errorLog.logError(e, ctx);
+				} catch (logErr) {
+					console.error('[logError] storage failed:', logErr);
+				}
+			},
 		onLaunch: function() {
-			console.log('App Launch')
+			console.log('App Launch');
+			// 全局错误监听 - 捕获异步未捕获错误
+			try {
+				uni.onError(function(err) {
+					errorLog.logError(err, 'App.onError');
+				});
+			} catch (e) { console.error('[App] uni.onError init failed:', e); }
+			try {
+				uni.onUnhandledRejection(function(res) {
+					const err = (res && res.reason) || new Error('UnhandledRejection');
+					errorLog.logError(err, 'App.onUnhandledRejection');
+				});
+			} catch (e) { console.error('[App] uni.onUnhandledRejection init failed:', e); }
+			// 拦截 console.error 也写入日志（仅在调试用）
+			// 注意: 不会拦截 console.warn / console.log / debug
 		},
 		onShow: function() {
 			console.log('App Show')

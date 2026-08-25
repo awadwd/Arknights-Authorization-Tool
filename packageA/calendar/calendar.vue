@@ -49,6 +49,13 @@
 								:key="ci"
 							>{{ char.name }}</text>
 						</view>
+						<view class="card-replicate">
+							<text class="card-replicate-label">复刻记录</text>
+							<view class="card-replicate-list" v-if="getReplicateRecords(box).length">
+								<text class="card-replicate-line" v-for="(rec, ri) in getReplicateRecords(box)" :key="ri">{{ rec }}</text>
+							</view>
+							<text class="card-replicate-empty" v-else>暂无记录</text>
+						</view>
 						<view class="card-progress">
 							<view class="mini-progress-bar">
 								<view class="mini-progress-fill" :style="{ width: getBoxRate(box) + '%' }"></view>
@@ -117,6 +124,7 @@
 </template>
 
 <script>
+import errorLog from "@/utils/errorLog.js";
 export default {
 	data() {
 		return {
@@ -170,6 +178,13 @@ export default {
 		this.ownedCharacters = uni.getStorageSync('ownedCharacters') || {};
 	},
 	methods: {
+		logError(e, ctx) {
+				try {
+					errorLog.logError(e, ctx);
+				} catch (logErr) {
+					console.error('[logError] storage failed:', logErr);
+				}
+			},
 		loadData() {
 			// 检查多个数据存储位置（和 index.vue、list.vue 一致）
 			const data1 = uni.getStorageSync('arknightsData');
@@ -263,17 +278,40 @@ export default {
 		},
 
 		// 获取盒子所有年月（上线日期+复刻日期），用于年月选择器和月份过滤
+		// 获取复刻记录列表
+		getReplicateRecords(box) {
+			if (!box) return [];
+			const records = [];
+			if (box.replicate_date) {
+				records.push(box.replicate_date + ' 第一次复刻');
+			}
+			const extras = ['replicate_date_01', 'replicate_date_02', 'replicate_date_03', 'replicate_date_04', 'replicate_date_05'];
+			for (let i = 0; i < extras.length; i++) {
+				const key = extras[i];
+				if (box[key]) {
+					records.push(box[key] + ' 第' + this.toChineseOrdinal(i + 2) + '次复刻');
+				}
+			}
+			return records;
+		},
+
+		// 数字转中文序数
+		toChineseOrdinal(n) {
+			const map = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
+			return map[n] || String(n);
+		},
+
 		getBoxMonths(box) {
 			const months = [];
-			// 复刻盒子优先使用 replicate_date，普通盒子使用 release_date
-			const replicate = box.replicate_date || '';
-			const release = box.release_date || '';
-			if (replicate) {
-				const match = replicate.match(/^(\d{4})\/(\d{1,2})/);
-				if (match) months.push({ year: parseInt(match[1]), month: parseInt(match[2]) });
+			const dates = [];
+			if (box.release_date) dates.push(box.release_date);
+			if (box.replicate_date) dates.push(box.replicate_date);
+			const extras = ['replicate_date_01', 'replicate_date_02', 'replicate_date_03', 'replicate_date_04', 'replicate_date_05'];
+			for (let i = 0; i < extras.length; i++) {
+				if (box[extras[i]]) dates.push(box[extras[i]]);
 			}
-			if (release) {
-				const match = release.match(/^(\d{4})\/(\d{1,2})/);
+			for (let d = 0; d < dates.length; d++) {
+				const match = dates[d].match(/^(\d{4})\/(\d{1,2})/);
 				if (match) months.push({ year: parseInt(match[1]), month: parseInt(match[2]) });
 			}
 			return months;
@@ -299,41 +337,36 @@ export default {
 			const months = this.getBoxMonths(box);
 			const curMonth = months.find(m => m.year === this.currentYear && m.month === this.currentMonth);
 			if (!curMonth) return '上线';
-			// 判断当前年月匹配的是哪个日期
-			const release = box.release_date || '';
-			const replicate = box.replicate_date || '';
-			let matchedDate = '';
-			if (replicate) {
-				const m = replicate.match(/^(\d{4})\/(\d{1,2})/);
+			// 判断当前年月匹配的是哪个日期（上线/第N次复刻）
+			const dates = [];
+			if (box.release_date) dates.push({ d: box.release_date, label: '上线' });
+			if (box.replicate_date) dates.push({ d: box.replicate_date, label: '第一次复刻' });
+			const extras = ['replicate_date_01', 'replicate_date_02', 'replicate_date_03', 'replicate_date_04', 'replicate_date_05'];
+			for (let i = 0; i < extras.length; i++) {
+				if (box[extras[i]]) dates.push({ d: box[extras[i]], label: '第' + this.toChineseOrdinal(i + 2) + '次复刻' });
+			}
+			for (let k = 0; k < dates.length; k++) {
+				const m = dates[k].d.match(/^(\d{4})\/(\d{1,2})/);
 				if (m && parseInt(m[1]) === curMonth.year && parseInt(m[2]) === curMonth.month) {
-					matchedDate = replicate;
+					return dates[k].label;
 				}
 			}
-			if (!matchedDate && release) {
-				const m = release.match(/^(\d{4})\/(\d{1,2})/);
-				if (m && parseInt(m[1]) === curMonth.year && parseInt(m[2]) === curMonth.month) {
-					matchedDate = release;
-				}
-			}
-			// 如果匹配的是 replicate_date，显示"复刻"；否则显示"上线"
-			if (replicate && matchedDate === replicate) return '复刻';
 			return '上线';
 		},
 
 		// 获取卡片显示的具体日期
 		getMonthDate(box) {
-			const release = box.release_date || '';
-			const replicate = box.replicate_date || '';
-			if (replicate) {
-				const m = replicate.match(/^(\d{4})\/(\d{1,2})/);
-				if (m && parseInt(m[1]) === this.currentYear && parseInt(m[2]) === this.currentMonth) {
-					return replicate;
-				}
+			const dates = [];
+			if (box.release_date) dates.push(box.release_date);
+			if (box.replicate_date) dates.push(box.replicate_date);
+			const extras = ['replicate_date_01', 'replicate_date_02', 'replicate_date_03', 'replicate_date_04', 'replicate_date_05'];
+			for (let i = 0; i < extras.length; i++) {
+				if (box[extras[i]]) dates.push(box[extras[i]]);
 			}
-			if (release) {
-				const m = release.match(/^(\d{4})\/(\d{1,2})/);
+			for (let d = 0; d < dates.length; d++) {
+				const m = dates[d].match(/^(\d{4})\/(\d{1,2})/);
 				if (m && parseInt(m[1]) === this.currentYear && parseInt(m[2]) === this.currentMonth) {
-					return release;
+					return dates[d];
 				}
 			}
 			return '';
@@ -355,9 +388,12 @@ export default {
 		},
 
 		goToBox(box) {
-			// 跳转到盒子详情
+			// 跳转到搜索页面并自动搜索该盒号
+			const boxId = box.Box_id || box.box_id || '';
+			// 存储要搜索的盒号
+			uni.setStorageSync('calendarSearchBoxId', boxId);
 			uni.navigateTo({
-				url: `/pages/box_info/box_info?box_id=${box.Box_id || box.box_id || ''}&box_name=${encodeURIComponent(box.Box_id || box.box_id || '')}`
+				url: '/pages/Search/Search?fromCalendar=true'
 			});
 		}
 	}
@@ -550,6 +586,35 @@ export default {
     border-radius: 8rpx;
     padding: 4rpx 12rpx;
     border: 1rpx solid #FFD0C4;
+}
+
+.card-replicate {
+    display: flex;
+    flex-direction: column;
+    margin: 10rpx 0;
+}
+
+.card-replicate-label {
+    font-size: 22rpx;
+    color: #67C23A;
+    font-weight: bold;
+    margin-bottom: 4rpx;
+}
+
+.card-replicate-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.card-replicate-line {
+    font-size: 22rpx;
+    color: #67C23A;
+    line-height: 1.6;
+}
+
+.card-replicate-empty {
+    font-size: 22rpx;
+    color: #999;
 }
 
 .card-progress {
