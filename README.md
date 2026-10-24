@@ -106,6 +106,19 @@ npm install
 
 ---
 
+## Windows 桌面版
+
+`windows/` 目录是一个独立的 WinUI 3 外壳：用 WebView2 承载上面这套 uni-app H5 产物，
+业务代码零重写，只为桌面端补上窗口、托盘、全局快捷键、开机自启、联机对战、自动更新等能力。
+
+- **技术栈**：C# / .NET 10 / WinUI 3（Windows App SDK）/ WebView2
+- **产物**：免管理员安装包（约 139 MB）+ 绿色版 zip（约 92 MB）
+- **构建**：`cd windows && bash release.sh`（需 .NET 10 SDK 与 HBuilderX）
+- **详细说明**：[`windows/README.md`](windows/README.md)
+- **安全说明**：程序只访问固定域名，联机服务器默认不启动，详见 [`windows/docs/SECURITY.md`](windows/docs/SECURITY.md)
+
+---
+
 ## 技术栈
 
 - **框架**：UniApp (Vue 3)

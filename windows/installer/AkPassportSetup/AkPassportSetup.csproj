@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net10.0-windows</TargetFramework>
+		<UseWindowsForms>true</UseWindowsForms>
+		<Nullable>enable</Nullable>
+		<LangVersion>latest</LangVersion>
+		<RootNamespace>AkPassport.Setup</RootNamespace>
+		<AssemblyName>AkPassportSetup</AssemblyName>
+		<ApplicationIcon>..\..\src\AkPassport.Win\Assets\app.ico</ApplicationIcon>
+		<Version>1.0.0.0</Version>
+		<Product>方舟通行证谷子查询工具</Product>
+		<AssemblyTitle>方舟通行证谷子查询工具 安装程序</AssemblyTitle>
+		<SatelliteResourceLanguages>zh-Hans</SatelliteResourceLanguages>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- payload.zip 由 release.sh 在打包时复制进来（就是发布目录压成的 zip） -->
+		<EmbeddedResource Include="payload.zip" Condition="Exists('payload.zip')">
+			<LogicalName>payload.zip</LogicalName>
+		</EmbeddedResource>
+	</ItemGroup>
+
+</Project>

@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+	x:Class="AkPassport.Win.Views.AeSettingsView"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+	<UserControl.Resources>
+		<Style x:Key="SettingsCard" TargetType="Border">
+			<Setter Property="CornerRadius" Value="10" />
+			<Setter Property="BorderThickness" Value="1" />
+			<Setter Property="Background" Value="#FFFFFF" />
+			<Setter Property="BorderBrush" Value="#E8E8E8" />
+			<Setter Property="Padding" Value="18,16,18,14" />
+		</Style>
+
+		<Style x:Key="SectionTitle" TargetType="TextBlock">
+			<Setter Property="FontSize" Value="14" />
+			<Setter Property="FontWeight" Value="SemiBold" />
+		</Style>
+
+		<Style x:Key="SectionHint" TargetType="TextBlock">
+			<Setter Property="FontSize" Value="11.5" />
+			<Setter Property="Opacity" Value="0.55" />
+			<Setter Property="TextWrapping" Value="Wrap" />
+			<Setter Property="Margin" Value="0,-6,0,0" />
+		</Style>
+
+		<Style x:Key="MetricLabel" TargetType="TextBlock">
+			<Setter Property="FontSize" Value="11" />
+			<Setter Property="Opacity" Value="0.5" />
+		</Style>
+
+		<Style x:Key="MetricValue" TargetType="TextBlock">
+			<Setter Property="FontSize" Value="13" />
+			<Setter Property="TextTrimming" Value="CharacterEllipsis" />
+		</Style>
+	</UserControl.Resources>
+
+	<ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto"
+	              HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled">
+		<StackPanel x:Name="Page" Padding="30,24,30,40" Spacing="8" MaxWidth="920"
+		            HorizontalAlignment="Stretch">
+
+			<TextBlock Text="设置" FontSize="24" FontWeight="SemiBold" />
+			<TextBlock Text="终末地工具箱 · Windows 版只列出在桌面端真正有效的项目；改动会立即写回并刷新页面"
+			           FontSize="12" Opacity="0.55" Margin="0,0,0,12" TextWrapping="Wrap" />
+
+			<!-- ── 数据管理 ─────────────────────────────────────── -->
+			<Border x:Name="CardData" Style="{StaticResource SettingsCard}">
+				<StackPanel Spacing="10">
+					<TextBlock Text="数据管理" Style="{StaticResource SectionTitle}" />
+					<TextBlock Text="盒号数据由终末地首页自动下载并存在本机；这里可以看到状态，也可以强制重下或清空。"
+					           Style="{StaticResource SectionHint}" />
+
+					<Grid Margin="0,6,0,0" ColumnSpacing="18" RowSpacing="12">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="*" />
+						</Grid.ColumnDefinitions>
+						<Grid.RowDefinitions>
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="Auto" />
+						</Grid.RowDefinitions>
+
+						<StackPanel Spacing="2">
+							<TextBlock Text="当前数据源" Style="{StaticResource MetricLabel}" />
+							<TextBlock x:Name="SourceValue" Text="—" Style="{StaticResource MetricValue}" />
+						</StackPanel>
+						<StackPanel Grid.Column="1" Spacing="2">
+							<TextBlock Text="数据版本" Style="{StaticResource MetricLabel}" />
+							<TextBlock x:Name="VersionValue" Text="—" Style="{StaticResource MetricValue}" />
+						</StackPanel>
+						<StackPanel Grid.Column="2" Spacing="2">
+							<TextBlock Text="本地上次更新" Style="{StaticResource MetricLabel}" />
+							<TextBlock x:Name="UpdateValue" Text="—" Style="{StaticResource MetricValue}" />
+						</StackPanel>
+						<StackPanel Grid.Column="3" Spacing="2">
+							<TextBlock Text="本地占用" Style="{StaticResource MetricLabel}" />
+							<TextBlock x:Name="SizeValue" Text="—" Style="{StaticResource MetricValue}" />
+						</StackPanel>
+
+						<StackPanel Grid.Row="1" Spacing="2">
+							<TextBlock Text="盒号数量" Style="{StaticResource MetricLabel}" />
+							<TextBlock x:Name="BoxValue" Text="—" Style="{StaticResource MetricValue}" />
+						</StackPanel>
+						<StackPanel Grid.Row="1" Grid.Column="1" Spacing="2">
+							<TextBlock Text="预测盒号" Style="{StaticResource MetricLabel}" />
+							<TextBlock x:Name="GuessValue" Text="—" Style="{StaticResource MetricValue}" />
+						</StackPanel>
+						<StackPanel Grid.Row="1" Grid.Column="2" Spacing="2">
+							<TextBlock Text="搜索词数据" Style="{StaticResource MetricLabel}" />
+							<TextBlock x:Name="SearchWordValue" Text="—" Style="{StaticResource MetricValue}" />
+						</StackPanel>
+						<StackPanel Grid.Row="1" Grid.Column="3" Spacing="2">
+							<TextBlock Text="自定义搜索词" Style="{StaticResource MetricLabel}" />
+							<TextBlock x:Name="CustomWordValue" Text="—" Style="{StaticResource MetricValue}" />
+						</StackPanel>
+					</Grid>
+
+					<Border Height="1" Background="#EDEDED" Margin="0,4" />
+
+					<Grid ColumnSpacing="12">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="Auto" />
+						</Grid.ColumnDefinitions>
+						<StackPanel Spacing="2" VerticalAlignment="Center">
+							<TextBlock Text="重新下载 / 清空本地数据" FontSize="13.5" />
+							<TextBlock Text="重新下载会走首页的同一条链路；清空后自动切回国内源，下次进入首页重新拉取"
+							           FontSize="11.5" Opacity="0.58" TextWrapping="Wrap" />
+						</StackPanel>
+						<StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6"
+						            VerticalAlignment="Center">
+							<Button Content="重新下载" Click="OnRefreshClick" />
+							<Button Content="清空数据" Click="OnClearClick" Foreground="#C42B1C" />
+						</StackPanel>
+					</Grid>
+				</StackPanel>
+			</Border>
+
+			<!-- ── 搜索 ─────────────────────────────────────────── -->
+			<Border x:Name="CardSearch" Style="{StaticResource SettingsCard}">
+				<StackPanel Spacing="10">
+					<TextBlock Text="搜索功能设置" Style="{StaticResource SectionTitle}" />
+					<TextBlock Text="手机端把这三项标成「开发中」并禁用了；底层查询页其实已经读了这几个开关，桌面端可以放心打开。"
+					           Style="{StaticResource SectionHint}" />
+					<StackPanel x:Name="SearchRows" />
+					<Border Height="1" Background="#EDEDED" />
+					<Grid ColumnSpacing="12">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="Auto" />
+						</Grid.ColumnDefinitions>
+						<StackPanel Spacing="2" VerticalAlignment="Center">
+							<TextBlock Text="自定义搜索词" FontSize="13.5" />
+							<TextBlock x:Name="CustomWordsHint" Text="给常用外号建别名，查询时一并命中"
+							           FontSize="11.5" Opacity="0.58" TextWrapping="Wrap" />
+						</StackPanel>
+						<Button Grid.Column="1" Content="管理" Click="OnCustomWordsClick"
+						        VerticalAlignment="Center" />
+					</Grid>
+				</StackPanel>
+			</Border>
+
+			<!-- ── 功能 ─────────────────────────────────────────── -->
+			<Border x:Name="CardFunc" Style="{StaticResource SettingsCard}">
+				<StackPanel Spacing="10">
+					<TextBlock Text="功能设置" Style="{StaticResource SectionTitle}" />
+					<StackPanel x:Name="FuncRows" />
+					<Border Height="1" Background="#EDEDED" />
+					<Grid ColumnSpacing="12">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="Auto" />
+						</Grid.ColumnDefinitions>
+						<StackPanel Spacing="2" VerticalAlignment="Center">
+							<TextBlock Text="自动更新检查频率" FontSize="13.5" />
+							<TextBlock Text="仅在开启「干员数据自动更新」后生效"
+							           FontSize="11.5" Opacity="0.58" TextWrapping="Wrap" />
+						</StackPanel>
+						<ComboBox x:Name="FrequencyBox" Grid.Column="1" MinWidth="120"
+						          AutomationProperties.Name="自动更新检查频率"
+						          VerticalAlignment="Center" SelectionChanged="OnFrequencyChanged" />
+					</Grid>
+				</StackPanel>
+			</Border>
+
+			<!-- ── 关于 ─────────────────────────────────────────── -->
+			<Border x:Name="CardAbout" Style="{StaticResource SettingsCard}">
+				<StackPanel Spacing="10">
+					<TextBlock Text="关于" Style="{StaticResource SectionTitle}" />
+
+					<Grid Margin="0,4,0,0" ColumnSpacing="12">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="Auto" />
+						</Grid.ColumnDefinitions>
+						<StackPanel Spacing="2">
+							<TextBlock Text="终末地工具箱（Windows 版）" FontSize="13.5" />
+							<TextBlock x:Name="VersionText" Text="—" FontSize="11.5" Opacity="0.6" />
+							<TextBlock x:Name="FontText" Text="" FontSize="11" Opacity="0.45" />
+						</StackPanel>
+						<StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
+						            VerticalAlignment="Center">
+							<Button Content="关于我们" Click="OnAboutClick" />
+							<Button Content="项目主页" Click="OnRepoClick" />
+						</StackPanel>
+					</Grid>
+
+					<Border Height="1" Background="#EDEDED" />
+					<TextBlock Text="本程序为第三方工具，与鹰角网络无关。数据版权归原作者所有。"
+					           FontSize="11.5" Opacity="0.55" TextWrapping="Wrap" />
+				</StackPanel>
+			</Border>
+		</StackPanel>
+	</ScrollViewer>
+</UserControl>

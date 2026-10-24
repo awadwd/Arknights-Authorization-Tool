@@ -1,0 +1,58 @@
+# =============================================================================
+# 方舟通行证谷子查询工具 · Windows 壳（WinUI 3 + WebView2）
+# =============================================================================
+
+# ---- .NET 构建产物 ----
+bin/
+obj/
+out/
+/publish/
+/dist/
+/dist-h5/
+
+# 安装器内嵌的前端载荷（由 _build_setup.sh 现场生成，约 90 MB）
+installer/**/payload.zip
+
+# ---- 开发期草稿：根目录只保留 README / .gitignore / *.sh 构建脚本 ----
+#（截图、调试脚本、日志、临时 json 一律不入库）
+/*.png
+/*.jpg
+/*.py
+/*.js
+/*.mjs
+/*.txt
+/*.log
+/*.err
+/*.zip
+/*.json
+/*.csv
+
+# ---- 临时 / 备份目录 ----
+/_trash/
+/_updtest/
+/_updtest_stage/
+/_upd2_stage/
+/_upd2_target/
+/_buildcheck/
+/_mvtest/
+/_bak_shellmedia/
+/NVIDIA Corporation/
+
+# ---- IDE / 系统 ----
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.cache
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# ---- 本地更新缓存（运行期生成）----
+.update/
+*.update.log
+
+# 调试期残留的日志
+*.binlog
+*.log

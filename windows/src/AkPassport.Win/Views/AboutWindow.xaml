@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+	x:Class="AkPassport.Win.Views.AboutWindow"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	Title="关于我们 · 方舟通行证谷子查询工具">
+
+	<Grid x:Name="Root" Background="#ECF1F7">
+		<WebView2 x:Name="Web" />
+
+		<!-- 加载遮罩：WebView2 第一次起来要 1~2 秒 -->
+		<Grid x:Name="Splash" Background="#ECF1F7">
+			<StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10">
+				<ProgressRing IsActive="True" Width="28" Height="28" />
+				<TextBlock Text="正在加载…" FontSize="12" Opacity="0.6" HorizontalAlignment="Center" />
+			</StackPanel>
+		</Grid>
+	</Grid>
+</Window>

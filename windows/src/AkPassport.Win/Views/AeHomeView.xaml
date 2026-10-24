@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+	x:Class="AkPassport.Win.Views.AeHomeView"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+	<!--
+	终末地首页（原生 WinUI）。
+	配色沿用 package_ArknightEnds 的 endspace 主题：底 #FAFAFA、字 #18181B、强调 #FBFB45（柠檬黄 + 黑字）。
+	覆盖在 WebView 之上，所以底色必须不透明。
+	-->
+	<UserControl.Resources>
+		<Style x:Key="Card" TargetType="Border">
+			<Setter Property="CornerRadius" Value="10" />
+			<Setter Property="BorderThickness" Value="1" />
+			<Setter Property="Background" Value="#FFFFFF" />
+			<Setter Property="BorderBrush" Value="#E8E8E8" />
+		</Style>
+
+		<!-- 工具卡片：默认 WinUI 按钮的圆角矩形模板刚好够用，只改圆角与内边距 -->
+		<Style x:Key="ToolCard" TargetType="Button">
+			<Setter Property="Background" Value="#FFFFFF" />
+			<Setter Property="BorderBrush" Value="#E8E8E8" />
+			<Setter Property="BorderThickness" Value="1" />
+			<Setter Property="CornerRadius" Value="10" />
+			<Setter Property="Padding" Value="14,12" />
+			<Setter Property="MinHeight" Value="0" />
+			<Setter Property="HorizontalAlignment" Value="Stretch" />
+			<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+			<Setter Property="VerticalContentAlignment" Value="Center" />
+		</Style>
+
+		<Style x:Key="MetricLabel" TargetType="TextBlock">
+			<Setter Property="FontSize" Value="11" />
+			<Setter Property="Opacity" Value="0.5" />
+		</Style>
+
+		<Style x:Key="MetricValue" TargetType="TextBlock">
+			<Setter Property="FontSize" Value="16" />
+			<Setter Property="FontWeight" Value="SemiBold" />
+			<Setter Property="TextTrimming" Value="CharacterEllipsis" />
+		</Style>
+	</UserControl.Resources>
+
+	<Grid x:Name="Surface" Background="#FAFAFA">
+		<ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto"
+		              HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled">
+			<StackPanel x:Name="Page" Padding="28,22,28,36" Spacing="14" MaxWidth="1060"
+			            HorizontalAlignment="Stretch">
+
+				<!-- ── 抬头 ─────────────────────────────────────────── -->
+				<Grid ColumnSpacing="12">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="*" />
+						<ColumnDefinition Width="Auto" />
+					</Grid.ColumnDefinitions>
+
+					<StackPanel Orientation="Horizontal" Spacing="12">
+						<Border Width="44" Height="44" CornerRadius="11" Background="#FBFB45">
+							<Image Source="ms-appx:///Assets/endfield-avatar.png" Width="30" Height="30"
+							       HorizontalAlignment="Center" VerticalAlignment="Center" />
+						</Border>
+						<StackPanel Spacing="1" VerticalAlignment="Center">
+							<TextBlock Text="终末地工具箱" FontSize="22" FontWeight="SemiBold" />
+							<TextBlock Text="凭证 · 盒号 · 抽卡 一站式查询"
+							           FontSize="11.5" Opacity="0.55" />
+						</StackPanel>
+					</StackPanel>
+
+					<StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6"
+					            VerticalAlignment="Center">
+						<Button x:Name="RefreshButton" Content="刷新数据" Click="OnRefreshClick"
+						        ToolTipService.ToolTip="重新拉取盒号数据（等同手机端的下拉刷新）" />
+						<Button Content="设置" Click="OnSettingsClick" />
+					</StackPanel>
+				</Grid>
+
+				<!-- ── 数据概览 ─────────────────────────────────────── -->
+				<Border Style="{StaticResource Card}" Padding="4,14">
+					<Grid>
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="Auto" />
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="Auto" />
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="Auto" />
+							<ColumnDefinition Width="*" />
+						</Grid.ColumnDefinitions>
+
+						<StackPanel Grid.Column="0" Spacing="3" Padding="16,0">
+							<TextBlock Text="数据源" Style="{StaticResource MetricLabel}" />
+							<TextBlock x:Name="SourceText" Text="—" Style="{StaticResource MetricValue}" />
+						</StackPanel>
+						<Border Grid.Column="1" Width="1" Background="#EDEDED" Margin="0,2" />
+						<StackPanel Grid.Column="2" Spacing="3" Padding="16,0">
+							<TextBlock Text="数据版本" Style="{StaticResource MetricLabel}" />
+							<TextBlock x:Name="VersionText" Text="—" Style="{StaticResource MetricValue}" />
+						</StackPanel>
+						<Border Grid.Column="3" Width="1" Background="#EDEDED" Margin="0,2" />
+						<StackPanel Grid.Column="4" Spacing="3" Padding="16,0">
+							<TextBlock Text="盒号数量" Style="{StaticResource MetricLabel}" />
+							<TextBlock x:Name="BoxCountText" Text="—" Style="{StaticResource MetricValue}" />
+						</StackPanel>
+						<Border Grid.Column="5" Width="1" Background="#EDEDED" Margin="0,2" />
+						<StackPanel Grid.Column="6" Spacing="3" Padding="16,0">
+							<TextBlock Text="上次更新" Style="{StaticResource MetricLabel}" />
+							<TextBlock x:Name="UpdateText" Text="—" Style="{StaticResource MetricValue}" />
+						</StackPanel>
+					</Grid>
+				</Border>
+
+				<!-- 没有数据时的提示条：柠檬黄底 + 黑字，和手机端的主按钮一致 -->
+				<Border x:Name="DataHintBar" Visibility="Collapsed" CornerRadius="8"
+				        Background="#FBFB45" Padding="12,8">
+					<Grid ColumnSpacing="10">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="Auto" />
+						</Grid.ColumnDefinitions>
+						<TextBlock x:Name="DataHintText" Foreground="#18181B" FontSize="12"
+						           TextWrapping="Wrap" VerticalAlignment="Center" />
+						<Button Grid.Column="1" Content="去下载" Click="OnRefreshClick"
+						        Background="#18181B" Foreground="#FBFB45" BorderThickness="0" />
+					</Grid>
+				</Border>
+
+				<!-- ── 工具箱 ───────────────────────────────────────── -->
+				<Grid Margin="0,6,0,0">
+					<TextBlock Text="工具箱" FontSize="14" FontWeight="SemiBold" />
+					<TextBlock Text="全部功能与手机端一致" FontSize="11.5" Opacity="0.45"
+					           HorizontalAlignment="Right" VerticalAlignment="Center" />
+				</Grid>
+
+				<Grid ColumnSpacing="10" RowSpacing="10">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="*" />
+						<ColumnDefinition Width="*" />
+						<ColumnDefinition Width="*" />
+					</Grid.ColumnDefinitions>
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="Auto" />
+					</Grid.RowDefinitions>
+
+					<Button Grid.Row="0" Grid.Column="0" Style="{StaticResource ToolCard}"
+					        Tag="package_ArknightEnds/Search/Search" Click="OnToolClick"
+			        AutomationProperties.Name="凭证查询">
+						<Grid ColumnSpacing="12">
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto" />
+								<ColumnDefinition Width="*" />
+								<ColumnDefinition Width="Auto" />
+							</Grid.ColumnDefinitions>
+							<Border Width="40" Height="40" CornerRadius="9" Background="#F5F5F5">
+								<Image Source="ms-appx:///Assets/ae-search-icon.png" Width="24" Height="24"
+								       HorizontalAlignment="Center" VerticalAlignment="Center" />
+							</Border>
+							<StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+								<TextBlock Text="凭证查询" FontSize="13.5" FontWeight="SemiBold" />
+								<TextBlock Text="干员所在盒号与盒内信息" FontSize="11" Opacity="0.5"
+								           TextWrapping="Wrap" />
+							</StackPanel>
+							<FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="11" Opacity="0.35" />
+						</Grid>
+					</Button>
+
+					<Button Grid.Row="0" Grid.Column="1" Style="{StaticResource ToolCard}"
+					        Tag="package_ArknightEnds/list/list" Click="OnToolClick"
+			        AutomationProperties.Name="凭证列表">
+						<Grid ColumnSpacing="12">
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto" />
+								<ColumnDefinition Width="*" />
+								<ColumnDefinition Width="Auto" />
+							</Grid.ColumnDefinitions>
+							<Border Width="40" Height="40" CornerRadius="9" Background="#F5F5F5">
+								<Image Source="ms-appx:///Assets/ae-list-tool.png" Width="24" Height="24"
+								       HorizontalAlignment="Center" VerticalAlignment="Center" />
+							</Border>
+							<StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+								<TextBlock Text="凭证列表" FontSize="13.5" FontWeight="SemiBold" />
+								<TextBlock Text="所有通行证与干员一览" FontSize="11" Opacity="0.5"
+								           TextWrapping="Wrap" />
+							</StackPanel>
+							<FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="11" Opacity="0.35" />
+						</Grid>
+					</Button>
+
+					<Button Grid.Row="0" Grid.Column="2" Style="{StaticResource ToolCard}"
+					        Tag="package_ArknightEnds/calendar/calendar" Click="OnToolClick"
+			        AutomationProperties.Name="终末地日历">
+						<Grid ColumnSpacing="12">
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto" />
+								<ColumnDefinition Width="*" />
+								<ColumnDefinition Width="Auto" />
+							</Grid.ColumnDefinitions>
+							<Border Width="40" Height="40" CornerRadius="9" Background="#F5F5F5">
+								<Image Source="ms-appx:///Assets/ae-calendar-tool.png" Width="24" Height="24"
+								       HorizontalAlignment="Center" VerticalAlignment="Center" />
+							</Border>
+							<StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+								<StackPanel Orientation="Horizontal" Spacing="6">
+									<TextBlock Text="终末地日历" FontSize="13.5" FontWeight="SemiBold" />
+									<Border Background="#FBFB45" CornerRadius="4" Padding="4,0"
+									        VerticalAlignment="Center">
+										<TextBlock Text="NEW" FontSize="9" FontWeight="SemiBold"
+										           Foreground="#18181B" />
+									</Border>
+								</StackPanel>
+								<TextBlock Text="发售 · 复刻时间线" FontSize="11" Opacity="0.5"
+								           TextWrapping="Wrap" />
+							</StackPanel>
+							<FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="11" Opacity="0.35" />
+						</Grid>
+					</Button>
+
+					<Button Grid.Row="1" Grid.Column="0" Style="{StaticResource ToolCard}"
+					        Tag="package_ArknightEnds/gacha_simulated/gacha_simulated" Click="OnToolClick"
+			        AutomationProperties.Name="模拟抽卡">
+						<Grid ColumnSpacing="12">
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto" />
+								<ColumnDefinition Width="*" />
+								<ColumnDefinition Width="Auto" />
+							</Grid.ColumnDefinitions>
+							<Border Width="40" Height="40" CornerRadius="9" Background="#F5F5F5">
+								<Image Source="ms-appx:///Assets/ae-gacha_simulated-tool.png" Width="24" Height="24"
+								       HorizontalAlignment="Center" VerticalAlignment="Center" />
+							</Border>
+							<StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+								<TextBlock Text="模拟抽卡" FontSize="13.5" FontWeight="SemiBold" />
+								<TextBlock Text="单盒 / 混池，支持联机对战" FontSize="11" Opacity="0.5"
+								           TextWrapping="Wrap" />
+							</StackPanel>
+							<FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="11" Opacity="0.35" />
+						</Grid>
+					</Button>
+
+					<Button Grid.Row="1" Grid.Column="1" Style="{StaticResource ToolCard}"
+					        Tag="package_ArknightEnds/custom-words/custom-words" Click="OnToolClick"
+			        AutomationProperties.Name="自定义搜索词">
+						<Grid ColumnSpacing="12">
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto" />
+								<ColumnDefinition Width="*" />
+								<ColumnDefinition Width="Auto" />
+							</Grid.ColumnDefinitions>
+							<Border Width="40" Height="40" CornerRadius="9" Background="#F5F5F5">
+								<Image Source="ms-appx:///Assets/ae-Setting-tool.png" Width="24" Height="24"
+								       HorizontalAlignment="Center" VerticalAlignment="Center" />
+							</Border>
+							<StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+								<TextBlock Text="自定义搜索词" FontSize="13.5" FontWeight="SemiBold" />
+								<TextBlock Text="维护个人别名词条" FontSize="11" Opacity="0.5"
+								           TextWrapping="Wrap" />
+							</StackPanel>
+							<FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="11" Opacity="0.35" />
+						</Grid>
+					</Button>
+
+					<Button Grid.Row="1" Grid.Column="2" Style="{StaticResource ToolCard}"
+					        Tag="package_ArknightEnds/more-notice/more-notice" Click="OnToolClick"
+			        AutomationProperties.Name="公告详情">
+						<Grid ColumnSpacing="12">
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto" />
+								<ColumnDefinition Width="*" />
+								<ColumnDefinition Width="Auto" />
+							</Grid.ColumnDefinitions>
+							<Border Width="40" Height="40" CornerRadius="9" Background="#F5F5F5">
+								<FontIcon Glyph="&#xE90A;" FontSize="18" Opacity="0.7" />
+							</Border>
+							<StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+								<TextBlock Text="公告详情" FontSize="13.5" FontWeight="SemiBold" />
+								<TextBlock Text="完整公告与历史记录" FontSize="11" Opacity="0.5"
+								           TextWrapping="Wrap" />
+							</StackPanel>
+							<FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="11" Opacity="0.35" />
+						</Grid>
+					</Button>
+
+					<Button Grid.Row="2" Grid.Column="0" Style="{StaticResource ToolCard}"
+					        Click="OnAboutClick" AutomationProperties.Name="关于我们">
+						<Grid ColumnSpacing="12">
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto" />
+								<ColumnDefinition Width="*" />
+								<ColumnDefinition Width="Auto" />
+							</Grid.ColumnDefinitions>
+							<Border Width="40" Height="40" CornerRadius="9" Background="#F5F5F5">
+								<Image Source="ms-appx:///Assets/ae-aboutus-tool.png" Width="24" Height="24"
+								       HorizontalAlignment="Center" VerticalAlignment="Center" />
+							</Border>
+							<StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+								<TextBlock Text="关于我们" FontSize="13.5" FontWeight="SemiBold" />
+								<TextBlock Text="了解我们与社媒账号" FontSize="11" Opacity="0.5"
+								           TextWrapping="Wrap" />
+							</StackPanel>
+							<FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="11" Opacity="0.35" />
+						</Grid>
+					</Button>
+
+					<Button Grid.Row="2" Grid.Column="1" Style="{StaticResource ToolCard}"
+					        Click="OnSettingsClick" AutomationProperties.Name="打开设置">
+						<Grid ColumnSpacing="12">
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto" />
+								<ColumnDefinition Width="*" />
+								<ColumnDefinition Width="Auto" />
+							</Grid.ColumnDefinitions>
+							<Border Width="40" Height="40" CornerRadius="9" Background="#F5F5F5">
+								<FontIcon Glyph="&#xE713;" FontSize="18" Opacity="0.7" />
+							</Border>
+							<StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+								<TextBlock Text="设置" FontSize="13.5" FontWeight="SemiBold" />
+								<TextBlock Text="数据 · 搜索 · 市价展示" FontSize="11" Opacity="0.5"
+								           TextWrapping="Wrap" />
+							</StackPanel>
+							<FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="11" Opacity="0.35" />
+						</Grid>
+					</Button>
+				</Grid>
+
+				<!-- ── 页脚 ─────────────────────────────────────────── -->
+				<TextBlock Text="本程序为第三方工具，与鹰角网络无关。数据版权归原作者所有。"
+				           FontSize="11" Opacity="0.4" Margin="0,10,0,0" TextWrapping="Wrap" />
+			</StackPanel>
+		</ScrollViewer>
+	</Grid>
+</UserControl>

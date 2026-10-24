@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    自动更新器。独立进程，随包分发（不打进主程序）。
+
+    为什么必须是独立进程：Windows 上正在运行的 exe / dll 是被锁住的，
+    主程序没法覆盖自己。MAA 用 MAA.Updater.exe、BetterGI 用 BetterGI.update.exe，
+    都是同一个思路：主程序把包下载好、把参数交出去、自己退出，
+    由这个小程序完成「等待退出 -> 解压 -> 备份 -> 覆盖 -> 重启」。
+
+    它做的事很有限：不联网、只解析命令行参数、只操作 dir 参数指定的目录。
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>AkPassport.Updater</AssemblyName>
+    <RootNamespace>AkPassport.Updater</RootNamespace>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>partial</TrimMode>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <DebugType>none</DebugType>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+</Project>
