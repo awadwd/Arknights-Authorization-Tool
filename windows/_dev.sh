@@ -2,7 +2,7 @@
 # 开发流程：结束进程 -> 编译 -> 启动 -> 用 CDP 截图
 # 用法: bash _dev.sh <route> <out.png> [waitSeconds]
 set -u
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && { pwd -W 2>/dev/null || pwd; })"
 EXE="$ROOT/src/AkPassport.Win/bin/x64/Debug/net10.0-windows10.0.26100.0/AkPassport.Win.exe"
 ROUTE="${1:-pages/list/list}"
 OUT="${2:-$ROOT/_shell.png}"

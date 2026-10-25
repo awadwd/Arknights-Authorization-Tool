@@ -27,7 +27,7 @@ export windir="${windir:-C:\\WINDOWS}"
 export ComSpec="${ComSpec:-C:\\WINDOWS\\system32\\cmd.exe}"
 export NUGET_PACKAGES="${NUGET_PACKAGES:-$USERPROFILE\\.nuget\\packages}"
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && { pwd -W 2>/dev/null || pwd; })"
 PROJ="$ROOT/src/AkPassport.Win/AkPassport.Win.csproj"
 CSPROJ="$PROJ"
 PY="${PY:-python}"

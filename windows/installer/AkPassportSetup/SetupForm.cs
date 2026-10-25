@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -25,9 +26,15 @@ internal sealed class SetupForm : Form
 	private bool _busy;
 	private readonly string? _installedDir;
 
+	private static readonly Color HintColor = Color.FromArgb(0x60, 0x60, 0x60);
+	private static readonly Color ErrorColor = Color.FromArgb(0xC0, 0x39, 0x2B);
+
+	/// <summary>Windows 文件名里不允许出现的字符（Path.GetInvalidPathChars 在 .NET Core 上几乎是空的，靠不住）。</summary>
+	private static readonly char[] BadChars = { '"', '<', '>', '|', '\0', '\t', '\r', '\n' };
+
 	public SetupForm()
 	{
-		var ver = typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
+		var ver = Program.FullVersion;   // 含 beta 段
 
 		Text = $"{Program.AppName} {ver} 安装";
 		StartPosition = FormStartPosition.CenterScreen;
@@ -52,32 +59,46 @@ internal sealed class SetupForm : Form
 			Text = $"版本 {ver} · Windows 桌面版（WebView2 内核）",
 			Location = new Point(26, 50),
 			AutoSize = true,
-			ForeColor = Color.FromArgb(0x60, 0x60, 0x60),
+			ForeColor = HintColor,
 		};
 		Controls.Add(title);
 		Controls.Add(sub);
 
 		// ---- 安装目录 ----
-		var pathLabel = new Label { Text = "安装位置：", Location = new Point(26, 88), AutoSize = true };
+		// ★ 以前这里是 ReadOnly，用户没法手动输入/粘贴路径，只能一层层点「浏览」。
+		//   现在可编辑，并且接受粘贴「复制为路径」带引号的形式、拖文件夹进来、%ENV% 变量。
+		var pathLabel = new Label
+		{
+			Text = "安装位置（可直接输入或粘贴路径）：",
+			Location = new Point(26, 88),
+			AutoSize = true,
+		};
 		_pathBox = new TextBox
 		{
 			Location = new Point(26, 108),
 			Size = new Size(390, 26),
-			ReadOnly = true,
-			BackColor = SystemColors.Window,
+			ReadOnly = false,
+			AllowDrop = true,
 		};
 		var browseBtn = new Button { Text = "浏览…", Location = new Point(424, 106), Size = new Size(80, 30) };
 		browseBtn.Click += OnBrowse;
 		_spaceLabel = new Label
 		{
 			Location = new Point(26, 138),
-			AutoSize = true,
-			ForeColor = Color.FromArgb(0x60, 0x60, 0x60),
+			Size = new Size(508, 20),
+			AutoSize = false,
+			AutoEllipsis = true,
+			ForeColor = HintColor,
 		};
 		Controls.Add(pathLabel);
 		Controls.Add(_pathBox);
 		Controls.Add(browseBtn);
 		Controls.Add(_spaceLabel);
+
+		_pathBox.TextChanged += (_, _) => RefreshSpace();
+		_pathBox.Leave += (_, _) => _pathBox.Text = NormalizePath(_pathBox.Text);
+		_pathBox.DragEnter += OnPathDragEnter;
+		_pathBox.DragDrop += OnPathDrop;
 
 		// ---- 选项 ----
 		var optLabel = new Label { Text = "安装选项：", Location = new Point(26, 168), AutoSize = true };
@@ -99,7 +120,7 @@ internal sealed class SetupForm : Form
 			Text = "数据存在 %LOCALAPPDATA%\\AkPassport，覆盖安装不会丢。",
 			Location = new Point(26, 302),
 			Size = new Size(508, 22),
-			ForeColor = Color.FromArgb(0x60, 0x60, 0x60),
+			ForeColor = HintColor,
 		};
 		Controls.Add(tip);
 
@@ -172,16 +193,130 @@ internal sealed class SetupForm : Form
 		{
 			_installBtn.Enabled = false;
 			_status.Text = "安装包不完整：找不到内嵌的 payload.zip。";
-			_status.ForeColor = Color.FromArgb(0xC0, 0x39, 0x2B);
+			_status.ForeColor = ErrorColor;
 		}
+	}
+
+	// ---------------------------------------------------------------- 路径处理
+
+	/// <summary>去掉首尾引号/空白、展开 %ENV%、转绝对路径、去掉尾部反斜杠（盘符根除外）。</summary>
+	internal static string NormalizePath(string? raw)
+	{
+		var s = (raw ?? "").Trim();
+
+		// 右键「复制为路径」给的是带引号的
+		if (s.Length >= 2 && ((s[0] == '"' && s[^1] == '"') || (s[0] == '\'' && s[^1] == '\'')))
+			s = s[1..^1].Trim();
+
+		if (s.Length == 0) return s;
+
+		try
+		{
+			s = Environment.ExpandEnvironmentVariables(s);
+			s = Path.GetFullPath(s);
+		}
+		catch
+		{
+			return s;   // 非法路径交给 Validate 报错，别在这里吞掉
+		}
+
+		var root = Path.GetPathRoot(s);
+		if (!string.IsNullOrEmpty(root) && s.Length > root.Length)
+			s = s.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+		return s;
+	}
+
+	/// <summary>返回错误文案；合法返回 null。</summary>
+	internal static string? ValidatePath(string path)
+	{
+		if (string.IsNullOrWhiteSpace(path)) return "请填写安装位置。";
+		if (path.IndexOfAny(BadChars) >= 0) return "路径里有非法字符（\" < > | 等）。";
+
+		// 每一段都不能是 Windows 保留名
+		var reserved = new[] { "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "LPT1", "LPT2" };
+		foreach (var seg in path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
+		{
+			var name = seg.TrimEnd('.');
+			if (reserved.Any(r => string.Equals(r, name, StringComparison.OrdinalIgnoreCase)))
+				return $"「{seg}」是 Windows 保留名称，换个文件夹。";
+		}
+
+		if (File.Exists(path) && !Directory.Exists(path)) return "这个位置是一个文件，请换一个文件夹。";
+
+		var root = Path.GetPathRoot(path);
+		if (string.IsNullOrEmpty(root) || !Directory.Exists(root)) return $"盘符 {root} 不存在。";
+
+		try
+		{
+			if (!Path.IsPathFullyQualified(path)) return "请填写完整路径（例如 D:\\Games\\App）。";
+		}
+		catch
+		{
+			return "路径格式不对。";
+		}
+
+		return null;
 	}
 
 	private void RefreshSpace()
 	{
-		var bytes = Program.PayloadBytes();
-		_spaceLabel.Text = bytes > 0
-			? $"安装包 {bytes / 1048576.0:F0} MB，安装后约 221 MB"
-			: "需要约 250 MB 磁盘空间";
+		var packed = Program.PayloadBytes();
+		var unpacked = Program.PayloadUncompressedBytes();
+
+		var size = unpacked > 0
+			? $"安装包 {packed / 1048576.0:F0} MB · 安装后约 {unpacked / 1048576.0:F0} MB"
+			: $"安装包 {packed / 1048576.0:F0} MB";
+
+		var dir = NormalizePath(_pathBox.Text);
+		var err = ValidatePath(dir);
+
+		if (err is not null)
+		{
+			_spaceLabel.ForeColor = ErrorColor;
+			_spaceLabel.Text = err;
+			return;
+		}
+
+		var disk = "";
+		try
+		{
+			var probe = Program.NearestExisting(dir);
+			if (probe is not null)
+			{
+				var di = new DriveInfo(Path.GetPathRoot(probe)!);
+				if (di.IsReady)
+				{
+					var free = di.AvailableFreeSpace;
+					disk = $" · {di.Name.TrimEnd('\\')} 剩余 {free / 1073741824.0:F1} GB";
+
+					if (unpacked > 0 && free < unpacked + 32L * 1024 * 1024)
+					{
+						_spaceLabel.ForeColor = ErrorColor;
+						_spaceLabel.Text = $"磁盘空间不足：需要约 {unpacked / 1048576} MB，只剩 {free / 1048576} MB";
+									return;
+					}
+				}
+			}
+		}
+		catch
+		{
+		}
+
+		_spaceLabel.ForeColor = HintColor;
+		_spaceLabel.Text = size + disk;
+	}
+
+	private void OnPathDragEnter(object? sender, DragEventArgs e)
+	{
+		if (e.Data?.GetDataPresent(DataFormats.FileDrop) == true)
+			e.Effect = DragDropEffects.Copy;
+	}
+
+	private void OnPathDrop(object? sender, DragEventArgs e)
+	{
+		if (e.Data?.GetData(DataFormats.FileDrop) is string[] { Length: > 0 } paths)
+			_pathBox.Text = paths[0];
 	}
 
 	private void OnBrowse(object? sender, EventArgs e)
@@ -189,11 +324,17 @@ internal sealed class SetupForm : Form
 		using var dlg = new FolderBrowserDialog
 		{
 			Description = "选择安装位置",
-			SelectedPath = _pathBox.Text,
+			SelectedPath = NormalizePath(_pathBox.Text),
 			ShowNewFolderButton = true,
 		};
-		if (dlg.ShowDialog(this) == DialogResult.OK)
-			_pathBox.Text = Path.Combine(dlg.SelectedPath, Program.AppName);
+		if (dlg.ShowDialog(this) != DialogResult.OK) return;
+
+		// 用户直接选中了本程序的目录就不再套一层，否则会变成 …\App\App
+		var picked = dlg.SelectedPath;
+		var name = Path.GetFileName(picked.TrimEnd(Path.DirectorySeparatorChar));
+		_pathBox.Text = string.Equals(name, Program.AppName, StringComparison.OrdinalIgnoreCase)
+			? picked
+			: Path.Combine(picked, Program.AppName);
 	}
 
 	private void OnUninstallClick(object? sender, EventArgs e)
@@ -215,10 +356,16 @@ internal sealed class SetupForm : Form
 	{
 		if (_busy) return;
 
-		var dir = _pathBox.Text.Trim();
-		if (string.IsNullOrWhiteSpace(dir))
+		// 先归一化再校验：用户可能粘了带引号的路径、或者末尾带反斜杠
+		var dir = NormalizePath(_pathBox.Text);
+		_pathBox.Text = dir;
+
+		var bad = ValidatePath(dir);
+		if (bad is not null)
 		{
-			MessageBox.Show(this, "请选择安装位置。", "安装", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+			MessageBox.Show(this, bad, "安装", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+			_pathBox.Focus();
+			_pathBox.SelectAll();
 			return;
 		}
 
@@ -230,95 +377,78 @@ internal sealed class SetupForm : Form
 		_bar.Value = 0;
 		_status.ForeColor = SystemColors.ControlText;
 
-		var wantDesktop = _chkDesktop.Checked;
-		var wantStartMenu = _chkStartMenu.Checked;
-		var wantStartup = _chkStartup.Checked;
-		var wantLaunch = _chkLaunch.Checked;
+		var io = new Program.InstallOptions
+		{
+			Desktop = _chkDesktop.Checked,
+			StartMenu = _chkStartMenu.Checked,
+			Startup = _chkStartup.Checked,
+			Launch = _chkLaunch.Checked,
+		};
+
+		// 进度和阶段文案都由 Program.Install 上报，GUI 只是显示器。
+		// Progress<T> 在这里（UI 线程）创建，回调会自动回到 UI 线程。
+		var progress = new Progress<int>(v => _bar.Value = Math.Clamp(v, 0, 100));
+		var phase = new Progress<string>(s => _status.Text = s);
+
+		int files = 0;
+		string error = "";
+		SetupExit rc = SetupExit.Failed;
 
 		try
 		{
-			_status.Text = "正在准备…";
-			await Task.Run(() => Program.KillRunningApp());
-			_bar.Value = 3;
-
-			_status.Text = "正在写入文件…";
-			var progress = new Progress<int>(v => _bar.Value = Math.Min(97, 3 + v * 94 / 100));
-			int files = 0;
-			await Task.Run(() =>
-			{
-				Program.ClearDirectory(dir, Program.UninstallerName);
-				Program.Extract(dir, progress, out files);
-			});
-
-			_bar.Value = 97;
-			_status.Text = "正在创建快捷方式…";
-			await Task.Run(() =>
-			{
-				var exe = Path.Combine(dir, Program.ExeName);
-				if (wantDesktop) Program.CreateShortcut(Path.Combine(Program.DesktopPath(), Program.AppName + ".lnk"), exe, dir, Program.AppName);
-				if (wantStartMenu) Program.CreateShortcut(Path.Combine(Program.StartMenuPath(), Program.AppName + ".lnk"), exe, dir, Program.AppName);
-			});
-
-			_bar.Value = 98;
-			_status.Text = "正在写入卸载信息…";
-			await Task.Run(() =>
-			{
-				var self = Environment.ProcessPath;
-				if (!string.IsNullOrEmpty(self))
-				{
-					try
-					{
-						File.Copy(self, Path.Combine(dir, Program.UninstallerName), overwrite: true);
-					}
-					catch
-					{
-					}
-				}
-				Program.RegisterUninstall(dir);
-				Program.SetStartup(wantStartup, dir);
-			});
-
-			_bar.Value = 100;
-			_status.Text = $"安装完成（{files} 个文件）";
-
-			if (!Program.HasWebView2())
-			{
-				MessageBox.Show(this,
-					"没有检测到 WebView2 运行时。\n\n" +
-					"Win11 一般自带；Win10 需要先装 Evergreen Runtime，否则打开是白屏。\n" +
-					"下载地址：https://developer.microsoft.com/microsoft-edge/webview2/",
-					"提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-			}
-
-			if (wantLaunch)
-			{
-				try
-				{
-					Process.Start(new ProcessStartInfo(Path.Combine(dir, Program.ExeName))
-					{
-						UseShellExecute = true,
-						WorkingDirectory = dir,
-					});
-				}
-				catch
-				{
-				}
-				Close();
-				return;
-			}
-
-			MessageBox.Show(this, "安装完成。", Program.AppName, MessageBoxButtons.OK, MessageBoxIcon.Information);
-			Close();
+			await Task.Run(() => { rc = Program.Install(dir, io, progress, phase, out files, out error); });
 		}
 		catch (Exception ex)
 		{
-			_status.Text = "安装失败：" + ex.Message;
-			_status.ForeColor = Color.FromArgb(0xC0, 0x39, 0x2B);
-			MessageBox.Show(this, "安装失败：\n" + ex.Message, Program.AppName, MessageBoxButtons.OK, MessageBoxIcon.Error);
+			rc = SetupExit.Failed;
+			error = ex.Message;
+		}
+
+		if (rc != SetupExit.Ok)
+		{
+			_bar.Value = 0;
+			_status.Text = "安装失败：" + error;
+			_status.ForeColor = ErrorColor;
+			MessageBox.Show(this,
+				"安装失败：\n" + error + "\n\n详细记录：" + SetupLog.FilePath,
+				Program.AppName, MessageBoxButtons.OK, MessageBoxIcon.Error);
 			_installBtn.Enabled = true;
 			_uninstallBtn.Enabled = _installedDir is not null;
 			_closeBtn.Enabled = true;
 			_busy = false;
+			return;
 		}
+
+		_bar.Value = 100;
+		_status.Text = $"安装完成（{files} 个文件）";
+
+		if (!Program.HasWebView2())
+		{
+			MessageBox.Show(this,
+				"没有检测到 WebView2 运行时。\n\n" +
+				"Win11 一般自带；Win10 需要先装 Evergreen Runtime，否则打开是白屏。\n" +
+				"下载地址：https://developer.microsoft.com/microsoft-edge/webview2/",
+				"提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+		}
+
+		if (io.Launch)
+		{
+			try
+			{
+				Process.Start(new ProcessStartInfo(Path.Combine(dir, Program.ExeName))
+				{
+					UseShellExecute = true,
+					WorkingDirectory = dir,
+				});
+			}
+			catch
+			{
+			}
+			Close();
+			return;
+		}
+
+		MessageBox.Show(this, "安装完成。", Program.AppName, MessageBoxButtons.OK, MessageBoxIcon.Information);
+		Close();
 	}
 }

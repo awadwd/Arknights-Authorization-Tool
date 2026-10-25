@@ -5,7 +5,7 @@
 # 会让 dotnet 还原报 "Value cannot be null (Parameter 'path1')"，这里统一兜底。
 set -e
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && { pwd -W 2>/dev/null || pwd; })"
 
 export USERPROFILE="${USERPROFILE:-$HOME}"
 export APPDATA="${APPDATA:-$USERPROFILE/AppData/Roaming}"

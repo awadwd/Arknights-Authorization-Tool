@@ -14,7 +14,7 @@
 # =============================================================================
 set -uo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && { pwd -W 2>/dev/null || pwd; })"
 PROJ="$ROOT/src/AkPassport.Win/AkPassport.Win.csproj"
 SETUP_DIR="$ROOT/installer/AkPassportSetup"
 PY="${PY:-python}"

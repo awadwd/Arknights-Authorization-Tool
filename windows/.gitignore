@@ -29,6 +29,7 @@ installer/**/payload.zip
 
 # ---- 临时 / 备份目录 ----
 /_trash/
+/_test/
 /_updtest/
 /_updtest_stage/
 /_upd2_stage/

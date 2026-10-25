@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 前端 H5 构建：HBuilderX 内置编译器 -> dist-h5 -> 同步到壳的 wwwroot
 set -u
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && { pwd -W 2>/dev/null || pwd; })"
 # HBuilderX 安装目录：换机器时用 HB=/path/to/HBuilderX 覆盖
 HB="${HB:-D:/Program Files/HBuilderX.3.2.9.20210927/HBuilderX}"
 # 前端工程：默认取仓库根目录（uni-app 源码就在 windows/ 的上一层）
