@@ -130,6 +130,11 @@ if [ -f "$SETUP_OUT/AkPassportSetup.exe" ]; then
   mv -f "$SETUP_OUT/AkPassportSetup.exe" "$SETUP_EXE"
   rm -rf "$SETUP_OUT"
   echo "== 安装程序: $SETUP_EXE"
+  # ★ GitHub Release 附件必须用 ASCII 名：实测中文文件名上传后中文会被吞掉，
+  #   "方舟通行证谷子查询工具-1.0.0-安装程序.exe" 会变成 "-1.0.0-.exe"。
+  #   所以同时产出一份 ASCII 别名的副本，本地分发用中文名、上传用这份。
+  cp -f "$SETUP_EXE" "$ROOT/dist/AkPassport-Win-$VER-Setup.exe" 2>/dev/null \
+    && echo "== 上传用别名: $ROOT/dist/AkPassport-Win-$VER-Setup.exe"
 else
   echo "!! 安装程序构建失败（详见上面输出），绿色版 zip 仍然可用"
 fi
