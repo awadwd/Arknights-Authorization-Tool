@@ -314,7 +314,7 @@ def scenarios(exe: Path, version: str):
             "EstimatedSize": int(v("EstimatedSize", 0) or 0) > 10000,
         }
         bad = [k for k, ok in checks.items() if not ok]
-        record("S02", "卸载注册表项正确（含 beta 版本号）", not bad,
+        record("S02", "卸载注册表项正确（含完整版本号）", not bad,
                f"DisplayVersion={v('DisplayVersion')} 不合格={bad or '无'}")
 
     # ---------- S03 幂等覆盖 ----------

@@ -4,8 +4,26 @@ set -u
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && { pwd -W 2>/dev/null || pwd; })"
 # HBuilderX 安装目录：换机器时用 HB=/path/to/HBuilderX 覆盖
 HB="${HB:-D:/Program Files/HBuilderX.3.2.9.20210927/HBuilderX}"
-# 前端工程：默认取仓库根目录（uni-app 源码就在 windows/ 的上一层）
-SRC="${FRONTEND_SRC:-$(cd "$ROOT/.." && pwd)}"
+# 前端工程：显式优先，其次自动探测。
+#   - 开发树（D:/ak-passport-win）里源码在别处，必须用 FRONTEND_SRC 指定；
+#   - 开源仓库树（.../windows）里源码就在上一层，自动取上一级。
+#   别写成固定 "$ROOT/.." —— 开发树里那会解析成 D:/，构建的是错目录。
+_detect_src() {
+  if [ -n "${FRONTEND_SRC:-}" ]; then echo "$FRONTEND_SRC"; return; fi
+  # 开发树专用：仓库根放一个 .frontend_src 写前端绝对路径（已进 .git/info/exclude，不入库）
+  if [ -f "$ROOT/.frontend_src" ]; then
+    local v
+    v="$(head -1 "$ROOT/.frontend_src" | tr -d '')"
+    [ -n "$v" ] && { echo "$v"; return; }
+  fi
+  if [ -f "$ROOT/pages.json" ] && [ -f "$ROOT/manifest.json" ]; then echo "$ROOT"; return; fi
+  local up
+  up="$(cd "$ROOT/.." && { pwd -W 2>/dev/null || pwd; })"
+  if [ -f "$up/pages.json" ] && [ -f "$up/manifest.json" ]; then echo "$up"; return; fi
+  echo "$ROOT"
+}
+SRC="$(_detect_src)"
+NODE_BIN="${NODE_BIN:-node}"
 OUT="$ROOT/dist-h5"
 WWW="$ROOT/src/AkPassport.Win/wwwroot"
 TRASH="$ROOT/_trash"
@@ -26,8 +44,9 @@ fresh_dir() {
 fresh_dir "$OUT"
 
 cd "$HB/plugins/uniapp-cli-vite" || exit 1
+echo "== 前端源码: $SRC"
 UNI_INPUT_DIR="$SRC" UNI_OUTPUT_DIR="$OUT" UNI_PLATFORM=h5 \
-  node node_modules/@dcloudio/vite-plugin-uni/bin/uni.js build 2>&1 | tail -6
+  "$NODE_BIN" node_modules/@dcloudio/vite-plugin-uni/bin/uni.js build 2>&1 | tail -6
 
 if [ ! -f "$OUT/index.html" ]; then
   echo "BUILD FAILED"

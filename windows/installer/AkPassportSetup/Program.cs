@@ -45,7 +45,7 @@ internal static class Program
 	// ---------------------------------------------------------------- 版本
 
 	/// <summary>
-	/// 完整版本号，含 prerelease 段（1.0.0-beta.4）。
+	/// 完整版本号，含 prerelease 段（如 1.2.3-beta.4；正式版就是 1.2.3）。
 	/// ★ 不能用 AssemblyName.Version —— 它只有四段数字，beta.4 会被抹成 1.0.0，
 	///   结果「设置 → 应用」里装着 beta.4 却显示 1.0.0，排查版本问题时会直接误导。
 	/// </summary>

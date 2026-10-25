@@ -90,7 +90,7 @@ public static class UpdateService
 	{
 		var asm = Assembly.GetExecutingAssembly();
 
-		// AssemblyVersion 只能是 1.0.0.0，真正的「1.0.0-beta.4」在 InformationalVersion 里；
+		// AssemblyVersion 只有四段数字，真正的「1.2.3-beta.4」在 InformationalVersion 里；
 		// 带源码链接时会附一个 +<commit hash>，要截掉。
 		var info = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
 		if (!string.IsNullOrWhiteSpace(info))
