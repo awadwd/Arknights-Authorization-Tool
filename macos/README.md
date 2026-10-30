@@ -112,17 +112,60 @@ macos/
 └─ run.sh                 构建并前台运行（日志直接打终端）
 ```
 
-## 构建与运行
+## 安装
+
+从 [Releases](https://github.com/awadwd/Arknights-Authorization-Tool/releases) 下载
+`AkPassport-x.y.z-macos.zip`，解压出 `AkPassport.app`，拖进「应用程序」即可。
+
+首次双击大概率会被 Gatekeeper 拦下，提示：
+
+> 未打开「AkPassport」，Apple 无法验证「AkPassport」是否包含可能危害 Mac 安全
+> 或泄漏隐私的恶意软件。
+
+这不是应用有问题，而是这个包只做了 ad-hoc 签名、没走 Apple 的 Developer ID
+公证流程（需要每年 99 美元的开发者账号）。系统只知道「它来自网络下载、签名
+不是认证开发者」，无法替你做安全判断，所以一律拦下。放行一次之后就不再提示。
+
+**macOS 15 Sequoia 及以上**
+
+> 从 macOS 15 开始，「右键 → 打开」这个老办法**已经失效**（Apple 移除了该入口），
+> 必须走系统设置。
+
+1. 双击 `AkPassport.app`，弹窗里点「完成」（不要点「移到废纸篓」）
+2. 打开 **系统设置 → 隐私与安全性**
+3. 往下滚到「安全性」区块，会有一行
+   「已阻止使用『AkPassport』，因为来自身份不明的开发者」，点右边的 **仍要打开**
+4. 输入系统密码，在再次弹出的确认框里点「打开」
+
+**macOS 14 及更早**
+
+右键（或 Control + 点击）`AkPassport.app` → 打开 → 弹窗里再点一次「打开」。
+
+**命令行放行（任意版本，一次搞定）**
+
+```bash
+xattr -dr com.apple.quarantine /Applications/AkPassport.app
+```
+
+这条命令只是删掉「从网络下载」这个隔离标记，不触碰应用本体，也没有绕过任何
+代码签名检查。如果 app 还在下载目录，把路径换成 `~/Downloads/AkPassport.app`。
+
+> 每次升级到新版本，新下载的包会重新带上隔离标记，需要再放行一次。
+
+## 从源码构建
 
 ```bash
 cd macos
-bash scripts/sync-web.sh      # 首次：同步 wwwroot（需要 ../upstream 仓库）
-bash build.sh                 # 产出 dist/AkPassport.app（约 4.6 MB）
+bash build.sh                 # 产出 dist/AkPassport.app（约 4.9 MB）
 open dist/AkPassport.app
 
 # 开发模式（终端看日志 + 允许 Safari 网页检查器）
 bash run.sh
 ```
+
+H5 产物只在仓库里存一份（`windows/src/AkPassport.Win/wwwroot`），`build.sh`
+首次运行时会自动同步到 `macos/wwwroot`，不用手动执行 `sync-web.sh`。
+从别处拿到的 H5 产物可以用 `bash scripts/sync-web.sh <产物目录>` 指定。
 
 前置条件只有一个：**Xcode Command Line Tools**（`xcode-select --install`），
 不需要完整 Xcode、不需要 dotnet、不需要 Node。
@@ -276,7 +319,9 @@ cell 挨个刷一遍。
   Windows 版同样如此；盒号数据走 `raw.gitcode.com`，不受影响。
 - **终末地首次使用需要先下载数据**：进「工具箱」页执行一次下载，
   否则凭证列表显示「共 0 盒」（页面自己的提示，非外壳问题）。
-- 未签名（ad-hoc）：本机可用，对外分发会触发 Gatekeeper，需要 Apple Developer 证书 + 公证。
+- **只做 ad-hoc 签名**：`spctl -a -vvv` 评估结果是 `rejected`，`TeamIdentifier` 为空。
+  本机编译自用没问题，但对外分发必然触发 Gatekeeper 拦截，见上面的
+  [安装](#安装) 一节。根治需要 Apple Developer ID 证书 + `notarytool` 公证。
 - `pages/scan_barcode` 摄像头扫码未验证。
 
 ## 下一步（按优先级）
