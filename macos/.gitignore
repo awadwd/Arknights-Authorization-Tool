@@ -1,0 +1,11 @@
+# 构建产物
+dist/
+dist_build.log
+run.log
+
+# H5 产物：与 windows/src/AkPassport.Win/wwwroot 完全同一份，
+# 构建时由 scripts/sync-web.sh 拷过来，不在仓库里重复存一遍。
+wwwroot/
+
+# 系统
+.DS_Store
