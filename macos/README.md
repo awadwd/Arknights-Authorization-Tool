@@ -4,7 +4,8 @@
 **业务代码零改动**，macOS 侧只负责窗口、系统集成和桌面端补丁 —— 和 `windows/` 里
 WinUI 3 外壳的思路一致，只是把 Windows App SDK 换成了系统自带的 WebKit。
 
-当前版本：`0.4.0`（侧边栏 + 工具包切换 + 图床修复 + 原生设置页，可日常使用；热键 / 自启 / 自动更新尚未实现）
+当前版本：`1.50.52`（自这一版起与 Windows / 安卓同步版本号，build 号对齐安卓 `versionCode` 163；
+侧边栏 + 工具包切换 + 图床修复 + 原生设置页，可日常使用；热键 / 自启 / 自动更新尚未实现）
 
 ![桌面首页](docs/snapshots/01-desktop-home.png)
 
@@ -107,20 +108,31 @@ macos/
 │  └─ Diag.swift          日志
 ├─ wwwroot/               H5 产物（由 scripts/sync-web.sh 同步）
 ├─ scripts/sync-web.sh    从 windows 目录同步前端产物
+├─ scripts/inject-knowcloud.py  构建时注入知晓云 ClientID
+├─ config/knowcloud.example.json  注入配置模板（真实值放本地 knowcloud.local.json）
+├─ resources/*.lproj/     显示名本地化（InfoPlist.strings）
 ├─ Info.plist             未签名应用描述（含 ATS 本地网络白名单）
-├─ build.sh               一键出 dist/AkPassport.app
+├─ build.sh               一键出 dist/方舟通行证谷子查询工具.app
 └─ run.sh                 构建并前台运行（日志直接打终端）
 ```
+
+> `dist/app` 是指向中文包名的软链，调试命令统一用它，包名再改也不用动文档。
 
 ## 安装
 
 从 [Releases](https://github.com/awadwd/Arknights-Authorization-Tool/releases) 下载
-`AkPassport-x.y.z-macos.zip`，解压出 `AkPassport.app`，拖进「应用程序」即可。
+`AkPassport-x.y.z-macos.zip`，解压出 `方舟通行证谷子查询工具.app`，拖进「应用程序」即可。
+
+> 包名本身是中文的。Finder、桌面、启动台显示的标签取的就是 `.app` 这个文件名，
+> 不是 `Info.plist` 里的 `CFBundleDisplayName`。`resources/*.lproj/InfoPlist.strings`
+> 也一并打包了（菜单栏、部分系统界面会用到），但对未公证的 ad-hoc 应用，
+> 系统不会拿它替换文件名 —— 实测 `mdls -name kMDItemDisplayName` 仍返回包名，
+> 所以真正起作用的是中文文件名本身。
 
 首次双击大概率会被 Gatekeeper 拦下，提示：
 
-> 未打开「AkPassport」，Apple 无法验证「AkPassport」是否包含可能危害 Mac 安全
-> 或泄漏隐私的恶意软件。
+> 未打开「方舟通行证谷子查询工具」，Apple 无法验证「方舟通行证谷子查询工具」
+> 是否包含可能危害 Mac 安全或泄漏隐私的恶意软件。
 
 这不是应用有问题，而是这个包只做了 ad-hoc 签名、没走 Apple 的 Developer ID
 公证流程（需要每年 99 美元的开发者账号）。系统只知道「它来自网络下载、签名
@@ -131,24 +143,24 @@ macos/
 > 从 macOS 15 开始，「右键 → 打开」这个老办法**已经失效**（Apple 移除了该入口），
 > 必须走系统设置。
 
-1. 双击 `AkPassport.app`，弹窗里点「完成」（不要点「移到废纸篓」）
+1. 双击 `方舟通行证谷子查询工具.app`，弹窗里点「完成」（不要点「移到废纸篓」）
 2. 打开 **系统设置 → 隐私与安全性**
 3. 往下滚到「安全性」区块，会有一行
-   「已阻止使用『AkPassport』，因为来自身份不明的开发者」，点右边的 **仍要打开**
+   「已阻止使用『方舟通行证谷子查询工具』，因为来自身份不明的开发者」，点右边的 **仍要打开**
 4. 输入系统密码，在再次弹出的确认框里点「打开」
 
 **macOS 14 及更早**
 
-右键（或 Control + 点击）`AkPassport.app` → 打开 → 弹窗里再点一次「打开」。
+右键（或 Control + 点击）`方舟通行证谷子查询工具.app` → 打开 → 弹窗里再点一次「打开」。
 
 **命令行放行（任意版本，一次搞定）**
 
 ```bash
-xattr -dr com.apple.quarantine /Applications/AkPassport.app
+xattr -dr com.apple.quarantine /Applications/方舟通行证谷子查询工具.app
 ```
 
 这条命令只是删掉「从网络下载」这个隔离标记，不触碰应用本体，也没有绕过任何
-代码签名检查。如果 app 还在下载目录，把路径换成 `~/Downloads/AkPassport.app`。
+代码签名检查。如果 app 还在下载目录，把路径换成 `~/Downloads/方舟通行证谷子查询工具.app`。
 
 > 每次升级到新版本，新下载的包会重新带上隔离标记，需要再放行一次。
 
@@ -156,8 +168,8 @@ xattr -dr com.apple.quarantine /Applications/AkPassport.app
 
 ```bash
 cd macos
-bash build.sh                 # 产出 dist/AkPassport.app（约 4.9 MB）
-open dist/AkPassport.app
+bash build.sh                 # 产出 dist/方舟通行证谷子查询工具.app（约 4.9 MB）
+open dist/方舟通行证谷子查询工具.app
 
 # 开发模式（终端看日志 + 允许 Safari 网页检查器）
 bash run.sh
@@ -173,19 +185,19 @@ H5 产物只在仓库里存一份（`windows/src/AkPassport.Win/wwwroot`），`b
 ### 调试参数
 
 ```bash
-AKPASSPORT_ROUTE=pages/Search/Search ./dist/AkPassport.app/Contents/MacOS/AkPassportMac
-AKPASSPORT_DEV=1 ./dist/AkPassport.app/Contents/MacOS/AkPassportMac   # 开 isInspectable
-AKPASSPORT_THEME=ark ./dist/AkPassport.app/Contents/MacOS/AkPassportMac  # 强制外壳主题（配色核对）
+AKPASSPORT_ROUTE=pages/Search/Search ./dist/app/Contents/MacOS/AkPassportMac
+AKPASSPORT_DEV=1 ./dist/app/Contents/MacOS/AkPassportMac   # 开 isInspectable
+AKPASSPORT_THEME=ark ./dist/app/Contents/MacOS/AkPassportMac  # 强制外壳主题（配色核对）
 
 # 自动化探针：等首屏稳定后真点一下侧边栏那一项，验证「点击 → 路由 → 选中」整条链路
-AKPASSPORT_NAV_TEST=pages/list/list ./dist/AkPassport.app/Contents/MacOS/AkPassportMac
-AKPASSPORT_SIDEBAR_TEST=1 ./dist/AkPassport.app/Contents/MacOS/AkPassportMac   # 3 秒后折叠侧边栏
-AKPASSPORT_TOOLKIT_TEST=ends ./dist/AkPassport.app/Contents/MacOS/AkPassportMac  # 2.2 秒后点「终末地」分段
-AKPASSPORT_IMG_PROBE=8 ./dist/AkPassport.app/Contents/MacOS/AkPassportMac        # 8 秒后把每张图的尺寸写进日志
+AKPASSPORT_NAV_TEST=pages/list/list ./dist/app/Contents/MacOS/AkPassportMac
+AKPASSPORT_SIDEBAR_TEST=1 ./dist/app/Contents/MacOS/AkPassportMac   # 3 秒后折叠侧边栏
+AKPASSPORT_TOOLKIT_TEST=ends ./dist/app/Contents/MacOS/AkPassportMac  # 2.2 秒后点「终末地」分段
+AKPASSPORT_IMG_PROBE=8 ./dist/app/Contents/MacOS/AkPassportMac        # 8 秒后把每张图的尺寸写进日志
 
 # 原生设置页
-AKPASSPORT_ROUTE=native/settings ./dist/AkPassport.app/Contents/MacOS/AkPassportMac
-AKPASSPORT_SETTINGS_TEST=1 ./dist/AkPassport.app/Contents/MacOS/AkPassportMac      # 2.6 秒后真点侧边栏底部「设置」
+AKPASSPORT_ROUTE=native/settings ./dist/app/Contents/MacOS/AkPassportMac
+AKPASSPORT_SETTINGS_TEST=1 ./dist/app/Contents/MacOS/AkPassportMac      # 2.6 秒后真点侧边栏底部「设置」
 AKPASSPORT_SETTINGS_TEST=1 AKPASSPORT_SETTINGS_BACK=1 ...                          # 再点回首页，验证原生页退场
 AKPASSPORT_SETTINGS_THEME_TEST=ark ...                                            # 点「深色」瓦片并打印 localStorage 实际值
 AKPASSPORT_SETTINGS_SCROLL=760 ...                                                # 截图前滚到该偏移
@@ -212,7 +224,7 @@ AKPASSPORT_ROUTE=pages/list/list \
 AKPASSPORT_SNAPSHOT=/tmp/list.png \
 AKPASSPORT_SNAPSHOT_DELAY=12 \
 AKPASSPORT_EXIT_AFTER_SNAPSHOT=1 \
-./dist/AkPassport.app/Contents/MacOS/AkPassportMac
+./dist/app/Contents/MacOS/AkPassportMac
 ```
 
 加 `AKPASSPORT_SNAPSHOT_MODE=window` 则截「整窗」：先 `cacheDisplay` 画出原生部分
@@ -313,10 +325,14 @@ cell 挨个刷一遍。
 - **`pages/list/list` 有一条 Vue 内部报错**：`TypeError: null is not an object
   (evaluating 'e.effect.dirty=!0')`，被前端自己的 `errorLog` 捕获，不影响数据渲染；
   需确认 Windows 版是否同样存在（大概率是前端共性 bug，非外壳引入）。
-- **终末地的公告 / 版本号接口写死成占位域名**：产物里是
-  `https://YOUR_KNOW_CLOUD_CLIENT_ID.myminapp.com/...`，客户端没配这个值，
-  所以终末地的公告区和「新版本」提示拿不到数据。这是前端构建配置问题，
-  Windows 版同样如此；盒号数据走 `raw.gitcode.com`，不受影响。
+- **知晓云要本地注入 ClientID 才有**：仓库里的 H5 产物是脱敏的，`clientId` 是
+  `YOUR_KNOW_CLOUD_CLIENT_ID` 占位符。把真实值写进 `config/knowcloud.local.json`
+  （已 gitignore），`build.sh` 会注入到 .app 内那一份产物（11 个文件、33 处）。
+  没配也不影响查盒号，只是公告、版本号、预测这类要实时数据的功能用不了。
+- **知晓云不发 CORS 头**，浏览器里直连必失败。外壳做了两层兜底：
+  `remoteRewrite` 把 `*.myminapp.com` 的绝对地址改写成同源 `/proxy`；
+  `LocalServer` 的 `/api` 路由按请求头 `X-Hydrogen-Client-ID` 反代到对应租户
+  （H5 产物在 Web 部署时本来就依赖服务器的 `/api` 反代，本地服务补上同一条）。
 - **终末地首次使用需要先下载数据**：进「工具箱」页执行一次下载，
   否则凭证列表显示「共 0 盒」（页面自己的提示，非外壳问题）。
 - **只做 ad-hoc 签名**：`spctl -a -vvv` 评估结果是 `rejected`，`TeamIdentifier` 为空。

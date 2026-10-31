@@ -6,4 +6,4 @@ cd "$(dirname "$0")"
 bash build.sh
 echo
 echo "== 启动（Ctrl+C 退出）=="
-AKPASSPORT_DEV="${AKPASSPORT_DEV:-1}" "$PWD/dist/AkPassport.app/Contents/MacOS/AkPassportMac"
+AKPASSPORT_DEV="${AKPASSPORT_DEV:-1}" "$PWD/dist/app/Contents/MacOS/AkPassportMac"

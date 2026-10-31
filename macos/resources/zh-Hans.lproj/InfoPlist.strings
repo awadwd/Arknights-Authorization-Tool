@@ -1,0 +1,3 @@
+/* 中文（简体）显示名。Finder / Dock / 启动台读这里，而不是 Info.plist 里的同名键。 */
+"CFBundleName" = "方舟通行证谷子查询工具";
+"CFBundleDisplayName" = "方舟通行证谷子查询工具";

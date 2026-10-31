@@ -63,6 +63,10 @@ enum NavCatalog {
             NavEntry(title: "通行证展柜", route: "pages/card_share/card_share", symbol: "photo.on.rectangle"),
             NavEntry(title: "通行证日历", route: "packageA/calendar/calendar", symbol: "calendar"),
             NavEntry(title: "今日宜挂", route: "pages/daily_recommend/daily_recommend", symbol: "clock"),
+            // 这两个页面早就做好了，但侧边栏一直没有项，桌面上等于没有入口。
+            // PRTS 页面的 onLoad 只认 from=index，所以这里必须带上参数，否则会白屏。
+            NavEntry(title: "通行证游乐场", route: "packageB/pages/passport_game/passport_game", symbol: "gamecontroller"),
+            NavEntry(title: "PRTS 帮查", route: "packageA/PRTS_Search/PRTS_Search?from=index", symbol: "text.bubble"),
             NavEntry(title: "数据反馈", route: "pages/box_feedback_new/box_feedback_new", symbol: "bubble.left"),
         ],
         // 和 Windows 版一样，底部「设置」进的是原生设置页（不是 H5 的 Vue 页）：

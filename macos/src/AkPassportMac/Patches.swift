@@ -213,6 +213,9 @@ enum Patches {
               if (typeof u !== 'string') return u;
               var i = u.indexOf('/gitcode/');
               if (i === 0) u = 'https://raw.gitcode.com/' + u.slice(9);
+              // 知晓云（*.myminapp.com）不发 CORS 头，浏览器里直连必失败。
+              // 走同源 /proxy，Client-ID 由本地服务从子域名推出来补上。
+              if (/^https:\/\/[a-z0-9]+\.myminapp\.com\//.test(u)) return BASE + encodeURIComponent(u);
               for (var n = 0; n < HOSTS.length; n++) {
                 var prefix = 'https://' + HOSTS[n] + '/';
                 if (u.indexOf(prefix) === 0) return BASE + encodeURIComponent(u);

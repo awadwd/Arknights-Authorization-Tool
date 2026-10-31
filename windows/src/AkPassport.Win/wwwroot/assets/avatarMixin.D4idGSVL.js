@@ -1,0 +1,1 @@
+import{l as a,i as t}from"./avatarPref.CzhXPNZc.js";const r={methods:{pAvatar(t){if(!t)return"";const r=t.avatar||t.imageUrl||"";return r?a(t.name,r,t._avatarCtx||null):r},refreshAvatarPref(){t(),this&&"function"==typeof this.$forceUpdate&&this.$forceUpdate()}}};export{r as a};

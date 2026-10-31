@@ -7,5 +7,8 @@ run.log
 # 构建时由 scripts/sync-web.sh 拷过来，不在仓库里重复存一遍。
 wwwroot/
 
+# 本地配置：真实知晓云 ClientID 不入库（仓库里的产物保持占位符）
+config/knowcloud.local.json
+
 # 系统
 .DS_Store

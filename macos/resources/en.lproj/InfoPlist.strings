@@ -1,0 +1,3 @@
+/* English fallback. Keeps Finder/Dock from showing the raw bundle name. */
+"CFBundleName" = "AkPassport";
+"CFBundleDisplayName" = "AkPassport";

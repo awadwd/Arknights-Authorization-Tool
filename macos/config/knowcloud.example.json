@@ -1,0 +1,5 @@
+{
+  "_说明": "复制成 config/knowcloud.local.json 再填真实值。这个文件不入库。",
+  "main": "YOUR_MAIN_CLIENT_ID",
+  "ends": "YOUR_ENDS_CLIENT_ID"
+}

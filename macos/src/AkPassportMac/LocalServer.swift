@@ -116,11 +116,29 @@ final class LocalServer {
         }
 
         let (path, query) = LocalServer.split(target: parts[1])
+        let header = LocalServer.headers(in: head)
         if path == "/proxy" {
             proxy(connection, query: query)
+        } else if path.hasPrefix("/api/") {
+            knowCloud(connection, path: path, query: query, header: header)
+        } else if path.hasPrefix("/gitcode/") {
+            gitcode(connection, path: path, query: query)
         } else {
             serveStatic(connection, path: path)
         }
+    }
+
+    /// 解析请求头（小写键）。`/api` 反向代理要靠 `X-Hydrogen-Client-ID` 才知道往哪个租户转。
+    private static func headers(in head: String) -> [String: String] {
+        var result: [String: String] = [:]
+        let lines = head.split(separator: "\r\n", omittingEmptySubsequences: true)
+        for line in lines.dropFirst() {
+            guard let colon = line.firstIndex(of: ":") else { continue }
+            let key = line[..<colon].trimmingCharacters(in: .whitespaces).lowercased()
+            let value = line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)
+            result[key] = value
+        }
+        return result
     }
 
     /// 把请求行里的 target 拆成 path / query，兼容绝对形式（http://host/path）与带查询串的路径。
@@ -211,6 +229,73 @@ final class LocalServer {
         if let host = url.host, let referer = LocalServer.referer(for: host) {
             request.setValue(referer, forHTTPHeaderField: "Referer")
         }
+        // 知晓云靠 X-Hydrogen-Client-ID 认证，子域名就是 ClientID。
+        // 前端经 /proxy 转发后自定义头带不过来，这里按子域名补回去。
+        if let host = url.host?.lowercased(), host.hasSuffix(".myminapp.com") {
+            let clientId = String(host.dropLast(".myminapp.com".count))
+            if !clientId.isEmpty {
+                request.setValue(clientId, forHTTPHeaderField: "X-Hydrogen-Client-ID")
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            }
+        }
+        forward(connection, request: request)
+    }
+
+    /// H5 产物在 Web 部署时把知晓云请求发到 `/api`，由服务器反代到
+    /// `https://<ClientID>.myminapp.com/hserve/v2.2`。本地必须做同样的事，
+    /// 否则工具箱、公告这类页面会整片 404。租户从请求头 `X-Hydrogen-Client-ID` 取，
+    /// 这样主包和终末地两套 ClientID 能共用同一条路由。
+    private func knowCloud(_ connection: NWConnection, path: String, query: String,
+                           header: [String: String]) {
+        guard let raw = header["x-hydrogen-client-id"]?.trimmingCharacters(in: .whitespaces),
+              !raw.isEmpty, raw.count <= 64,
+              raw.allSatisfy({ $0.isLetter || $0.isNumber }) else {
+            Diag.log("api 拒绝：缺少或非法的 X-Hydrogen-Client-ID")
+            respond(connection, status: 400,
+                    headers: ["Content-Type": "text/plain; charset=utf-8"],
+                    body: Data("missing X-Hydrogen-Client-ID".utf8))
+            return
+        }
+        let rest = String(path.dropFirst("/api".count))   // 形如 /table/Version/record/
+        var target = "https://\(raw).myminapp.com/hserve/v2.2" + rest
+        if !query.isEmpty { target += "?" + query }
+        guard let url = URL(string: target) else {
+            respond(connection, status: 400, headers: [:], body: Data())
+            return
+        }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 20
+        request.setValue(LocalServer.userAgent, forHTTPHeaderField: "User-Agent")
+        request.setValue(raw, forHTTPHeaderField: "X-Hydrogen-Client-ID")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        forward(connection, request: request)
+    }
+
+    /// 前端在 H5 里把 `https://raw.gitcode.com/a/b` 改写成 `/gitcode/a/b`
+    /// （Web 部署时由服务器反代）。本地服务必须同样接住，否则请求会落到静态目录变成 404
+    /// —— 终末地的数据源整条都在用这个改写，缺了它就只能靠「所有源都失败」收场。
+    private func gitcode(_ connection: NWConnection, path: String, query: String) {
+        let rest = String(path.dropFirst("/gitcode/".count))
+        guard !rest.isEmpty, !rest.contains("..") else {
+            respond(connection, status: 400,
+                    headers: ["Content-Type": "text/plain; charset=utf-8"],
+                    body: Data("bad gitcode path".utf8))
+            return
+        }
+        var target = "https://raw.gitcode.com/" + rest
+        if !query.isEmpty { target += "?" + query }
+        guard let url = URL(string: target) else {
+            respond(connection, status: 400, headers: [:], body: Data())
+            return
+        }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 20
+        request.setValue(LocalServer.userAgent, forHTTPHeaderField: "User-Agent")
+        forward(connection, request: request)
+    }
+
+    private func forward(_ connection: NWConnection, request: URLRequest) {
+        let label = request.url?.absoluteString ?? "-"
 
         session.dataTask(with: request) { [weak self] data, response, error in
             guard let self else {
@@ -218,7 +303,7 @@ final class LocalServer {
                 return
             }
             if let error {
-                Diag.log("proxy failed: \(url.absoluteString) -> \(error.localizedDescription)")
+                Diag.log("proxy failed: \(label) -> \(error.localizedDescription)")
                 self.respond(connection, status: 502, headers: [:], body: Data())
                 return
             }

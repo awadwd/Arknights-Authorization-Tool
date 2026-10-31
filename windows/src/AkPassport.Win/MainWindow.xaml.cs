@@ -46,6 +46,11 @@ public sealed partial class MainWindow : Window
 		new("通行证展柜", "pages/card_share/card_share", Symbol.Pictures),
 		new("通行证日历", "packageA/calendar/calendar", Symbol.Calendar),
 		new("今日宜挂", "pages/daily_recommend/daily_recommend", Symbol.Clock),
+		// 与 macOS 版 Sidebar.swift 逐字一致：这两个页面之前只有手机首页能进，
+		// 桌面侧边栏没有项，等于对 PC 用户不可用。
+		// PRTS 页面的 onLoad 只认 from=index，缺这个参数会白屏，所以必须带上。
+		new("通行证游乐场", "packageB/pages/passport_game/passport_game", Symbol.Emoji),
+		new("PRTS 帮查", "packageA/PRTS_Search/PRTS_Search?from=index", Symbol.Message),
 		new("数据反馈", "pages/box_feedback_new/box_feedback_new", Symbol.Comment),
 	};
 
