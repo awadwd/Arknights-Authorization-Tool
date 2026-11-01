@@ -1,0 +1,126 @@
+name: Windows Release
+
+# 只在手动或打 tag 时跑：日常提交不该占用构建时间。
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "覆盖版本号（留空 = 读 csproj 里的 <Version>）"
+        required: false
+        default: ""
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: 注入知晓云 ClientID（仓库里是占位符）
+        shell: python
+        env:
+          KC_MAIN: ${{ secrets.AKPASSPORT_KC_MAIN }}
+          KC_ENDS: ${{ secrets.AKPASSPORT_KC_ENDS }}
+        run: |
+          import os, pathlib
+          main, ends = os.environ.get("KC_MAIN", ""), os.environ.get("KC_ENDS", "")
+          if not main or not ends:
+              print("::warning::没有配置 AKPASSPORT_KC_MAIN / AKPASSPORT_KC_ENDS，产物里保留占位符")
+              raise SystemExit(0)
+          placeholder = "YOUR_KNOW_CLOUD_CLIENT_ID"
+          touched = replaced = 0
+          root = pathlib.Path("windows/src/AkPassport.Win/wwwroot/assets")
+          for p in sorted(root.glob("*.js")):
+              text = p.read_text(encoding="utf-8", errors="ignore")
+              if placeholder not in text:
+                  continue
+              cid = ends if p.name.startswith("package_ArknightEnds-") else main
+              n = text.count(placeholder)
+              p.write_text(text.replace(placeholder, cid), encoding="utf-8")
+              touched += 1
+              replaced += n
+          print(f"注入完成：{touched} 个文件 / {replaced} 处")
+
+      - name: 发布主程序（文件夹模式，WinUI 非打包）
+        shell: bash
+        run: |
+          set -euo pipefail
+          PROJ=windows/src/AkPassport.Win/AkPassport.Win.csproj
+          OUT=windows/dist/AkPassport-Win-win-x64
+          # 不能用 PublishSingleFile：单文件模式会把 Assets 与 wwwroot 两份 Content 丢掉
+          dotnet publish "$PROJ" -c Release -r win-x64 --self-contained true -p:Platform=x64 \
+            -p:WindowsAppSDKSelfContained=true \
+            -p:DebugType=None -p:DebugSymbols=false \
+            -o "$OUT"
+          test -f "$OUT/AkPassport.Win.exe"
+          test -f "$OUT/wwwroot/index.html"
+          test -f "$OUT/Assets/app.ico"
+
+      - name: 发布独立更新器
+        shell: bash
+        run: |
+          set -euo pipefail
+          UPD=windows/src/AkPassport.Updater/AkPassport.Updater.csproj
+          OUT=windows/dist/AkPassport-Win-win-x64
+          dotnet publish "$UPD" -c Release -r win-x64 --self-contained true -p:Platform=x64 \
+            -p:DebugType=None -p:DebugSymbols=false -o windows/dist/updater
+          cp -f windows/dist/updater/AkPassport.Updater.exe "$OUT/AkPassport.Updater.exe"
+          cp -f windows/docs/使用说明.txt "$OUT/使用说明.txt" || true
+          ls -la "$OUT" | head -20
+
+      - name: 打绿色版 zip + 安装程序 payload
+        shell: python
+        run: |
+          import os, re, pathlib, zipfile
+          root = pathlib.Path("windows")
+          csproj = (root / "src/AkPassport.Win/AkPassport.Win.csproj").read_text(encoding="utf-8")
+          ver = re.search(r"<Version>([^<]+)</Version>", csproj).group(1).strip()
+          override = "${{ github.event.inputs.version }}".strip()
+          if override:
+              ver = override
+          print(f"版本：{ver}")
+          src = root / "dist/AkPassport-Win-win-x64"
+
+          def pack(zip_path, base):
+              with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+                  for p in base.rglob("*"):
+                      if p.is_file():
+                          z.write(p, p.relative_to(base))
+              print(zip_path, round(zip_path.stat().st_size / 1048576, 1), "MB")
+
+          pack(root / f"dist/AkPassport-Win-{ver}-win-x64.zip", src)
+          # 安装程序的 payload：条目直接在根，不能带顶层目录名
+          pack(root / "installer/AkPassportSetup/payload.zip", src)
+          (root / "dist/version.txt").write_text(ver, encoding="utf-8")
+
+      - name: 编译安装程序（单文件 exe）
+        shell: bash
+        run: |
+          set -euo pipefail
+          VER=$(cat windows/dist/version.txt)
+          dotnet publish windows/installer/AkPassportSetup/AkPassportSetup.csproj -c Release -r win-x64 \
+            --self-contained true -p:Platform=x64 -p:Version="$VER" \
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:EnableCompressionInSingleFile=true \
+            -p:DebugType=None -p:DebugSymbols=false \
+            -o windows/dist/setup
+          # GitHub Release 附件必须用 ASCII 名，中文会被吞掉
+          cp -f windows/dist/setup/AkPassportSetup.exe "windows/dist/AkPassport-Win-$VER-Setup.exe"
+          ls -la windows/dist
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: AkPassport-Win
+          path: |
+            windows/dist/*.zip
+            windows/dist/*-Setup.exe
+            windows/dist/version.txt
+          if-no-files-found: error
