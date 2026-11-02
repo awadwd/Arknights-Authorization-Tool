@@ -278,7 +278,14 @@ extension WebShell: WKNavigationDelegate {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
             guard let self else { return }
             if wholeWindow, self.writeWindowSnapshot(to: path) { return }
-            self.webView.takeSnapshot(with: WKSnapshotConfiguration()) { image, error in
+            // 素材导出：AKPASSPORT_SNAPSHOT_SCALE=3 时按 3 倍像素输出，
+            // 默认 1 倍（回归核对够用，做视频放大后会糊）。
+            let config = WKSnapshotConfiguration()
+            if let scaleText = ProcessInfo.processInfo.environment["AKPASSPORT_SNAPSHOT_SCALE"],
+               let scale = Double(scaleText), scale > 1, scale <= 4 {
+                config.snapshotWidth = NSNumber(value: Double(self.webView.bounds.width) * scale)
+            }
+            self.webView.takeSnapshot(with: config) { image, error in
                 guard let image,
                       let tiff = image.tiffRepresentation,
                       let rep = NSBitmapImageRep(data: tiff),

@@ -38,6 +38,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// 内容区内边距，取自 MainWindow.xaml 的 ContentArea.Padding="14,10,14,14"。
     private let contentInset = NSEdgeInsets(top: 10, left: 14, bottom: 14, right: 14)
 
+    /// 素材导出用：`AKPASSPORT_WINDOW_SIZE=390x844` 时窗口与卡片都按这个宽度来，
+    /// 好让 H5 走窄屏分支，截出手机那一屏。正常启动读不到这个变量，行为不变。
+    private var forcedWindowSize: NSSize? {
+        guard let spec = ProcessInfo.processInfo.environment["AKPASSPORT_WINDOW_SIZE"] else { return nil }
+        let parts = spec.lowercased().split(separator: "x")
+        guard parts.count == 2,
+              let w = Double(parts[0]), let h = Double(parts[1]),
+              w >= 260, h >= 400 else { return nil }
+        return NSSize(width: w, height: h)
+    }
+
+    /// 卡片允许的宽度：窄窗口（< 900）时跟着窗口走，让 H5 进窄屏分支；
+    /// 宽窗口仍然用桌面端那套上限。
+    private var cardWidthForMode: CGFloat {
+        if let forced = forcedWindowSize, forced.width < 900 {
+            return max(232, forced.width - (contentInset.left + contentInset.right))
+        }
+        return 1060
+    }
+
+    /// 只有窄窗口才折叠侧边栏；宽窗口（做 16:9 素材）保留桌面布局。
+    private var hidesSidebarForShot: Bool {
+        guard let forced = forcedWindowSize else { return false }
+        return forced.width < 900
+    }
+
     /// 首页是真正的宽屏 Dashboard；工具页沿用移动端布局。
     /// 判定与 Windows 版 IsWideRoute 一致。
     private func isWideRoute(_ route: String) -> Bool {
@@ -147,7 +173,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             constant: -(contentInset.left + contentInset.right)
         )
         fill.priority = .defaultHigh
-        let maxWidth = card.widthAnchor.constraint(equalToConstant: 1060)
+        let maxWidth = card.widthAnchor.constraint(equalToConstant: cardWidthForMode)
         cardMaxWidth = maxWidth
 
         NSLayoutConstraint.activate([
@@ -156,7 +182,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             card.centerXAnchor.constraint(equalTo: backdrop.centerXAnchor),
             // 低于 750 时 uni-app 会把根字号等比放大（375 设计宽 → 1.7 倍），
             // 宁可让卡片顶到边也不能再窄；窗口最小宽度已经保证不会走到这里。
-            card.widthAnchor.constraint(greaterThanOrEqualToConstant: 560),
+            card.widthAnchor.constraint(greaterThanOrEqualToConstant: hidesSidebarForShot ? cardWidthForMode : 560),
             maxWidth,
             fill,
 
@@ -199,20 +225,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         splitVC.splitView.dividerStyle = .thin
         self.splitVC = splitVC
 
+        // 素材导出：AKPASSPORT_WINDOW_SIZE=390x844 时按该尺寸开窗并收起侧边栏，
+        // 用来导出「手机布局」的高清截图（宽度 < 720 会触发 H5 的窄屏分支）。
+        // 不设这个变量时行为完全不变。
+        let forcedSize: NSSize? = ProcessInfo.processInfo.environment["AKPASSPORT_WINDOW_SIZE"].flatMap { spec in
+            let parts = spec.lowercased().split(separator: "x")
+            guard parts.count == 2,
+                  let w = Double(parts[0]), let h = Double(parts[1]),
+                  w >= 260, h >= 400 else { return nil }
+            return NSSize(width: w, height: h)
+        }
+
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1180, height: 840),
+            contentRect: NSRect(x: 0, y: 0,
+                                width: forcedSize?.width ?? 1180,
+                                height: forcedSize?.height ?? 840),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = displayName
         // 侧边栏 212 + 内容区左右各 14 + 卡片下限 750（字号不放大），留点余量。
-        window.minSize = NSSize(width: 1000, height: 620)
+        window.minSize = forcedSize ?? NSSize(width: 1000, height: 620)
         window.isReleasedWhenClosed = false
         window.contentViewController = splitVC
         // 首次启动居中，之后恢复上次位置。用自己的标记位判断，
         // 不能依赖 NSWindow 的 frame autosave 键（setFrameAutosaveName 会立刻写入一条记录）。
-        if !UserDefaults.standard.bool(forKey: "AkPassportWindowInitialized") {
+        if forcedSize == nil, !UserDefaults.standard.bool(forKey: "AkPassportWindowInitialized") {
             // 显式算居中：NSWindow.center() 在窗口还没上屏时结果不稳定
             if let visible = NSScreen.main?.visibleFrame {
                 let size = window.frame.size
@@ -226,11 +265,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             UserDefaults.standard.set(true, forKey: "AkPassportWindowInitialized")
         }
-        window.setFrameAutosaveName("AkPassportMainWindow")
+        if forcedSize == nil {
+            window.setFrameAutosaveName("AkPassportMainWindow")
+        }
         self.window = window
 
         buildStatusItem()
         window.makeKeyAndOrderFront(nil)
+        // 截图模式：收起侧边栏，让内容区独占整个宽度，看起来就是手机上的那一屏。
+        if let forcedSize, hidesSidebarForShot {
+            sidebarItem.isCollapsed = true
+            window.setContentSize(forcedSize)
+            splitVC.view.layoutSubtreeIfNeeded()
+        } else if let forcedSize {
+            window.setContentSize(forcedSize)
+            splitVC.view.layoutSubtreeIfNeeded()
+        }
         NSApp.activate(ignoringOtherApps: true)
 
         // `--route=native/settings` 这种调试入口：H5 先落到首页垫着，再把原生页盖上去。
@@ -403,7 +453,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// 宽屏页放宽卡片上限，工具页收紧。只改常量，不碰布局结构。
     private func switchLayout(wide: Bool, animated: Bool) {
-        let target: CGFloat = wide ? 1180 : 1060
+        let target: CGFloat = hidesSidebarForShot ? cardWidthForMode : (wide ? 1180 : 1060)
         guard cardMaxWidth?.constant != target else { return }
         cardMaxWidth?.constant = target
         guard animated else { return }
