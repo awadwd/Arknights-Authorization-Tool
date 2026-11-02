@@ -4,7 +4,7 @@
 **业务代码零改动**，macOS 侧只负责窗口、系统集成和桌面端补丁 —— 和 `windows/` 里
 WinUI 3 外壳的思路一致，只是把 Windows App SDK 换成了系统自带的 WebKit。
 
-当前版本：`1.50.52`（自这一版起与 Windows / 安卓同步版本号，build 号对齐安卓 `versionCode` 163；
+当前版本：`1.50.53`（与 Windows / 安卓同步版本号，build 号对齐安卓 `versionCode` 164；
 侧边栏 + 工具包切换 + 图床修复 + 原生设置页，可日常使用；热键 / 自启 / 自动更新尚未实现）
 
 ![桌面首页](docs/snapshots/01-desktop-home.png)
