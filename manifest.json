@@ -1,15 +1,17 @@
 {
     "name" : "方舟通行证谷子查询工具",
-    "appid" : "__UNI__XXXXXXX",
+    "appid" : "__UNI__0E47E24",
     "description" : "明日方舟通行证查询app",
-    "versionName" : "1.9.2.8",
-    "versionCode" : 1928,
+    "versionName" : "1.50.54",
+    "versionCode" : 165,
     "transformPx" : false,
     /* 5+App特有相关 */
     "app-plus" : {
         "usingComponents" : true,
         "nvueStyleCompiler" : "uni-app",
         "compilerVersion" : 3,
+        /* 启动页：waiting 关掉，否则启动图上会叠一个菊花；
+           alwaysShowBeforeRender 保留，避免首屏白屏。 */
         "splashscreen" : {
             "alwaysShowBeforeRender" : true,
             "waiting" : false,
@@ -17,11 +19,18 @@
             "delay" : 0
         },
         /* 模块配置 */
-        "modules" : {},
+        "modules" : {
+            "Barcode" : {}
+        },
         /* 应用发布信息 */
         "distribute" : {
             /* android打包配置 */
             "android" : {
+                /* 包名必须写死在这里：不写的话云打包会用默认的 uni.app.<appid>，
+                   和线上 1.50.51（com.ArknightsAuthorizationSeries）不一致，
+                   装上去会变成两个 App、数据也不通。 */
+                "packagename" : "com.ArknightsAuthorizationSeries",
+                "schemes" : "akpassport",
                 "permissions" : [
                     "<uses-permission android:name=\"android.permission.CHANGE_NETWORK_STATE\"/>",
                     "<uses-permission android:name=\"android.permission.MOUNT_UNMOUNT_FILESYSTEMS\"/>",
@@ -37,7 +46,8 @@
                     "<uses-permission android:name=\"android.permission.WAKE_LOCK\"/>",
                     "<uses-permission android:name=\"android.permission.FLASHLIGHT\"/>",
                     "<uses-feature android:name=\"android.hardware.camera\"/>",
-                    "<uses-permission android:name=\"android.permission.WRITE_SETTINGS\"/>"
+                    "<uses-permission android:name=\"android.permission.WRITE_SETTINGS\"/>",
+                    "<uses-permission android:name=\"android.permission.REQUEST_INSTALL_PACKAGES\"/>"
                 ]
             },
             /* ios打包配置 */
@@ -80,6 +90,9 @@
                     }
                 }
             },
+            /* 自定义启动图（三档密度）。
+               androidTranslucent: 避免先闪一下系统默认的「白底+图标」。
+               androidStyle default: 用整图铺满，不做 9-patch 拉伸。 */
             "splashscreen" : {
                 "androidStyle" : "default",
                 "useOriginalMsgbox" : false,
@@ -96,14 +109,16 @@
     "quickapp" : {},
     /* 小程序特有相关 */
     "mp-weixin" : {
-        "appid" : "YOUR_WECHAT_APPID",
+        "appid" : "wxf44733fe3bc08ad9",
         "setting" : {
             "urlCheck" : false,
-			"minified": true
-			
+            "minified" : true
         },
+        /* 分享页改走 canvas 2D 绘制，已不再需要 Skyline 渲染器，
+           故移除 rendererOptions（Skyline 的 AB 实验会让真机回退 WebView）。 */
         "usingComponents" : true,
-		"__usePrivacyCheck__": true
+        "lazyCodeLoading" : "requiredComponents",
+        "__usePrivacyCheck__" : true
     },
     "mp-alipay" : {
         "usingComponents" : true
@@ -112,13 +127,18 @@
         "usingComponents" : true
     },
     "mp-toutiao" : {
-        "usingComponents" : true
+        "usingComponents" : true,
+        "appid" : "tt502a2697ce54b93b01"
     },
     "uniStatistics" : {
         "enable" : false
     },
     "vueVersion" : "3",
     "h5" : {
+        /* 桌面端（WinUI 壳）：窗口拉宽时不再让 rpx 无限放大 */
+        "rpxCalcMaxDeviceWidth" : 750,
+        "rpxCalcBaseDeviceWidth" : 375,
+        "rpxCalcIncludeWidth" : 750,
         "router" : {
             "base" : "./",
             "mode" : "hash"
@@ -129,7 +149,7 @@
             "disableHostCheck" : true,
             "proxy" : {
                 "/api" : {
-                    "target" : "https://YOUR_KNOW_CLOUD_CLIENT_ID.myminapp.com",
+                    "target" : "https://21680db9b1362913357c.myminapp.com",
                     "changeOrigin" : true,
                     "secure" : false,
                     "pathRewrite" : {

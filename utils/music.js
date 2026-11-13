@@ -11,7 +11,11 @@
 // 版权与分发：
 //   音频一律不随包分发，也不做转存，全部由官方 CDN 直出，属于"客户端播放官方公开
 //   资源"。曲库里只保留曲名 / 专辑名 / 封面 URL 这些元信息。这样既不用背版权风险，
-//   也不用把 APK 撑大几十 MB。
+//   也不用把 APK 撑大。
+//
+// 体积实测（2026-11 核对）：
+//   绝大多数曲目给的是 mp3，7～10MB；个别只提供 wav（如「觉醒」43MB）。
+//   播放器走的是流式加载，不会整包下载完再放，但移动网络下仍需注意流量。
 //
 // 平台差异：
 //   App / 小程序  uni.request 是原生请求，没有同源策略，直接取。
@@ -270,4 +274,48 @@ export function fmtTime(sec) {
 	const m = Math.floor(s / 60);
 	const r = s % 60;
 	return String(m).padStart(2, '0') + ':' + String(r).padStart(2, '0');
+}
+
+/**
+ * 曲库里的 name 原样带序号和 (Instrumental) 后缀，直接显示很难看。
+ * "2. Stained（Instrumental）" -> "Stained"
+ */
+export function prettyName(t) {
+	if (!t) return '';
+	let s = String(t.name || t.raw || '');
+	s = s.replace(/^\s*\d+\s*[.、．]\s*/, '');
+	s = s.replace(/\s*[（(]\s*instrumental\s*[)）]\s*$/i, '');
+	s = s.replace(/\s*[（(]\s*纯音乐\s*[)）]\s*$/, '');
+	return s.trim() || String(t.name || t.raw || '未知曲目');
+}
+
+// ---------------------------------------------------------------------------
+// 首页音乐条开关
+//   默认关闭。用户在「设置 → 塞壬唱片 → 首页音乐条」里打开后，首页底部才会出现
+//   迷你播放器。开关状态放在 storage 里，首页 onShow 时重新读一次，所以设置页
+//   切完返回首页立刻生效，不需要事件总线。
+// ---------------------------------------------------------------------------
+
+export const K_BAR = 'ak_music_bar_enabled';
+export const K_LAST = 'ak_music_last_cid';
+
+export function isBarEnabled() {
+	try {
+		const v = uni.getStorageSync(K_BAR);
+		// App / 小程序端设置页写 '1' / '0'；Windows 壳走原生设置页，按字符串布尔
+		// 写 'true' / 'false'（见 SettingsView / MainWindow.StringBoolKeys）。
+		// 两边都要认，否则 PC 上开关看着打开了却没反应。
+		return v === '1' || v === 1 || v === true || v === 'true';
+	} catch (e) {
+		return false;
+	}
+}
+
+export function setBarEnabled(on) {
+	try {
+		uni.setStorageSync(K_BAR, on ? '1' : '0');
+		return true;
+	} catch (e) {
+		return false;
+	}
 }

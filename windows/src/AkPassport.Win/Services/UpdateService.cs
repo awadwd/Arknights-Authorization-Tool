@@ -382,8 +382,10 @@ public static class UpdateService
 	{
 		var c = (current ?? "").Trim().TrimStart('v', 'V').Split('.');
 		var n = (candidate ?? "").Trim().TrimStart('v', 'V').Split('.');
-		if (c.Length < 2 || n.Length < 3) return false;
-		return c[0] == "1" && c[1] == "50" && n[0] == "1" && n[1] == "9" && n[2] == "2";
+		if (c.Length < 2 || n.Length < 2) return false;
+		// 曾经把版本号误写成 1.9.2.x（纯数字比较里 1.9 < 1.50），装了那个测试包的人
+		// 会被判成「已是最新」。这里只放行 1.9.* → 1.50.* 这一次跃迁。
+		return c[0] == "1" && c[1] == "9" && n[0] == "1" && n[1] == "50";
 	}
 
 	/// <summary>candidate 是否比 current 新。支持 v 前缀与 -beta.4 这类预发布后缀。</summary>
