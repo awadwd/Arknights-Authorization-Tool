@@ -19,12 +19,17 @@ import subprocess
 import sys
 
 # 这些目录里不可能有源码级凭据，扫了只会拖慢
+# 注意 node_modules 要按前缀判：本工程里还留着 node_modules.broken-* 这类备份目录，
+# 里面全是第三方 CHANGELOG（含别人贴的手机号），扫一遍要 5 分钟还全是误报。
 SKIP_DIRS = {
-    '.git', 'node_modules', 'unpackage', '.hbuilderx', 'dist', 'dist_h5_check',
-    'dist_h5_music', 'dist_h5_music2', 'dist_h5_music3', 'dist_h5_music4',
-    'dist_h5_v19', '_trash', '.workbuddy',
+    '.git', 'unpackage', '.hbuilderx', '.workbuddy',
 }
-SKIP_PREFIX = ('_archive_backups_', '_backup_', '_check_', '_probe_')
+SKIP_PREFIX = (
+    'node_modules', 'dist', '_archive_backups_', '_backup_', '_check_', '_probe_', '_trash',
+)
+
+# 单文件超过这个大小就不读（压缩产物 / 数据大文件，凭据不会藏在这种地方）
+MAX_BYTES = 2 * 1024 * 1024
 
 # 文本文件才读，二进制跳过
 TEXT_EXT = {
@@ -107,11 +112,14 @@ def iter_files(root, staged):
 
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames
-                       if d not in SKIP_DIRS and not d.startswith(SKIP_PREFIX)]
+                       if d not in SKIP_DIRS
+                       and not any(d.startswith(p) for p in SKIP_PREFIX)]
         for name in filenames:
             p = os.path.join(dirpath, name)
             rel = os.path.relpath(p, root).replace(os.sep, '/')
-            if any(part in SKIP_DIRS for part in rel.split('/')):
+            parts = rel.split('/')[:-1]
+            if any(part in SKIP_DIRS or any(part.startswith(q) for q in SKIP_PREFIX)
+                   for part in parts):
                 continue
             yield p, rel
 
@@ -136,6 +144,8 @@ def scan(root, staged):
             continue
 
         try:
+            if os.path.getsize(path) > MAX_BYTES:
+                continue
             with open(path, 'r', encoding='utf-8', errors='replace') as fh:
                 lines = fh.read().splitlines()
         except OSError:
@@ -156,6 +166,9 @@ def scan(root, staged):
                     hits_high.append((rel, idx, label, line.strip()[:160]))
 
             for label, rx in MEDIUM:
+                # URL 里的长数字（封面图 / 资源 hash）经常长得像手机号，整行跳过
+                if label == '手机号' and '://' in line:
+                    continue
                 m = rx.search(line)
                 if not m or NOISE.search(line):
                     continue
