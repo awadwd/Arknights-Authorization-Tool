@@ -79,10 +79,15 @@
 ### 安卓（HBuilderX 云打包）
 
 1. 用 HBuilderX 打开本工程 → 发行 → 原生 App-云打包。
-2. 包名保持 `com.ArknightsAuthorizationSeries`（写死在 manifest 里，别改，改了会变成两个 App）。
-3. 证书用原来的自有证书（**keystore 密码不入库**，见本地凭据或问项目作者）。
-4. 版本号会从 manifest 读，应为 `1.50.54 / 165`。
-5. 打完包把 apk 传到 GitHub Release `v1.50.54` 下（App 内更新只认带 `.apk` 附件的正式版）。
+2. **把「开屏广告」取消勾选**。上次打包时 `adTypes.splash = true`，DCloud 会在
+   我们的启动图前面再插一屏自己的广告 —— 看起来就像「启动图没生效」。
+   这个勾选存在 `%APPDATA%\HBuilder X\projects\<hash>\setting.json` 里，
+   不在工程内，所以每台机器要各自确认一次。
+3. 包名保持 `com.ArknightsAuthorizationSeries`（写死在 manifest 里，别改，改了会变成两个 App）。
+4. 证书用原来的自有证书（**keystore 密码不入库**，见本地凭据或问项目作者）。
+   本机记录：`E:/桌面文档/ArknightsAuthorization_Serie1.keystore`，别名 `1`。
+5. 版本号会从 manifest 读，应为 `1.50.54 / 165`。
+6. 打完包把 apk 传到 GitHub Release `v1.50.54` 下（App 内更新只认带 `.apk` 附件的正式版）。
 
 ### Windows（GitHub Actions）
 
