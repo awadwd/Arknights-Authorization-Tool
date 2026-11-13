@@ -69,6 +69,20 @@
 			"style": {
 				"navigationBarTitleText": "舟批の通行证友情小工具"
 			}
+		},
+		{
+			"path": "pages/box_info/box_info",
+			"style": {
+				"navigationBarTitleText": "盒号详情"
+			}
+		},
+		{
+			"path": "pages/desktop_home/desktop_home",
+			"style": {
+				"navigationBarTitleText": "",
+				"navigationStyle": "custom",
+				"backgroundColor": "#f4f5f7"
+			}
 		}
 	],
 	"subPackages": [
@@ -86,6 +100,23 @@
 					"style" :
 					{
 						"navigationBarTitleText" : "设置"
+					}
+				},
+				{
+					"path": "music/music",
+					"style": {
+						"navigationBarTitleText": "塞壬唱片",
+						"navigationBarBackgroundColor": "#F8F8F8",
+						"navigationBarTextStyle": "black"
+					}
+				},
+				{
+					"path": "profile_share/profile_share",
+					"style": {
+						"navigationBarTitleText": "个性化设置分享",
+						"navigationBarBackgroundColor": "#F7F7F9",
+						"navigationBarTextStyle": "black",
+						"backgroundColor": "#F7F7F9"
 					}
 				},
 				{
@@ -110,15 +141,17 @@
 					}
 				},
 				{
-					"path": "trade-board/trade-board",
+					"path": "PRTS_Search/PRTS_Search",
 					"style": {
 						"navigationBarTitleText": "交换信息"
 					}
 				},
 				{
-					"path": "PRTS_Search/PRTS_Search",
+					"path": "share_shot/share_shot",
 					"style": {
-						"navigationBarTitleText": "交换信息"
+						"navigationBarTitleText": "分享图片",
+						"navigationStyle": "custom",
+						"disableScroll": true
 					}
 				}
 			]
@@ -133,6 +166,15 @@
 					}
 				},
 				{
+					"path": "pages/gacha_next/gacha_next",
+					"style": {
+						"navigationBarTitleText": "",
+						"navigationStyle": "custom",
+						"backgroundColor": "#0b0d12",
+						"disableScroll": true
+					}
+				},
+				{
 					"path": "pages/mystarbox/mystarbox",
 					"style": {
 						"navigationBarTitleText": "我的收藏"
@@ -142,6 +184,86 @@
 					"path": "pages/card_share/card_share",
 					"style": {
 						"navigationBarTitleText": "通行证展柜"
+					}
+				},
+				{
+					"path": "pages/passport_game/passport_game",
+					"style": {
+						"navigationBarTitleText": "通行证游乐场",
+						"navigationBarBackgroundColor": "#F7F7F9",
+						"navigationBarTextStyle": "black",
+						"backgroundColor": "#F7F7F9"
+					}
+				}
+			]
+		},
+		{
+			"root": "package_ArknightEnds",
+			"pages": [
+				{
+					"path": "gacha_simulated/gacha_simulated",
+					"style": {
+						"navigationBarTitleText": "",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black",
+						"backgroundColor": "#FAFAFA"
+					}
+				},
+				{
+					"path": "index/index",
+					"style": {
+						"navigationBarTitleText": "",
+						"enablePullDownRefresh": true,
+						"navigationStyle": "custom",
+						"backgroundColor": "#FAFAFA"
+					}
+				},
+				{
+					"path": "list/list",
+					"style": {
+						"navigationBarTitleText": "",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black",
+						"backgroundColor": "#FAFAFA"
+					}
+				},
+				{
+					"path": "Search/Search",
+					"style": {
+						"navigationBarTitleText": "",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black",
+						"backgroundColor": "#FAFAFA"
+					}
+				},
+				{
+					"path": "calendar/calendar",
+					"style": {
+						"navigationBarTitleText": "终末地日历",
+						"navigationBarBackgroundColor": "#FFFFFF",
+						"navigationBarTextStyle": "black",
+						"backgroundColor": "#FAFAFA"
+					}
+				},
+				{
+					"path": "custom-words/custom-words",
+					"style": {
+						"navigationBarTitleText": "",
+						"enablePullDownRefresh": true
+					}
+				},
+				{
+					"path": "more-notice/more-notice",
+					"style": {
+						"navigationBarTitleText": "",
+						"enablePullDownRefresh": true
+					}
+				},
+				{
+					"path": "Setting/Setting",
+					"style": {
+						"navigationBarTitleText": "",
+						"enablePullDownRefresh": true
 					}
 				}
 			]

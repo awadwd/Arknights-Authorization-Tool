@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -401,6 +401,10 @@ public sealed partial class MainWindow : Window
 			// 知晓云（数据版本 / 公告）：租户域名每次可能不同，按通配拦
 			_core.AddWebResourceRequestedFilter("https://*.myminapp.com/*",
 				CoreWebView2WebResourceContext.All);
+			// 塞壬唱片官方接口（音乐播放器取曲目音源）：同样是跨域，
+			// 交给 RemoteProxy 带上头取回再补 CORS。
+			_core.AddWebResourceRequestedFilter("https://monster-siren.hypergryph.com/*",
+				CoreWebView2WebResourceContext.All);
 			_core.WebResourceRequested += OnWebResourceRequested;
 
 			_core.NewWindowRequested += OnNewWindowRequested;
@@ -622,11 +626,55 @@ public sealed partial class MainWindow : Window
 					else if (string.Equals(action, "stop", StringComparison.OrdinalIgnoreCase))
 						DispatcherQueue.TryEnqueue(StopBattleServer);
 					break;
+
+				case "toast":
+					{
+						// 前端 utils/notify.js 的系统通知出口（WebView2 里没有 Web Notification）
+						var title = doc.RootElement.TryGetProperty("title", out var tt) ? tt.GetString() : "";
+						var body = doc.RootElement.TryGetProperty("body", out var bb) ? bb.GetString() : "";
+						DispatcherQueue.TryEnqueue(() => ToastService.Show(title ?? "", body ?? ""));
+						break;
+					}
+
+				case "pushplus":
+					{
+						// PushPlus 直连会被 CORS 拦（页面源是 https://app.local），交给外壳发
+						var token = doc.RootElement.TryGetProperty("token", out var tk) ? tk.GetString() : null;
+						var title = doc.RootElement.TryGetProperty("title", out var pt) ? pt.GetString() : "";
+						var content = doc.RootElement.TryGetProperty("content", out var pc) ? pc.GetString() : "";
+						if (!string.IsNullOrWhiteSpace(token))
+							_ = PushPlusAsync(token!, title ?? "", content ?? "");
+						break;
+					}
 			}
 		}
 		catch (Exception ex)
 		{
 			Diag.Log("theme message failed: " + ex.Message);
+		}
+	}
+
+	// PushPlus 通道：前端只负责填 token，投递放外壳做（不受页面跨域限制）。
+	private static readonly System.Net.Http.HttpClient PushHttp = new();
+
+	private static async Task PushPlusAsync(string token, string title, string content)
+	{
+		try
+		{
+			var payload = System.Text.Json.JsonSerializer.Serialize(new
+			{
+				token,
+				title = title.Length > 60 ? title[..60] : title,
+				content,
+				template = "txt"
+			});
+			using var body = new System.Net.Http.StringContent(payload, System.Text.Encoding.UTF8, "application/json");
+			using var resp = await PushHttp.PostAsync("https://www.pushplus.plus/send", body);
+			Diag.Log($"pushplus: {(int)resp.StatusCode}");
+		}
+		catch (Exception ex)
+		{
+			Diag.Log("pushplus failed: " + ex.Message);
 		}
 	}
 

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -373,9 +373,24 @@ public static class UpdateService
 
 	// ── 版本比较 ────────────────────────────────────────────────────────────
 
+	/// <summary>
+	/// 版本方案切换的一次性兼容：1.50.* 时代改用 1.9.2.* 编号后，
+	/// 按数字比 1.9 &lt; 1.50，老用户会被判成"已是最新"。
+	/// 只放行这一种跃迁，之后照常比大小。与前端 utils/appUpdate.js 保持一致。
+	/// </summary>
+	private static bool IsSchemeMigration(string? current, string? candidate)
+	{
+		var c = (current ?? "").Trim().TrimStart('v', 'V').Split('.');
+		var n = (candidate ?? "").Trim().TrimStart('v', 'V').Split('.');
+		if (c.Length < 2 || n.Length < 3) return false;
+		return c[0] == "1" && c[1] == "50" && n[0] == "1" && n[1] == "9" && n[2] == "2";
+	}
+
 	/// <summary>candidate 是否比 current 新。支持 v 前缀与 -beta.4 这类预发布后缀。</summary>
 	public static bool IsNewer(string candidate, string current)
 	{
+		if (IsSchemeMigration(current, candidate)) return true;
+
 		var (cCore, cPre) = Split(candidate);
 		var (nCore, nPre) = Split(current);
 

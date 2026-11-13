@@ -1,5 +1,5 @@
 <template>
-	<view class="container">
+	<view class="container" :class="'theme-' + themeMode">
 		<!-- 模式选择和功能区域 -->
 		<view class="mode-section">
 			<view class="mode-tabs">
@@ -466,6 +466,8 @@ import errorLog from "@/utils/errorLog.js";
 export default {
 	data() {
 		return {
+			// 主题模式
+			themeMode: 'simple',
 			// 基础数据
 			characterData: [],
 			filteredBoxes: [],
@@ -560,10 +562,19 @@ export default {
 		this.loadUserData();
 	},
 	onShow() {
+		this.loadThemeSetting();
 		// 页面显示时重新加载用户数据
 		this.loadUserData();
 	},
 	methods: {
+loadThemeSetting() {
+			try {
+				const t = uni.getStorageSync('themeMode');
+				this.themeMode = (t && ['simple', 'ak', 'ark', 'jieyuan', 'liquid', 'liquidDark'].indexOf(t) > -1) ? t : 'simple';
+			} catch (e) {
+				this.themeMode = 'simple';
+			}
+		},
 			logError(e, ctx) {
 				try {
 					errorLog.logError(e, ctx);
@@ -2333,7 +2344,7 @@ async generateShareImage() {
 
 .stat-row {
 	display: flex;
-	justifyContent: space-between;
+	justify-content: space-between;
 	margin-bottom: 10rpx;
 }
 
@@ -2380,7 +2391,7 @@ async generateShareImage() {
 
 .share-box-header {
 	display: flex;
-	alignItems: center;
+	align-items: center;
 	margin-bottom: 15rpx;
 }
 

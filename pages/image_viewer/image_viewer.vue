@@ -1,5 +1,5 @@
 <template>
-  <view class="viewer-page">
+  <view class="viewer-page" :class="'theme-' + themeMode">
     <!-- 自定义导航栏 -->
     <view class="nav-bar">
       <view class="nav-back" @click="goBack">
@@ -96,9 +96,12 @@
 
 <script>
 import errorLog from "@/utils/errorLog.js";
+import { openLink } from "@/utils/openLink.js";
 export default {
   data() {
     return {
+    	// 主题模式
+    	themeMode: 'simple',
       imageSrc: '',
       imgWidth: 0,
       imgHeight: 0,
@@ -120,6 +123,7 @@ export default {
   },
 
   onLoad(options) {
+    this.loadThemeSetting();
     if (options.src) {
       this.imageSrc = decodeURIComponent(options.src);
     }
@@ -131,6 +135,14 @@ export default {
   },
 
   methods: {
+loadThemeSetting() {
+			try {
+				const t = uni.getStorageSync('themeMode');
+				this.themeMode = (t && ['simple', 'ak', 'ark', 'jieyuan', 'liquid', 'liquidDark'].indexOf(t) > -1) ? t : 'simple';
+			} catch (e) {
+				this.themeMode = 'simple';
+			}
+		},
     logError(e, ctx) {
 				try {
 					errorLog.logError(e, ctx);
@@ -197,12 +209,7 @@ export default {
     },
 
     openInBrowser() {
-      uni.setClipboardData({
-        data: this.imageSrc,
-        success: () => {
-          uni.showToast({ title: '链接已复制，请到浏览器打开', icon: 'none', duration: 2500 });
-        },
-      });
+      openLink(this.imageSrc, { copyTip: '链接已复制，请到浏览器打开' });
     },
 
     calculateWatermarkLayout() {

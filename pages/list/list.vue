@@ -1,4 +1,4 @@
-﻿<template>
+<template>
 	<view :class="['container', 'theme-' + themeMode]">
 		<!-- 筛选和排序控制区域 -->
 		<view class="toolbar-toggle" @click="toggleToolbar">
@@ -45,6 +45,27 @@
 			
 			<!-- 新增：高级筛选按钮 -->
 			<button class="advanced-filter-btn" @click="openAdvancedFilter">高级筛选</button>
+
+			<!-- 宽屏：分页控件并进筛选卡，省掉一整张卡的高度 -->
+			<view class="pagination-section pagination-inline" v-if="isWide && !toolbarCollapsed">
+				<view class="pagination-info">
+					<text class="page-text">第 {{ currentPage }} 页 / 共 {{ totalPages }} 页</text>
+					<text class="data-count">共 {{ filteredData.length }} 盒 (筛选后)</text>
+					<text v-if="hasAdvancedFilter" class="advanced-filter-tip">高级筛选已应用</text>
+				</view>
+				<view class="pagination-controls">
+					<view class="page-btn-row">
+						<button class="page-btn" :disabled="currentPage <= 1" @click="goToFirstPage">首页</button>
+						<button class="page-btn" :disabled="currentPage <= 1" @click="prevPage">上一页</button>
+						<button class="page-btn" :disabled="currentPage >= totalPages" @click="nextPage">下一页</button>
+						<button class="page-btn" :disabled="currentPage >= totalPages" @click="goToLastPage">尾页</button>
+					</view>
+					<view class="jump-group">
+						<input class="jump-input" type="number" v-model="jumpPageInput" placeholder="页码" />
+						<button class="jump-btn" @click="handleJumpPage">跳转</button>
+					</view>
+				</view>
+			</view>
 		</view>
 		
 		<!-- 市价状态提示 -->
@@ -57,54 +78,27 @@
 			<text class="mp-settings-btn" v-if="!showMarketPrice" @click="goToSettings">去设置</text>
 		</view>
 		
-		<!-- 分页控制 -->
-		<view class="pagination-section">
+		<!-- 分页控制（窄屏：独立一张卡；宽屏并进筛选卡，见下方 inline 版本） -->
+		<view class="pagination-section" v-if="!isWide || toolbarCollapsed">
 			<view class="pagination-info">
 				<text class="page-text">第 {{ currentPage }} 页 / 共 {{ totalPages }} 页</text>
 				<text class="data-count">共 {{ filteredData.length }} 盒 (筛选后)</text>
 				<!-- 显示当前高级筛选条件（可选） -->
 				<text v-if="hasAdvancedFilter" class="advanced-filter-tip">高级筛选已应用</text>
 			</view>
-			
+
 			<view class="pagination-controls">
-				<button 
-					class="page-btn" 
-					:disabled="currentPage <= 1"
-					@click="goToFirstPage"
-				>
-					首页
-				</button>
-				<button 
-					class="page-btn" 
-					:disabled="currentPage <= 1"
-					@click="prevPage"
-				>
-					上一页
-				</button>
+				<view class="page-btn-row">
+					<button class="page-btn" :disabled="currentPage <= 1" @click="goToFirstPage">首页</button>
+					<button class="page-btn" :disabled="currentPage <= 1" @click="prevPage">上一页</button>
+					<button class="page-btn" :disabled="currentPage >= totalPages" @click="nextPage">下一页</button>
+					<button class="page-btn" :disabled="currentPage >= totalPages" @click="goToLastPage">尾页</button>
+				</view>
 				<!-- 跳转至指定页 -->
-				<view class="jump-vertical">
-					<input
-						class="jump-input"
-						type="number"
-						v-model="jumpPageInput"
-						placeholder="页码"
-					/>
+				<view class="jump-group">
+					<input class="jump-input" type="number" v-model="jumpPageInput" placeholder="页码" />
 					<button class="jump-btn" @click="handleJumpPage">跳转</button>
 				</view>
-				<button 
-					class="page-btn" 
-					:disabled="currentPage >= totalPages"
-					@click="nextPage"
-				>
-					下一页
-				</button>
-				<button 
-					class="page-btn" 
-					:disabled="currentPage >= totalPages"
-					@click="goToLastPage"
-				>
-					尾页
-				</button>
 			</view>
 		</view>
 		
@@ -149,7 +143,7 @@
 					>
 						<image 
 							class="box-official-image" 
-							:src="box.Box_ImageUrl" 
+							:src="imgSrc(box.Box_ImageUrl)" 
 							mode="widthFix"
 							@load="onBoxImageLoad(box.Box_id, $event)"
 						></image>
@@ -202,7 +196,7 @@
 						<view class="character-avatar-wrap">
 							<image 
 								class="character-avatar-compact" 
-								:src="character.avatar" 
+								:src="imgSrc(pAvatar(character))" 
 								mode="aspectFit"
 								@error="onAvatarError(box.Box_id, charIndex)"
 							></image>
@@ -231,7 +225,12 @@
 					</view>
 				</view>
 			</view>
-			<button class="update-btn" @click="loadData">加载数据</button>
+			<button
+			    class="action-btn feedback-btn"
+			    @click="goToBoxFeedback(box.Box_id)"
+			>
+			    反馈纠错
+			</button>
 		</view>
 		
 		<!-- 页脚信息 -->
@@ -259,7 +258,7 @@
 								<view class="character-avatar-container">
 									<image 
 										class="character-avatar" 
-										:src="character.avatar" 
+										:src="imgSrc(pAvatar(character))" 
 										mode="aspectFit"
 										@error="onModalAvatarError(index)"
 									></image>
@@ -326,12 +325,13 @@
 		
 		<!-- ============= 新增：高级筛选模态框 ============= -->
 		<view class="advanced-filter-modal" v-if="showAdvancedFilter" @tap="closeAdvancedFilter">
-			<view class="modal-content" @tap.stop>
-				<view class="modal-header">
+			<view class="modal-content" id="afm-card" @tap.stop>
+				<view class="modal-header" id="afm-header">
 					<text class="modal-title">高级筛选</text>
 					<button class="close-btn" @click="closeAdvancedFilter">×</button>
 				</view>
-				<scroll-view class="modal-body" scroll-y>
+				<scroll-view class="modal-body" id="afm-body" scroll-y :style="filterBodyHeight ? { height: filterBodyHeight + 'px' } : ''">
+					<view class="filter-scroll-inner">
 					<!-- 发布时间筛选 -->
 					<view class="filter-group">
 						<text class="filter-group-title">发布时间</text>
@@ -385,8 +385,45 @@
 							</label>
 						</view>
 					</view>
+					<!-- 干员属性筛选（PRTS 维度，默认折叠） -->
+					<view class="filter-group">
+						<view class="facet-toggle" @click="toggleFacetPanel">
+							<text class="filter-group-title">干员属性</text>
+							<view class="facet-toggle-right">
+								<text class="facet-count" v-if="facetCount()">{{ facetCount() }} 项</text>
+								<text class="facet-arrow" :class="{ open: facetExpanded }">›</text>
+							</view>
+						</view>
+						<view class="facet-panel" v-if="facetExpanded">
+							<view class="facet-summary">
+								<text class="facet-summary-text">{{ facetSummaryText() }}</text>
+								<text class="facet-summary-clear" v-if="facetCount()" @click.stop="clearAllFacets">清空</text>
+							</view>
+							<view class="facet-group" v-for="g in facetGroups" :key="g.key">
+								<view class="facet-group-head">
+									<text class="facet-group-title">{{ g.label }}</text>
+									<view class="facet-ops">
+										<text class="facet-op" @click.stop="selectAllFacet(g.key)">全选</text>
+										<text class="facet-op" v-if="charFacets[g.key].length" @click.stop="clearFacet(g.key)">清除</text>
+									</view>
+								</view>
+								<view class="facet-chips">
+									<text
+										class="facet-chip"
+										v-for="opt in facetOptions(g.key)"
+										:key="g.key + opt"
+										:class="{ active: charFacets[g.key].indexOf(opt) >= 0 }"
+										@click.stop="toggleFacet(g.key, opt)"
+									>{{ facetOptionLabel(g.key, opt) }}</text>
+								</view>
+							</view>
+							<text class="facet-tip">不同分组同时满足，同组多选为任一满足；盒内只要有一位干员满足即可保留。</text>
+						</view>
+					</view>
+					</view>
 				</scroll-view>
-				<view class="modal-footer">
+				<view class="modal-footer" id="afm-footer">
+					<text class="footer-facet-hint" v-if="facetCount()">{{ facetSummaryText() }}</text>
 					<button class="reset-btn" @click="resetAdvancedFilter">重置</button>
 					<button class="cancel-btn" @click="closeAdvancedFilter">取消</button>
 					<button class="confirm-btn" @click="applyAdvancedFilter">确定</button>
@@ -399,6 +436,13 @@
 
 <script>
 	import errorLog from "@/utils/errorLog.js";
+import { markDailyTask } from "@/utils/dailyTask.js";
+import * as imageCache from "@/utils/imageCache.js";
+	import { fetchSelfHosted } from "@/utils/knowCloudProxy.js";
+import * as boxDataSync from "@/utils/boxDataSync.js";
+	import avatarMixin from "@/utils/avatarMixin.js";
+import { mergeGuessData, pruneStoredGuessData } from "@/utils/guessData.js";
+	import { boxCtx, emptyFacets, FACET_GROUPS, optionsOf, optionLabel, matchCharFacets, hasFacets } from "@/utils/avatarPref.js";
 	// 开源版本：知晓云配置已禁用，使用 GitHub 直链
 	const GITHUB_DATA_SOURCES = {
 		boxIdUrl: 'https://raw.githubusercontent.com/awadwd/ArknightsAuthorization_Series-mirror/refs/heads/main/Box_Id.json'
@@ -406,7 +450,7 @@
 	
 	// 知晓云配置 - 开源版本clientId为空，商业版请配置知晓云
 	const KNOW_CLOUD_CONFIG = {
-		clientId: 'YOUR_KNOW_CLOUD_CLIENT_ID',
+		clientId: '21680db9b1362913357c',
 		baseUrl: 'https://raw.githubusercontent.com/awadwd/ArknightsAuthorization_Series-mirror/refs/heads/main',
 		tableNames: {
 			Version: ''          // 开源版本使用 GitHub 直链
@@ -414,11 +458,16 @@
 	}
 	
 	export default {
+
+		mixins: [avatarMixin],
+
 		data() {
 			return {
 				// 主题模式
 				themeMode: 'simple',
 				toolbarCollapsed: false,
+				// 宽屏（桌面壳 Mac / Windows）：分页控件并进筛选卡，少占一张卡的高度
+				isWide: false,
 				characterData: [],
 				filteredData: [],
 				currentPage: 1,
@@ -465,6 +514,10 @@
 				// ============= 新增：高级筛选相关数据 =============
 				showAdvancedFilter: false,           // 是否显示高级筛选模态框
 				// 发布时间筛选值
+				charFacets: emptyFacets(),
+				facetExpanded: false,
+				filterBodyHeight: 0,          // scroll-view 实测高度（0 = 自适应）
+				facetGroups: FACET_GROUPS,
 				filterYear: '',                       // 选中的年份，如'2024'
 				filterMonth: '',                       // 选中的月份，如'05'
 				filterDay: '',                         // 选中的日期，如'01'
@@ -503,7 +556,7 @@
 			// 是否有高级筛选条件
 			hasAdvancedFilter() {
 				return this.filterYear !== '' || this.filterMonth !== '' || this.filterDay !== '' ||
-				       this.filterReplicate !== '' || this.filterType !== '';
+				       this.filterReplicate !== '' || this.filterType !== '' || hasFacets(this.charFacets);
 			},
 			// 年份选择器显示文本
 			filterYearText() {
@@ -535,6 +588,14 @@
 			}
 		},
 		onLoad(options) {
+		// 每日任务打点
+		markDailyTask('browse_list');
+		// 宽屏（桌面壳 Mac / Windows）一页放 10 个；手机/小程序维持 5 个
+		// 同时决定分页控件是否并进筛选卡（窄屏放不下，仍旧单独一张卡）
+		this.applyWideFlag();
+		// #ifdef H5
+		this._bindWideResize();
+		// #endif
 			// 恢复分享链接参数
 			if (typeof options !== "undefined" && options) {
 				if (options.filterType !== undefined && options.filterType !== '') this.filterType = decodeURIComponent(options.filterType);
@@ -566,6 +627,7 @@
 			});
 		},
 		onShow() {
+			this.refreshAvatarPref();
 			// 页面显示时重新加载收藏数据
 			this.loadFavorites();
 			this.loadMarketPriceSetting(); // 确保每次显示都重新加载市价设置
@@ -583,7 +645,51 @@
 				imageUrl: ''
 			}
 		},
+		onUnload() {
+			// #ifdef H5
+			this._unbindWideResize();
+			// #endif
+		},
 		methods: {
+			// 宽屏判定：≥720px 视为桌面宽屏（与每页 10 盒的阈值保持一致）
+			applyWideFlag() {
+				let w = 0;
+				try {
+					w = uni.getSystemInfoSync().windowWidth || 0;
+				} catch (e) {}
+				const next = w >= 720;
+				if (next === this.isWide) return;
+				this.isWide = next;
+				this.pageSize = next ? 10 : 5;
+				// 每页条数变了要重算分页；数据还没加载时不用管，onLoad 后续会自己算
+				if (this.characterData && this.characterData.length) {
+					this.applyFilterAndSort(true);
+				}
+			},
+			// #ifdef H5
+			_bindWideResize() {
+				if (typeof window === 'undefined' || this._wideResizeBound) return;
+				this._wideResizeBound = true;
+				this._onWideResize = () => this.applyWideFlag();
+				window.addEventListener('resize', this._onWideResize);
+			},
+			_unbindWideResize() {
+				if (typeof window === 'undefined' || !this._wideResizeBound) return;
+				this._wideResizeBound = false;
+				try {
+					window.removeEventListener('resize', this._onWideResize);
+				} catch (e) {}
+			},
+			// #endif
+			// 图片地址：优先返回本地持久缓存路径，未命中则返回远程地址并后台缓存
+			// 盒图与干员头像基本不变，缓存后不再重复走网络
+			imgSrc(url) {
+				try {
+					return imageCache.resolve(url);
+				} catch (e) {
+					return url || "";
+				}
+			},
 			logError(e, ctx) {
 				try {
 					errorLog.logError(e, ctx);
@@ -627,7 +733,9 @@
 			        uni.previewImage({ urls: [imageUrl], current: imageUrl });
 			    },
 			    goToBoxFeedback(boxId) {
-			        uni.navigateTo({ url: '/pages/box_feedback_new/box_feedback_new?boxId=' + boxId });
+			    	uni.navigateTo({
+			    		url: `/pages/box_feedback_new/box_feedback_new?boxId=${encodeURIComponent(boxId)}`
+			    	});
 			    },
 			    toggleToolbar() {
 			        this.toolbarCollapsed = !this.toolbarCollapsed;
@@ -636,7 +744,7 @@
 				loadThemeSetting() {
 					try {
 						const themeMode = uni.getStorageSync('themeMode');
-						if (themeMode && (themeMode === 'simple' || themeMode === 'ark' || themeMode === 'jieyuan')) {
+						if (themeMode && (themeMode === 'simple' || themeMode === 'ak' || themeMode === 'ark' || themeMode === 'jieyuan' || themeMode === 'liquid' || themeMode === 'liquidDark')) {
 							this.themeMode = themeMode;
 						} else {
 							this.themeMode = 'simple';
@@ -674,6 +782,13 @@
 
 			// 知晓云 API 请求封装 - 使用ClientID认证
 			async knowCloudRequest(tableName, options = {}, retryCount = 0) {
+				// 优先走自建 API，失败则回落知晓云
+				try {
+				  const sh = await fetchSelfHosted(tableName, options);
+				  if (sh) return sh;
+				} catch (e) {
+				  // 忽略，继续走知晓云
+				}
 				// 防止无限重试
 				if (retryCount > 3) {
 					console.error('知晓云请求重试次数过多');
@@ -744,15 +859,21 @@
 			// 从知晓云获取数据URL和版本信息
 		async getDataUrlFromMinapp() {
 			try {
-				const res = await uni.request({
-					url: 'https://YOUR_KNOW_CLOUD_CLIENT_ID.myminapp.com/hserve/v2.2/table/Version/record/?limit=1',
+				let res;
+				const sh_Version = await fetchSelfHosted("Version", { data: { limit: 1 } });
+				if (sh_Version) {
+				  res = { statusCode: 200, data: sh_Version };
+				} else {
+				res = await uni.request({
+					url: 'https://21680db9b1362913357c.myminapp.com/hserve/v2.2/table/Version/record/?limit=1',
 					method: 'GET',
 					header: {
-						'X-Hydrogen-Client-ID': 'YOUR_KNOW_CLOUD_CLIENT_ID',
+						'X-Hydrogen-Client-ID': '21680db9b1362913357c',
 						'Content-Type': 'application/json'
 					},
 					timeout: 10000
 				});
+				}
 				if (res.statusCode === 200 && res.data && res.data.objects && res.data.objects.length > 0) {
 					const versionData = res.data.objects[0];
 					return {
@@ -880,7 +1001,8 @@
 			          nolyELITE1: nolyELITE1,
 			          hotcharacter: hotcharacter,
 			          market_price: market_price,
-			          hasMarketPrice: hasMarketPrice
+			          hasMarketPrice: hasMarketPrice,
+			          _avatarCtx: boxCtx(box)
 			        });
 			      }
 			    }
@@ -968,7 +1090,7 @@
 			// 新增：跳转到盒详情页面
 			goToBoxInfo(boxId) {
 				uni.navigateTo({
-					url: `/pages/box_info/box_info?boxId=${boxId}`
+					url: `/pages/box_info/box_info?boxId=${encodeURIComponent(boxId)}`
 				});
 			},
 			
@@ -998,6 +1120,8 @@
 					const currentVersion = uni.getStorageSync('currentDataVersion');
 					const url = uni.getStorageSync('dataUrl');
 					const enableGuessData = uni.getStorageSync('enableGuessData');
+					// 正式数据上线后清掉重复的预测盒号
+					pruneStoredGuessData();
 					const guessData = uni.getStorageSync('guessData');
 					
 					let allData = [];
@@ -1016,7 +1140,7 @@
 					}
 					
 					if (enableGuessData === 'true' && guessData && Array.isArray(guessData) && guessData.length > 0) {
-						allData = [...allData, ...guessData];
+						allData = mergeGuessData(allData, guessData).data;
 					}
 					
 					if (allData.length > 0) {
@@ -1118,8 +1242,26 @@
 					this.dataUrl = 'https://raw.gitcode.com/huangjinzhou1/ArknightsAuthorization_Series/raw/main/Box_Id.json';
 				}
 				
-				// 2. 构建多源列表
+				// 2. 构建多源列表（本地/自定义数据激活时返回空列表，禁止远程下载）
 				const sourceList = this.buildDataSourceList(this.dataUrl);
+				if (!sourceList.length) {
+					this.dataStatusMessage = '当前使用本地/自定义数据，已跳过远程下载';
+					return;
+				}
+				// 增量更新快路径：先探服务端版本 —— 没变直接用本地缓存，变了只拉差异记录
+				// 任何一步不满足（无缓存 / 接口不可用 / 拉取失败）都会返回 null，自然落回下面的完整包下载
+				try {
+					const _inc = await boxDataSync.ensure();
+					if (_inc && _inc.data && _inc.data.length) {
+						console.log('[增量更新] ' + _inc.source + '，' + _inc.data.length + ' 个盒号');
+						this.dataStatusMessage = '数据已是最新';
+						await this.handleListDownloadSuccess(_inc.data, _inc.source);
+						return;
+					}
+				} catch (_incErr) {
+					this.logError(_incErr);
+					console.warn('[增量更新] 降级为完整包下载:', _incErr);
+				}
 				this.dataStatusMessage = '正在下载干员数据...';
 				
 				// 3. 依次尝试各数据源
@@ -1145,6 +1287,11 @@
 			// 构建数据源列表
 			buildDataSourceList(primaryUrl) {
 				const sources = [];
+				// 本地/自定义数据激活时，禁止从远程获取 box_id.json
+				try {
+					const ds = uni.getStorageSync('dataSource');
+					if (ds === 'local' || ds === 'custom') return sources;
+				} catch (e) { this.logError(e); }
 				const githubRepo = 'awadwd/ArknightsAuthorization_Series-mirror';
 				const boxFile = 'Box_Id.json';
 				
@@ -1230,6 +1377,7 @@
 			// 处理下载成功
 			async handleListDownloadSuccess(rawData, sourceName) {
 				let data = rawData;
+					boxDataSync.adopt(data, this.latestVersion);
 				
 				// 验证数据完整性
 				this.validateDataStructure(data);
@@ -1377,7 +1525,8 @@
 								nolyELITE1: nolyELITE1,
 								hotcharacter: hotcharacter,
 								market_price: market_price,
-								hasMarketPrice: hasMarketPrice
+								hasMarketPrice: hasMarketPrice,
+								_avatarCtx: boxCtx(box)
 							});
 						}
 					}
@@ -1477,6 +1626,18 @@
 					});
 				}
 				
+				// 干员属性筛选：盒内至少有一位干员满足全部所选属性
+				if (hasFacets(this.charFacets)) {
+					filtered = filtered.filter(box => {
+						for (let i = 1; i <= 10; i++) {
+							const c = box['character' + i];
+							const nm = typeof c === 'string' ? c : (c && c.name);
+							if (nm && matchCharFacets(this.charFacets, nm)) return true;
+						}
+						return false;
+					});
+				}
+
 				// 排序
 				if (this.sortIndex === 0) {
 					// 按盒号排序（原有逻辑）
@@ -1796,9 +1957,42 @@
 			
 			// 打开高级筛选模态框
 			openAdvancedFilter() {
+				this.facetExpanded = false;
+				this.filterBodyHeight = 0;
 				this.showAdvancedFilter = true;
-				// 备份当前筛选值，以便取消时恢复（可选）
-				// 这里简单处理，直接显示当前值
+				this.$nextTick(() => setTimeout(() => this.layoutFilterBody(), 60));
+			},
+
+			// 展开/收起干员属性后重新量一次高度
+			toggleFacetPanel() {
+				this.facetExpanded = !this.facetExpanded;
+				this.filterBodyHeight = 0;
+				this.$nextTick(() => setTimeout(() => this.layoutFilterBody(), 60));
+			},
+
+			/**
+			 * scroll-view 在 App 端必须有确定高度才滚得动。
+			 * 先让它按内容撑开，量出真实内容高度；超过卡片可用高度时再锁成固定像素高。
+			 * 内容没超时保持自适应，避免弹窗永远占满 80vh。
+			 */
+			layoutFilterBody() {
+				// 直接量卡片自身高度（已被 max-height 夹住），不用 vh 换算，避免与 webview 视口对不上
+				const q = uni.createSelectorQuery();
+				q.select('#afm-card').boundingClientRect();
+				q.select('#afm-header').boundingClientRect();
+				q.select('#afm-footer').boundingClientRect();
+				q.select('#afm-body').boundingClientRect();
+				q.exec((res) => {
+					if (!res || !res[0] || !res[1] || !res[2] || !res[3]) return;
+					const card = res[0], head = res[1], foot = res[2], body = res[3];
+					// 扣掉头尾和 2px 余量，剩下才是滚动区可用高度
+					// （padding 已挪到内层 .filter-scroll-inner，这里不用再扣）
+					const avail = card.height - head.height - foot.height - 2;
+					if (avail < 160) return;
+					if (body.height > avail + 1) {
+						this.filterBodyHeight = Math.floor(avail);
+					}
+				});
 			},
 			
 			// 关闭高级筛选模态框
@@ -1816,6 +2010,7 @@
 				this.filterDayIndex = 0;
 				this.filterReplicate = '';
 				this.filterType = '';
+				this.charFacets = emptyFacets();
 			},
 			
 			// 应用高级筛选
@@ -1823,6 +2018,77 @@
 				this.applyFilterAndSort();
 				this.closeAdvancedFilter();
 			},
+
+
+			// ===== 干员属性筛选（默认折叠） =====
+			facetOptions(key) {
+				return optionsOf(key, this.charFacets.prof);
+			},
+
+			facetOptionLabel(key, value) {
+				return optionLabel(key, value);
+			},
+
+			toggleFacet(key, value) {
+				const arr = this.charFacets[key];
+				const i = arr.indexOf(value);
+				if (i >= 0) arr.splice(i, 1);
+				else arr.push(value);
+				if (key === 'prof') {
+					const valid = this.facetOptions('sub');
+					this.charFacets.sub = this.charFacets.sub.filter((x) => valid.indexOf(x) >= 0);
+				}
+				// 即时生效，面板里的「命中 N 个盒号」会同步变化
+				this.applyFilterAndSort();
+			},
+
+			clearFacet(key) {
+				this.charFacets[key] = [];
+				this.applyFilterAndSort();
+			},
+
+			// 整组全选（再点一次不会取消，用「清除」）
+			selectAllFacet(key) {
+				this.charFacets[key] = this.facetOptions(key).slice();
+				if (key === 'prof') {
+					const valid = this.facetOptions('sub');
+					this.charFacets.sub = this.charFacets.sub.filter((x) => valid.indexOf(x) >= 0);
+				}
+				this.applyFilterAndSort();
+			},
+
+			// 清空全部干员属性条件
+			clearAllFacets() {
+				this.charFacets = emptyFacets();
+				this.applyFilterAndSort();
+			},
+
+			// 只按干员属性统计（不受其它筛选项影响，方便判断单项条件是否生效）
+			facetHitCount() {
+				if (!hasFacets(this.charFacets)) return this.characterData.length;
+				let n = 0;
+				this.characterData.forEach((box) => {
+					for (let i = 1; i <= 10; i++) {
+						const c = box['character' + i];
+						const nm = typeof c === 'string' ? c : (c && c.name);
+						if (nm && matchCharFacets(this.charFacets, nm)) { n++; return; }
+					}
+				});
+				return n;
+			},
+
+			facetSummaryText() {
+				const n = this.facetCount();
+				if (!n) return '未选条件 · 共 ' + this.characterData.length + ' 个盒号';
+				return '已选 ' + n + ' 项 · 命中 ' + this.facetHitCount() + ' 个盒号';
+			},
+
+			facetCount() {
+				let n = 0;
+				this.facetGroups.forEach((g) => { n += (this.charFacets[g.key] || []).length; });
+				return n;
+			},
+
 			
 			// 更新日期选项（从数据中提取年份）
 			updateDateOptions() {
@@ -1982,85 +2248,142 @@
 	
 	.pagination-section {
 		display: flex;
-		justify-content: space-between;
-		align-items: center;
+		flex-direction: column;
+		gap: 16rpx;
 		background-color: #fff;
 		border-radius: 16rpx;
 		padding: 20rpx 30rpx;
 		box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
 		margin-bottom: 30rpx;
 	}
-	
+
 	.pagination-info {
 		display: flex;
-		flex-direction: column;
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 8rpx 20rpx;
 	}
-	
+
 	.page-text {
 		font-size: 28rpx;
 		color: #333;
 		font-weight: bold;
 	}
-	
+
 	.data-count {
 		font-size: 24rpx;
 		color: #999;
-		margin-top: 5rpx;
 	}
-	
+
 	.advanced-filter-tip {
 		font-size: 22rpx;
 		color: #E6A23C;
-		margin-top: 5rpx;
 	}
-	
+
 	.pagination-controls {
 		display: flex;
-		align-items: center;
-		gap: 6rpx;
-		flex-wrap: nowrap;
+		flex-direction: column;
+		align-items: stretch;
+		gap: 12rpx;
+		width: 100%;
 	}
-	
+
+	/* 四个翻页按钮等宽排一行：窄屏也不会再挤成大小不一、上下错位 */
+	.page-btn-row {
+		display: flex;
+		flex-direction: row;
+		gap: 10rpx;
+		width: 100%;
+	}
+
 	.page-btn {
+		flex: 1 1 0;
+		min-width: 0;
+		white-space: nowrap;
+		text-align: center;
 		background-color: #409EFF;
 		color: #fff;
 		border-radius: 8rpx;
-		font-size: 22rpx;
-		padding: 10rpx 14rpx;
+		font-size: 24rpx;
+		line-height: 1.6;
+		padding: 8rpx 0;
 		margin: 0;
 	}
-	
+
 	.page-btn:disabled {
 		background-color: #c0c4cc;
 		color: #fff;
 		opacity: 0.6;
 	}
-	
-	.jump-vertical {
+
+	/* 页码 + 跳转横排：之前竖着叠成两行，把整行高度撑歪 */
+	.jump-group {
 		display: flex;
-		flex-direction: column;
+		flex-direction: row;
 		align-items: center;
-		gap: 4rpx;
-		margin: 0 6rpx;
+		justify-content: flex-end;
+		gap: 10rpx;
 	}
 
 	.jump-input {
 		border: 1px solid #dcdfe6;
 		border-radius: 6rpx;
-		padding: 4rpx 6rpx;
-		font-size: 20rpx;
-		width: 70rpx;
+		padding: 4rpx 10rpx;
+		font-size: 22rpx;
+		width: 110rpx;
 		text-align: center;
 		background-color: #fff;
+		flex: 0 0 auto;
 	}
 
 	.jump-btn {
 		background-color: #67C23A;
 		color: #fff;
 		border-radius: 6rpx;
-		font-size: 18rpx;
-		padding: 4rpx 12rpx;
+		font-size: 22rpx;
+		line-height: 1.6;
+		padding: 6rpx 20rpx;
 		margin: 0;
+		/* 宽屏下这一行比较挤，不加 nowrap 会把「跳转」拆成两行 */
+		white-space: nowrap;
+		flex: 0 0 auto;
+	}
+
+	/* ── 宽屏：分页并进筛选卡，自身不再画卡片底与阴影 ───────────────── */
+	.pagination-inline {
+		grid-column: 1 / -1;
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		gap: 20rpx;
+		background: transparent;
+		box-shadow: none;
+		border-radius: 0;
+		padding: 22rpx 0 0;
+		margin: 22rpx 0 0;
+		border-top: 1rpx solid #eee;
+	}
+
+	.pagination-inline .pagination-controls {
+		flex-direction: row;
+		align-items: center;
+		width: auto;
+		gap: 16rpx;
+	}
+
+	.pagination-inline .page-btn-row {
+		width: auto;
+		gap: 8rpx;
+	}
+
+	.pagination-inline .page-btn {
+		flex: 0 0 auto;
+		padding: 8rpx 18rpx;
+	}
+
+	.pagination-inline .jump-group {
+		justify-content: flex-start;
 	}
 
 	.data-status {
@@ -2753,50 +3076,7 @@
 		.date-pickers {
 			flex-direction: column;
 		}
-	}
-
-	/* ========== 科技风格 ========== */
-	.container.theme-ark {
-		background: linear-gradient(180deg, #0D0D15 0%, #1A1A2E 100%);
-	}
-	.container.theme-ark .control-section,
-	.container.theme-ark .boxes-list,
-	.container.theme-ark .data-status,
-	.container.theme-ark .advanced-filter-modal .modal-content,
-	.container.theme-ark .character-card {
-		background: linear-gradient(135deg, #16162A 0%, #1E1E3A 100%);
-		border: 1rpx solid #2A2A4A;
-	}
-	.container.theme-ark .section-title,
-	.container.theme-ark .picker-text,
-	.container.theme-ark .box-number,
-	.container.theme-ark .character-name { color: #e0e0e0; }
-	.container.theme-ark .filter-picker { background-color: #16162A; border-color: #2A2A4A; }
-	.container.theme-ark .sort-btn { background: #16162A; color: #e0e0e0; border-color: #2A2A4A; }
-	.container.theme-ark .sort-btn.active { background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%); color: #fff; border-color: transparent; }
-	.container.theme-ark .box-card { background: rgba(22,22,42,0.6); border-color: #2A2A4A; }
-	.container.theme-ark .box-card:active { border-color: #FF6B35; }
-	.container.theme-ark .market-price-hint { background: rgba(255,107,53,0.08); }
-	.container.theme-ark .hint-text { color: #FF6B35; }
-	.container.theme-ark .pagination { background: rgba(22,22,42,0.8); }
-	.container.theme-ark .page-btn { background: #16162A; color: #e0e0e0; border-color: #2A2A4A; }
-	.container.theme-ark .page-btn:active { background: #FF6B35; color: #fff; }
-	.container.theme-ark .favorite-btn { background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%); color: #fff; border: none; }
-	.container.theme-ark .favorite-btn.favorited { background: #555; color: #FF6B35; }
-	.container.theme-ark .close-btn { background: rgba(255,107,53,0.1); color: #FF6B35; }
-	.container.theme-ark .modal-title { color: #FF6B35; }
-	.container.theme-ark .advanced-filter-section { background: linear-gradient(135deg, #16162A 0%, #1E1E3A 100%); border-color: #2A2A4A; }
-	.container.theme-ark .advanced-filter-title { color: #FF6B35; }
-	.container.theme-ark .advanced-filter-btn { background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%); color: #fff; border: none; }
-	.container.theme-ark .section-subtitle { color: #888; }
-	.container.theme-ark .search-icon { filter: brightness(0) invert(1); opacity: 0.7; }
-	.container.theme-ark .advanced-filter-header { border-bottom-color: #2A2A4A; }
-	.container.theme-ark .character-tags { color: #888; }
-	.container.theme-ark .empty-state { background: linear-gradient(135deg, #16162A 0%, #1E1E3A 100%); border-color: #2A2A4A; }
-	.container.theme-ark .empty-icon { filter: brightness(0) invert(1); opacity: 0.4; }
-	.container.theme-ark .empty-text { color: #888; }
-
-	/* ========== 界园风格 ========== */
+	}/* ========== 界园风格 ========== */
 	.container.theme-jieyuan {
 		background-color: #FAF3E0;
 	}
@@ -3111,4 +3391,408 @@
 	color: #fff;
 }
 
+
+	/* ===== 干员属性筛选（折叠面板） ===== */
+	.facet-toggle {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 20rpx 24rpx;
+		border-radius: 12rpx;
+		background: #f7f8fa;
+	}
+
+	.facet-toggle-right {
+		display: flex;
+		align-items: center;
+	}
+
+	.facet-count {
+		margin-right: 10rpx;
+		padding: 2rpx 12rpx;
+		border-radius: 999rpx;
+		font-size: 20rpx;
+		color: #007aff;
+		background: rgba(0, 122, 255, 0.1);
+	}
+
+	.facet-arrow {
+		font-size: 32rpx;
+		color: #bbb;
+		transition: transform 0.2s;
+	}
+
+	.facet-arrow.open {
+		transform: rotate(90deg);
+	}
+
+	.facet-panel {
+		margin-top: 16rpx;
+		padding: 0 4rpx;
+	}
+
+	.facet-group {
+		padding: 12rpx 0;
+		border-bottom: 1rpx dashed #eee;
+	}
+
+	.facet-group:last-child {
+		border-bottom: none;
+	}
+
+	.facet-group-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 10rpx;
+	}
+
+	.facet-group-title {
+		font-size: 24rpx;
+		font-weight: 600;
+		color: #444;
+	}
+
+	.facet-ops {
+		display: flex;
+		align-items: center;
+	}
+
+	.facet-op {
+		margin-left: 24rpx;
+		padding: 2rpx 0;
+		font-size: 22rpx;
+		color: #999;
+	}
+
+	.facet-summary {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin: 0 0 16rpx;
+		padding: 14rpx 18rpx;
+		border-radius: 10rpx;
+		background: rgba(0, 122, 255, 0.06);
+	}
+
+	.facet-summary-text {
+		font-size: 22rpx;
+		color: #007aff;
+	}
+
+	.facet-summary-clear {
+		margin-left: 16rpx;
+		font-size: 22rpx;
+		color: #007aff;
+		text-decoration: underline;
+	}
+
+	.facet-chips {
+		display: flex;
+		flex-wrap: wrap;
+	}
+
+	.facet-chip {
+		margin: 0 12rpx 12rpx 0;
+		padding: 10rpx 20rpx;
+		border-radius: 8rpx;
+		font-size: 23rpx;
+		line-height: 1.3;
+		color: #555;
+		background: #f2f3f5;
+		border: 1rpx solid transparent;
+	}
+
+	.facet-chip.active {
+		color: #007aff;
+		background: rgba(0, 122, 255, 0.08);
+		border-color: #007aff;
+	}
+
+	.facet-result-row {
+		padding: 4rpx 0 14rpx;
+}
+	.facet-result {
+		font-size: 22rpx;
+		color: #007aff;
+}
+	.facet-tip {
+		display: block;
+		padding: 12rpx 0 4rpx;
+		font-size: 21rpx;
+		line-height: 1.6;
+		color: #999;
+	}
+
+	/* 高级筛选弹窗：关闭按钮固定贴右 */
+	.advanced-filter-modal .close-btn {
+		margin-left: auto !important;
+		margin-right: 0 !important;
+		flex-shrink: 0;
+	}
+
+	/* ===== 高级筛选弹窗：滚动修复 =====
+	 * 问题：scroll-view 在 App 端没有确定高度就滚不动 —— 内容一多会直接顶开卡片，
+	 * 底部被 overflow:hidden 裁掉，手指也滑不动。
+	 * 处理：默认按内容撑开（flex:0 0 auto）先量出真实高度，超过卡片能给的余量时，
+	 * 由 layoutFilterBody() 写入固定像素高（行内 style），scroll-view 内部才滚得动。
+	 */
+	.advanced-filter-modal .modal-header,
+	.advanced-filter-modal .modal-footer {
+		flex-shrink: 0;
+	}
+
+	.advanced-filter-modal .modal-body {
+		/* 高度由 layoutFilterBody() 实测后写入行内样式，
+		   这里只保证在未写入前按内容撑开（不要用 flex:1，否则量不到真实内容高度） */
+		flex: 0 0 auto;
+		min-height: 0;
+		/* 行内 height 是含内边距的总高，必须 border-box */
+		box-sizing: border-box;
+		/* 内边距交给内层，滚动区高度计算才干净 */
+		padding: 0 !important;
+	}
+
+	.advanced-filter-modal .filter-scroll-inner {
+		padding: 30rpx 30rpx 48rpx;
+	}
+
+	/* 底部按钮区永远露出，不参与压缩 */
+	.advanced-filter-modal .modal-footer {
+		flex-shrink: 0;
+	}
+
+	.advanced-filter-modal .modal-footer {
+		flex-wrap: wrap;
+	}
+
+	.footer-facet-hint {
+		flex: 0 0 100%;
+		font-size: 22rpx;
+		color: #007aff;
+		padding-bottom: 4rpx;
+	}
+
+	/* ── Windows 桌面宽屏：筛选/排序/高级筛选 排成一行 ───────────────── */
+	@media (min-width: 720px) {
+		html.is-win-shell .control-section {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+			column-gap: 24rpx;
+			row-gap: 0;
+			align-items: end;
+		}
+
+		html.is-win-shell .section-title {
+			margin-bottom: 10rpx;
+		}
+
+		html.is-win-shell .advanced-filter-btn {
+			width: auto;
+			justify-self: end;
+			padding: 15rpx 44rpx;
+		}
+	}
+
+
+	/* 复刻时间：多条记录必须竖排（text 默认 inline，会连成一行） */
+	.replicate-records {
+		display: flex;
+		flex-direction: column;
+		gap: 2rpx;
+	}
+
+	/* ── 宽屏：两列「卡片」，一屏 10 盒也不至于散成一片 ───────────────── */
+	@media (min-width: 720px) {
+		html.is-win-shell .boxes-list {
+			display: grid;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 22rpx;
+			align-items: start;
+			padding: 4rpx 2rpx 8rpx;
+		}
+
+		html.is-win-shell .box-item {
+			min-width: 0;
+			padding: 20rpx 22rpx 18rpx;
+			background: #ffffff;
+			border: 1rpx solid #e9edf3;
+			border-radius: 16rpx;
+			border-bottom: 1rpx solid #e9edf3;
+			box-shadow: 0 2rpx 10rpx rgba(28, 34, 43, 0.04);
+		}
+
+		/* 基础样式里有一条右列左分隔线，卡片化之后不再需要 */
+		html.is-win-shell .box-item:nth-child(2n) {
+			border-left: 1rpx solid #e9edf3;
+		}
+
+		/* 卡片下面是画布，不要再垫一层白底 */
+		html.is-win-shell .boxes-list {
+			background-color: transparent;
+		}
+
+		/* uni 的 <image mode="widthFix"> 会用 background-size:100% 100% 把长图压扁，
+		   这里强制等比裁切，只取中间一段做头图 */
+		html.is-win-shell .box-image-wrapper :deep(div) {
+			background-size: cover !important;
+			background-position: center !important;
+		}
+
+		html.is-win-shell .box-card-header {
+			margin-bottom: 12rpx;
+			padding-bottom: 10rpx;
+		}
+
+		html.is-win-shell .box-card-title {
+			font-size: 32rpx;
+		}
+
+		/* 图片：压成「头图」高度，点开才放大，避免一屏只剩一张图 */
+		html.is-win-shell .box-image-section {
+			margin: 0 0 12rpx;
+			border-radius: 12rpx;
+			overflow: hidden;
+		}
+
+		html.is-win-shell .box-image-wrapper {
+			margin: 0;
+			max-height: 180rpx;
+			border-radius: 12rpx;
+		}
+
+		html.is-win-shell .box-image-wrapper.expanded {
+			max-height: 520rpx;
+		}
+
+		html.is-win-shell .box-official-image {
+			max-height: 180rpx;
+			object-fit: cover;
+		}
+
+		html.is-win-shell .box-image-wrapper.expanded .box-official-image {
+			max-height: 520rpx;
+			object-fit: contain;
+		}
+
+		html.is-win-shell .box-info-grid {
+			margin: 0 0 14rpx;
+			padding: 14rpx 16rpx;
+			gap: 10rpx 24rpx;
+		}
+
+		/* 窄了一半的卡片里，2 列头像格浪费横向空间 → 3 列更紧凑 */
+		html.is-win-shell .characters-grid-compact {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+			gap: 10rpx;
+			margin-bottom: 12rpx;
+		}
+
+		html.is-win-shell .character-item-compact {
+			padding: 10rpx;
+		}
+
+		/* 反馈是次要操作，宽屏下不要拉成一根绿色大横条 */
+		html.is-win-shell .feedback-btn {
+			display: block;
+			width: 150rpx;
+			margin: 4rpx 0 0 auto;
+			padding: 8rpx 0;
+			font-size: 22rpx;
+			line-height: 1.6;
+			border-radius: 8rpx;
+		}
+
+		/* ── 深色主题：列表页原本只有浅色一套色，这里补上深色底 ─────────── */
+		html.is-win-shell .theme-ark .control-section,
+		html.is-win-shell .theme-liquidDark .control-section,
+		html.is-win-shell .theme-ark .pagination-section,
+		html.is-win-shell .theme-liquidDark .pagination-section,
+		html.is-win-shell .theme-ark .market-price-status-section,
+		html.is-win-shell .theme-liquidDark .market-price-status-section,
+		html.is-win-shell .theme-ark .empty-state,
+		html.is-win-shell .theme-liquidDark .empty-state,
+		html.is-win-shell .theme-ark .box-item,
+		html.is-win-shell .theme-liquidDark .box-item {
+			background: #1c2026;
+			border-color: rgba(255, 255, 255, 0.08);
+		}
+
+		html.is-win-shell .theme-ark .box-info-grid,
+		html.is-win-shell .theme-liquidDark .box-info-grid,
+		html.is-win-shell .theme-ark .character-item-compact,
+		html.is-win-shell .theme-liquidDark .character-item-compact,
+		html.is-win-shell .theme-ark .jump-input,
+		html.is-win-shell .theme-liquidDark .jump-input {
+			background: #242931;
+		}
+
+		html.is-win-shell .theme-ark .box-card-header,
+		html.is-win-shell .theme-liquidDark .box-card-header {
+			border-bottom-color: rgba(255, 255, 255, 0.08);
+		}
+
+		html.is-win-shell .theme-ark .box-card-title,
+		html.is-win-shell .theme-liquidDark .box-card-title {
+			color: #7fb6f5;
+		}
+
+		html.is-win-shell .theme-ark .info-value,
+		html.is-win-shell .theme-liquidDark .info-value,
+		html.is-win-shell .theme-ark .character-name-compact,
+		html.is-win-shell .theme-liquidDark .character-name-compact {
+			color: #e6e8eb;
+		}
+
+		/* 图片底色 / 展开渐变 / 收藏角标在深色下都要压暗，否则会发白 */
+		html.is-win-shell .theme-ark .box-image-section,
+		html.is-win-shell .theme-liquidDark .box-image-section {
+			background: #242931;
+		}
+
+		html.is-win-shell .theme-ark .image-expand-btn,
+		html.is-win-shell .theme-liquidDark .image-expand-btn {
+			background: linear-gradient(to bottom,
+				rgba(28, 32, 38, 0) 0%,
+				rgba(28, 32, 38, 0.9) 30%,
+				#1c2026 100%);
+		}
+
+		html.is-win-shell .theme-ark .favorite-indicator,
+		html.is-win-shell .theme-liquidDark .favorite-indicator {
+			background-color: #2b313a;
+			border-color: #1c2026;
+			color: #c7cdd5;
+		}
+
+		/* 图片底色 / 展开渐变 / 收藏角标在深色下都要压暗，否则会发白 */
+		html.is-win-shell .theme-ark .box-image-section,
+		html.is-win-shell .theme-liquidDark .box-image-section {
+			background: #242931;
+		}
+
+		html.is-win-shell .theme-ark .image-expand-btn,
+		html.is-win-shell .theme-liquidDark .image-expand-btn {
+			background: linear-gradient(to bottom,
+				rgba(28, 32, 38, 0) 0%,
+				rgba(28, 32, 38, 0.9) 30%,
+				#1c2026 100%);
+		}
+
+		html.is-win-shell .theme-ark .favorite-indicator,
+		html.is-win-shell .theme-liquidDark .favorite-indicator {
+			background-color: #2b313a;
+			border-color: #1c2026;
+			color: #c7cdd5;
+		}
+
+		html.is-win-shell .theme-ark .info-label,
+		html.is-win-shell .theme-liquidDark .info-label,
+		html.is-win-shell .theme-liquidDark .section-title,
+		html.is-win-shell .theme-ark .section-title,
+		html.is-win-shell .theme-ark .picker-text,
+		html.is-win-shell .theme-liquidDark .picker-text {
+			color: #9aa0a6;
+		}
+	}
 </style>

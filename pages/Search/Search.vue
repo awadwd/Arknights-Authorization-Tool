@@ -2,292 +2,327 @@
 
 			<view :class="['container', 'theme-' + themeMode]">
 		<!-- 搜索区域 -->
+		<!-- 双栏查询：左干员 / 右盒号，各查各的，互不覆盖 -->
 		<view class="search-section" :class="{ 'collapsed': toolbarCollapsed }">
-			<view class="search-row">
-				<view class="search-input-container" :class="{ 'focus': showSearchSuggestions }">
-					<image class="search-icon" src="/static/search-icon.png"></image>
-					<input 
-						class="search-input" 
-						v-model="searchText" 
-						:placeholder="searchPlaceholder"
-						@confirm="handleSearch"
-						@focus="onSearchFocus"
-						@blur="onSearchBlur"
-						@input="onSearchInput"
-					/>
+			<view class="search-toolbar">
+				<view class="pane-tabs">
+					<text class="pane-tab" :class="{ active: mobilePane === 'character' }" @click="switchPane('character')">按干员名查询盒号</text>
+					<text class="pane-tab" :class="{ active: mobilePane === 'box' }" @click="switchPane('box')">按盒号查询干员</text>
 				</view>
-				
-				
-				<view class="scan-btn-icon" @click="startScan">
-				<image class="scan-btn-icon-img" src="/static/scan-barcode.png" mode="aspectFit"></image>
-				</view>
+				<text class="toolbar-hint">左右两栏可同时查询，结果各自保留</text>
 				<button class="advanced-filter-btn" @click="openAdvancedFilter">筛选</button>
-				
 			</view>
-			
-			<!-- 搜索建议下拉列表 -->
-			<view class="suggestions-dropdown" v-if="showSearchSuggestions && searchSuggestions.length > 0">
-				<scroll-view class="suggestions-list" scroll-y>
-					<view 
-						class="suggestion-item" 
-						v-for="(suggestion, index) in displayedSuggestions" 
-						:key="index"
-						@click="selectSuggestion(suggestion)"
-					>
-						<view class="suggestion-content">
-							<text class="suggestion-name">{{ suggestion.name }}</text>
-							<view class="suggestion-tags">
-								<text v-if="searchType === 'character' && suggestion.englishname" class="suggestion-tag english">英文名</text>
-								<text v-if="searchType === 'character' && suggestion.japanesename" class="suggestion-tag japanese">日文名</text>
-								<text v-if="searchType === 'character' && suggestion.searchword && suggestion.searchword.length > 0" class="suggestion-tag nickname">外号</text>
-								<text v-if="searchType === 'box'" class="suggestion-tag" :class="getBoxTypeClass(suggestion.boxType)">{{ getBoxTypeText(suggestion.boxType) }}</text>
-							</view>
+
+			<view class="search-grid">
+				<!-- 左栏：干员 → 盒号 -->
+				<view class="search-pane" v-show="wideLayout || mobilePane === 'character'">
+					<view class="pane-head">
+						<text class="pane-title">干员查询</text>
+						<text class="pane-sub">按干员名查所在盒号</text>
+					</view>
+
+					<view class="pane-search">
+						<view class="search-input-container" :class="{ 'focus': activeField === 'character' && showSearchSuggestions }">
+							<image class="search-icon" src="/static/search-icon.png"></image>
+							<input
+								class="search-input"
+								:value="charQuery"
+								placeholder="输入干员名，如：阿米娅"
+								confirm-type="search"
+								@confirm="searchCharacter"
+								@focus="onFieldFocus('character')"
+								@input="onFieldInput('character', $event)"
+							/>
 						</view>
-						<text class="suggestion-type">{{ getSuggestionTypeText(suggestion.type) }}</text>
+						<button class="search-btn field-btn" @click="searchCharacter">查询</button>
+						<view class="suggestions-dropdown" v-if="showSearchSuggestions && activeField === 'character' && searchSuggestions.length > 0">
+							<scroll-view class="suggestions-list" scroll-y>
+								<view
+									class="suggestion-item"
+									v-for="(suggestion, index) in displayedSuggestions"
+									:key="index"
+									@click="selectSuggestion(suggestion)"
+								>
+									<view class="suggestion-content">
+										<text class="suggestion-name">{{ suggestion.name }}</text>
+										<view class="suggestion-tags">
+											<text v-if="suggestion.englishname" class="suggestion-tag english">英文名</text>
+											<text v-if="suggestion.japanesename" class="suggestion-tag japanese">日文名</text>
+											<text v-if="suggestion.searchword && suggestion.searchword.length > 0" class="suggestion-tag nickname">外号</text>
+										</view>
+									</view>
+									<text class="suggestion-type">{{ getSuggestionTypeText(suggestion.type) }}</text>
+								</view>
+								<view class="load-more" v-if="hasMoreSuggestions" @click="loadMoreSuggestions">
+									<text class="load-more-text">加载更多...</text>
+								</view>
+							</scroll-view>
+						</view>
+						<view class="suggestions-mask" v-if="showSearchSuggestions && activeField === 'character'" @click="hideSuggestions"></view>
+					</view>
+
+					<view class="pane-tips" v-if="hasEnabledSearchModes">
+						<text class="search-tip-text">已启用:
+							<text v-if="enableEnglishSearch" class="search-tag">英文搜索</text>
+							<text v-if="enableJapaneseSearch" class="search-tag">日文搜索</text>
+							<text v-if="enableNicknameSearch" class="search-tag">外号搜索</text>
+						</text>
+					</view>
+
+					<view class="pane-body">
+						<view
+							class="result-item box-card"
+							v-for="(result, index) in charResults"
+							:key="'c' + index"
+						>
+
+					<!-- 角色信息头部 -->
+					<view class="character-card-header">
+						<view class="character-avatar-container">
+							<image 
+								class="character-avatar-large" 
+								:src="imgSrc(pAvatar(result))" 
+								mode="aspectFit" 
+								@error="onAvatarError(index)"
+							></image>
+							<image 
+								v-if="result.hotcharacter" 
+								class="hot-character-icon" 
+								src="/static/hot.png" 
+								mode="aspectFit"
+							></image>
+						</view>
+						<view class="character-info-main">
+							<text class="character-name-main">{{ result.name || result.characterName }}</text>
+							<text v-if="result.nolyELITE1" class="elite-tag">仅精一</text>
+							<text class="match-type" v-if="result.matchType && result.matchType !== 'chinese'">
+								通过{{ getMatchTypeText(result.matchType) }}匹配
+							</text>
+						</view>
 					</view>
 					
-					<view 
-						class="load-more" 
-						v-if="hasMoreSuggestions"
-						@click="loadMoreSuggestions"
-					>
-						<text class="load-more-text">加载更多...</text>
+					<!-- 所在盒号标签列表 -->
+					<view class="box-tags-section">
+						<text class="section-label">出现在以下盒号中（共 {{ result.boxIds.length }} 盒）：</text>
+						<view class="box-tags-list">
+							<view 
+								class="box-tag"
+								v-for="(boxId, boxIndex) in result.boxIds" 
+								:key="boxIndex"
+								@click="showBoxDetail(boxId)"
+							>
+								<text class="box-tag-text">{{ boxId }}</text>
+								<text class="box-tag-arrow">▶</text>
+							</view>
+						</view>
 					</view>
-				</scroll-view>
-			</view>
-			
-			<!-- 点击空白区域收起的遮罩层 -->
-			<view 
-				class="suggestions-mask" 
-				v-if="showSearchSuggestions" 
-				@click="hideSuggestions"
-			></view>
-			
-			<view class="search-options" v-if="!showSearchSuggestions">
-				<button 
-					class="option-btn" 
-					:class="{ active: searchType === 'character' }"
-					@click="setSearchType('character')"
-				>
-					按干员名查询盒号
-				</button>
-				<button 
-					class="option-btn" 
-					:class="{ active: searchType === 'box' }"
-					@click="setSearchType('box')"
-				>
-					按盒号查询干员
-				</button>
-			</view>
-			
-			<!-- 搜索提示 -->
-			<view class="search-tips" v-if="hasEnabledSearchModes && searchType === 'character' && !showSearchSuggestions">
-				<text class="search-tip-text">已启用: 
-					<text v-if="enableEnglishSearch" class="search-tag">英文搜索</text>
-					<text v-if="enableJapaneseSearch" class="search-tag">日文搜索</text>
-					<text v-if="enableNicknameSearch" class="search-tag">外号搜索</text>
-				</text>
-			</view>
-			
-			
-			<button class="search-btn" @click="handleSearch" v-if="!showSearchSuggestions">查询</button>
-		</view>
-		
-		<!-- 结果展示区域 -->
-		<view class="result-section" v-if="searchResults.length > 0">
-			<view class="result-header">
-				<text class="result-title">查询结果</text>
-				<text class="result-count">共找到 {{ searchResults.length }} 个结果</text>
-				<!-- 新增：显示高级筛选已应用提示 -->
-				<text v-if="hasAdvancedFilter" class="advanced-filter-tip">高级筛选已应用</text>
-			</view>
-			
-			<scroll-view class="result-list" scroll-y @scroll="onResultScroll">
-				<view 
-					class="result-item box-card" 
-					v-for="(result, index) in searchResults" 
-					:key="index"
-				>
-					<!-- 按干员名查询盒号的结果展示 - 卡片样式 -->
-					<view v-if="searchType === 'character'">
-						<!-- 角色信息头部 -->
-						<view class="character-card-header">
-							<view class="character-avatar-container">
+					
+					<!-- 底部操作按钮 -->
+					<view class="character-card-actions">
+						<button 
+							class="action-btn favorite-btn"
+							:class="isFavoriteCharacter(result.characterName) ? 'favorited' : ''"
+							@click="toggleFavoriteCharacter(result.characterName)"
+						>
+							{{ isFavoriteCharacter(result.characterName) ? '已收藏' : '收藏' }}
+						</button>
+					</view>
+						</view>
+
+						<view class="pane-state" v-if="charSearched && charResults.length === 0">
+							<image class="empty-icon" src="/static/empty-icon.png"></image>
+							<text class="empty-text">未找到相关干员</text>
+							<text class="empty-tip" v-if="hasEnabledSearchModes">尝试调整搜索词或检查设置中的搜索选项</text>
+						</view>
+						<view class="pane-state idle" v-else-if="!charSearched">
+							<text class="pane-state-text">输入干员名，查它出现在哪些盒号里</text>
+						</view>
+					</view>
+				</view>
+
+				<!-- 右栏：盒号 → 干员 -->
+				<view class="search-pane" v-show="wideLayout || mobilePane === 'box'">
+					<view class="pane-head">
+						<text class="pane-title">盒号查询</text>
+						<text class="pane-sub">按盒号查盒内干员</text>
+					</view>
+
+					<view class="pane-search">
+						<view class="search-input-container" :class="{ 'focus': activeField === 'box' && showSearchSuggestions }">
+							<text class="search-prefix">No.</text>
+							<input
+								class="search-input"
+								type="text"
+								:value="boxQuery"
+								placeholder="输入盒号，如：1、1.0、音律联觉"
+								confirm-type="search"
+								@confirm="searchBox"
+								@focus="onFieldFocus('box')"
+								@input="onFieldInput('box', $event)"
+							/>
+						</view>
+						<view class="scan-btn-icon" @click="startScan">
+							<image class="scan-btn-icon-img" src="/static/scan-barcode.png" mode="aspectFit"></image>
+						</view>
+						<button class="search-btn field-btn" @click="searchBox">查询</button>
+						<view class="suggestions-dropdown" v-if="showSearchSuggestions && activeField === 'box' && searchSuggestions.length > 0">
+							<scroll-view class="suggestions-list" scroll-y>
+								<view
+									class="suggestion-item"
+									v-for="(suggestion, index) in displayedSuggestions"
+									:key="index"
+									@click="selectSuggestion(suggestion)"
+								>
+									<view class="suggestion-content">
+										<text class="suggestion-name">{{ suggestion.name }}</text>
+										<view class="suggestion-tags">
+											<text class="suggestion-tag" :class="getBoxTypeClass(suggestion.boxType)">{{ getBoxTypeText(suggestion.boxType) }}</text>
+										</view>
+									</view>
+									<text class="suggestion-type">{{ getSuggestionTypeText(suggestion.type) }}</text>
+								</view>
+								<view class="load-more" v-if="hasMoreSuggestions" @click="loadMoreSuggestions">
+									<text class="load-more-text">加载更多...</text>
+								</view>
+							</scroll-view>
+						</view>
+						<view class="suggestions-mask" v-if="showSearchSuggestions && activeField === 'box'" @click="hideSuggestions"></view>
+					</view>
+
+					<view class="pane-body">
+						<view
+							class="result-item box-card"
+							v-for="(result, index) in boxResults"
+							:key="'b' + index"
+						>
+
+					<!-- 卡片头部：盒号标题 -->
+					<view class="box-card-header">
+						<text class="box-card-title">{{ result.boxId }}</text>
+						<text class="box-card-type" :class="getBoxTypeClass(result.boxType)">
+							{{ getBoxTypeText(result.boxType) }}
+						</text>
+					</view>
+					
+					<!-- 官方图片 -->
+					<view class="box-image-section" v-if="result.Box_ImageUrl">
+						<view 
+							class="box-image-wrapper"
+							:class="{ 'expanded': result.isImageExpanded }"
+							@click="previewBoxImage(result.Box_ImageUrl)"
+						>
+							<image 
+								class="box-official-image" 
+								:src="imgSrc(result.Box_ImageUrl)" 
+								mode="widthFix"
+								@error="onBoxImageError(result.boxId)"
+								@load="onBoxImageLoad(result, $event)"
+							></image>
+							<view class="image-preview-hint">
+								<text class="preview-hint-text">🔍 点击查看大图</text>
+							</view>
+						</view>
+						<!-- 展开/收起按钮 -->
+						<view 
+							class="image-expand-btn"
+							v-if="result.showExpandBtn"
+							@click.stop="toggleImageExpand(result)"
+						>
+							<text class="expand-icon">{{ result.isImageExpanded ? '▲' : '▼' }}</text>
+							<text class="expand-text">{{ result.isImageExpanded ? '收起' : '展开' }}</text>
+						</view>
+					</view>
+					
+					<!-- 基本信息网格 -->
+					<view class="box-info-grid">
+						<view class="info-item">
+							<text class="info-label">首发日期</text>
+							<text class="info-value">{{ formatDate(result.release_date) }}</text>
+						</view>
+						<view class="info-item">
+							<text class="info-label">价格</text>
+							<text class="info-value">{{ result.retail_price || '未知' }}</text>
+						</view>
+						<view class="info-item">
+							<text class="info-label">类型</text>
+							<text class="info-value">{{ result.type === true || result.type === 'true' ? '盲抽' : '单领' }}</text>
+						</view>
+						<view class="info-item replicate-section">
+							<text class="info-label">复刻记录</text>
+							<view class="replicate-list" v-if="getReplicateRecords(result).length">
+								<text class="replicate-line" v-for="(rec, rIdx) in getReplicateRecords(result)" :key="rIdx">{{ rec }}</text>
+							</view>
+							<text class="replicate-line-empty" v-else>暂无记录</text>
+						</view>
+					</view>
+					
+					<!-- 干员网格（更小尺寸） -->
+					<view class="characters-grid-compact">
+						<view 
+							class="character-item-compact" 
+							v-for="(character, charIndex) in result.characters" 
+							:key="charIndex"
+							@click="onCharacterInBoxClick(character.name, result.boxId)"
+						>
+							<view class="character-avatar-wrap">
 								<image 
-									class="character-avatar-large" 
-									:src="result.avatar" 
-									mode="aspectFit" 
-									@error="onAvatarError(index)"
+									class="character-avatar-compact" 
+									:src="imgSrc(pAvatar(character))" 
+									mode="aspectFit"
+									@error="onAvatarListError(index, charIndex)"
 								></image>
 								<image 
-									v-if="result.hotcharacter" 
+									v-if="character.hotcharacter" 
 									class="hot-character-icon" 
 									src="/static/hot.png" 
 									mode="aspectFit"
 								></image>
-							</view>
-							<view class="character-info-main">
-								<text class="character-name-main">{{ result.name || result.characterName }}</text>
-								<text v-if="result.nolyELITE1" class="elite-tag">仅精一</text>
-								<text class="match-type" v-if="result.matchType && result.matchType !== 'chinese'">
-									通过{{ getMatchTypeText(result.matchType) }}匹配
-								</text>
-							</view>
-						</view>
-						
-						<!-- 所在盒号标签列表 -->
-						<view class="box-tags-section">
-							<text class="section-label">出现在以下盒号中（共 {{ result.boxIds.length }} 盒）：</text>
-							<view class="box-tags-list">
+								<!-- 收藏状态指示器 -->
 								<view 
-									class="box-tag"
-									v-for="(boxId, boxIndex) in result.boxIds" 
-									:key="boxIndex"
-									@click="showBoxDetail(boxId)"
+									class="favorite-indicator" @click.stop="toggleFavoriteCharacterDirectly(character.name)" 
+									:class="isFavoriteCharacter(character.name) ? 'favorited' : ''"
 								>
-									<text class="box-tag-text">{{ boxId }}</text>
-									<text class="box-tag-arrow">▶</text>
+									{{ isFavoriteCharacter(character.name) ? '★' : '☆' }}
 								</view>
 							</view>
-						</view>
-						
-						<!-- 底部操作按钮 -->
-						<view class="character-card-actions">
-							<button 
-								class="action-btn favorite-btn"
-								:class="isFavoriteCharacter(result.characterName) ? 'favorited' : ''"
-								@click="toggleFavoriteCharacter(result.characterName)"
-							>
-								{{ isFavoriteCharacter(result.characterName) ? '已收藏' : '收藏' }}
-							</button>
+							<view class="character-info-compact">
+								<text class="character-name-compact">{{ character.name }}</text>
+								<text v-if="character.nolyELITE1" class="elite-tag-compact">仅精一</text>
+							</view>
 						</view>
 					</view>
 					
-					<!-- 按盒号查询干员的结果展示 - 卡片样式 -->
-					<view v-if="searchType === 'box'">
-						<!-- 卡片头部：盒号标题 -->
-						<view class="box-card-header">
-							<text class="box-card-title">{{ result.boxId }}</text>
-							<text class="box-card-type" :class="getBoxTypeClass(result.boxType)">
-								{{ getBoxTypeText(result.boxType) }}
-							</text>
+					<!-- 底部按钮 -->
+					<view class="box-card-actions">
+						<button 
+							class="action-btn favorite-btn"
+							@click="openBoxCharactersModal(result.boxId, result.characters)"
+						>
+							收藏
+						</button>
+						<button 
+							class="action-btn feedback-btn"
+							@click="goToBoxFeedback(result.boxId)"
+						>
+							反馈纠错
+						</button>
+					</view>
 						</view>
-						
-						<!-- 官方图片 -->
-						<view class="box-image-section" v-if="result.Box_ImageUrl">
-							<view 
-								class="box-image-wrapper"
-								:class="{ 'expanded': result.isImageExpanded }"
-								@click="previewBoxImage(result.Box_ImageUrl)"
-							>
-								<image 
-									class="box-official-image" 
-									:src="result.Box_ImageUrl" 
-									mode="widthFix"
-									@error="onBoxImageError(result.boxId)"
-									@load="onBoxImageLoad(result, $event)"
-								></image>
-								<view class="image-preview-hint">
-									<text class="preview-hint-text">🔍 点击查看大图</text>
-								</view>
-							</view>
-							<!-- 展开/收起按钮 -->
-							<view 
-								class="image-expand-btn"
-								v-if="result.showExpandBtn"
-								@click.stop="toggleImageExpand(result)"
-							>
-								<text class="expand-icon">{{ result.isImageExpanded ? '▲' : '▼' }}</text>
-								<text class="expand-text">{{ result.isImageExpanded ? '收起' : '展开' }}</text>
-							</view>
+
+						<view class="pane-state" v-if="boxSearched && boxResults.length === 0">
+							<image class="empty-icon" src="/static/empty-icon.png"></image>
+							<text class="empty-text">未找到该盒号</text>
+							<text class="empty-tip">确认盒号是否正确，或直接扫码</text>
 						</view>
-						
-						<!-- 基本信息网格 -->
-						<view class="box-info-grid">
-							<view class="info-item">
-								<text class="info-label">首发日期</text>
-								<text class="info-value">{{ formatDate(result.release_date) }}</text>
-							</view>
-							<view class="info-item">
-								<text class="info-label">价格</text>
-								<text class="info-value">{{ result.retail_price || '未知' }}</text>
-							</view>
-							<view class="info-item">
-								<text class="info-label">类型</text>
-								<text class="info-value">{{ result.type === true || result.type === 'true' ? '盲抽' : '单领' }}</text>
-							</view>
-							<view class="info-item replicate-section">
-								<text class="info-label">复刻记录</text>
-								<view class="replicate-list" v-if="getReplicateRecords(result).length">
-									<text class="replicate-line" v-for="(rec, rIdx) in getReplicateRecords(result)" :key="rIdx">{{ rec }}</text>
-								</view>
-								<text class="replicate-line-empty" v-else>暂无记录</text>
-							</view>
-						</view>
-						
-						<!-- 干员网格（更小尺寸） -->
-						<view class="characters-grid-compact">
-							<view 
-								class="character-item-compact" 
-								v-for="(character, charIndex) in result.characters" 
-								:key="charIndex"
-								@click="onCharacterInBoxClick(character.name, result.boxId)"
-							>
-								<view class="character-avatar-wrap">
-									<image 
-										class="character-avatar-compact" 
-										:src="character.avatar" 
-										mode="aspectFit"
-										@error="onAvatarListError(index, charIndex)"
-									></image>
-									<image 
-										v-if="character.hotcharacter" 
-										class="hot-character-icon" 
-										src="/static/hot.png" 
-										mode="aspectFit"
-									></image>
-									<!-- 收藏状态指示器 -->
-									<view 
-										class="favorite-indicator" @click.stop="toggleFavoriteCharacterDirectly(character.name)" 
-										:class="isFavoriteCharacter(character.name) ? 'favorited' : ''"
-									>
-										{{ isFavoriteCharacter(character.name) ? '★' : '☆' }}
-									</view>
-								</view>
-								<view class="character-info-compact">
-									<text class="character-name-compact">{{ character.name }}</text>
-									<text v-if="character.nolyELITE1" class="elite-tag-compact">仅精一</text>
-								</view>
-							</view>
-						</view>
-						
-						<!-- 底部按钮 -->
-						<view class="box-card-actions">
-							<button 
-								class="action-btn favorite-btn"
-								@click="openBoxCharactersModal(result.boxId, result.characters)"
-							>
-								收藏
-							</button>
-							<button 
-								class="action-btn feedback-btn"
-								@click="goToBoxFeedback(result.boxId)"
-							>
-								反馈纠错
-							</button>
+						<view class="pane-state idle" v-else-if="!boxSearched">
+							<text class="pane-state-text">输入盒号或扫码，查这一盒里有哪些干员</text>
 						</view>
 					</view>
 				</view>
-			</scroll-view>
+			</view>
+
 		</view>
-		
-		<!-- 空状态 -->
-		<view class="empty-state" v-if="hasSearched && searchResults.length === 0">
-			<image class="empty-icon" src="/static/empty-icon.png"></image>
-			<text class="empty-text">未找到相关结果</text>
-			<text class="empty-tip" v-if="hasEnabledSearchModes">尝试调整搜索词或检查设置中的搜索选项</text>
-		</view>
-		
+
 		<!-- 数据状态显示 -->
 		<view class="data-status" v-if="dataStatusMessage">
 			<view class="data-status-main">
@@ -313,12 +348,13 @@
 		
 		<!-- ============= 新增：高级筛选模态框 ============= -->
 		<view class="advanced-filter-modal" v-if="showAdvancedFilter" @tap="closeAdvancedFilter">
-			<view class="modal-content" @tap.stop>
-				<view class="modal-header">
+			<view class="modal-content" id="afm-card" @tap.stop>
+				<view class="modal-header" id="afm-header">
 					<text class="modal-title">高级筛选</text>
 					<button class="close-btn" @click="closeAdvancedFilter">×</button>
 				</view>
-				<scroll-view class="modal-body" scroll-y>
+				<scroll-view class="modal-body" id="afm-body" scroll-y :style="filterBodyHeight ? { height: filterBodyHeight + 'px' } : ''">
+					<view class="filter-scroll-inner">
 					<!-- 盒类型筛选下拉框 -->
 					<view class="filter-group">
 						<text class="filter-group-title">单盒类型</text>
@@ -389,8 +425,45 @@
 							</label>
 						</view>
 					</view>
+					<!-- 干员属性筛选（PRTS 维度，默认折叠） -->
+					<view class="filter-group">
+						<view class="facet-toggle" @click="toggleFacetPanel">
+							<text class="filter-group-title">干员属性</text>
+							<view class="facet-toggle-right">
+								<text class="facet-count" v-if="facetCount()">{{ facetCount() }} 项</text>
+								<text class="facet-arrow" :class="{ open: facetExpanded }">›</text>
+							</view>
+						</view>
+						<view class="facet-panel" v-if="facetExpanded">
+							<view class="facet-summary">
+								<text class="facet-summary-text">{{ facetSummaryText() }}</text>
+								<text class="facet-summary-clear" v-if="facetCount()" @click.stop="clearAllFacets">清空</text>
+							</view>
+							<view class="facet-group" v-for="g in facetGroups" :key="g.key">
+								<view class="facet-group-head">
+									<text class="facet-group-title">{{ g.label }}</text>
+									<view class="facet-ops">
+										<text class="facet-op" @click.stop="selectAllFacet(g.key)">全选</text>
+										<text class="facet-op" v-if="charFacets[g.key].length" @click.stop="clearFacet(g.key)">清除</text>
+									</view>
+								</view>
+								<view class="facet-chips">
+									<text
+										class="facet-chip"
+										v-for="opt in facetOptions(g.key)"
+										:key="g.key + opt"
+										:class="{ active: charFacets[g.key].indexOf(opt) >= 0 }"
+										@click.stop="toggleFacet(g.key, opt)"
+									>{{ facetOptionLabel(g.key, opt) }}</text>
+								</view>
+							</view>
+							<text class="facet-tip">不同分组同时满足，同组多选为任一满足；选一项即生效，只展示符合属性的干员。</text>
+						</view>
+					</view>
+					</view>
 				</scroll-view>
-				<view class="modal-footer">
+				<view class="modal-footer" id="afm-footer">
+					<text class="footer-facet-hint" v-if="facetCount()">{{ facetSummaryText() }}</text>
 					<button class="reset-btn" @click="resetAdvancedFilter">重置</button>
 					<button class="cancel-btn" @click="closeAdvancedFilter">取消</button>
 					<button class="confirm-btn" @click="applyAdvancedFilter">确定</button>
@@ -458,7 +531,7 @@
 								<view class="character-avatar-container">
 									<image 
 										class="character-avatar" 
-										:src="character.avatar" 
+										:src="imgSrc(pAvatar(character))" 
 										mode="aspectFit"
 										@error="onModalAvatarError(index)"
 									></image>
@@ -538,7 +611,7 @@
 						>
 							<image 
 								class="box-official-image" 
-								:src="selectedBox.Box_ImageUrl" 
+								:src="imgSrc(selectedBox.Box_ImageUrl)" 
 								mode="widthFix"
 							></image>
 							<view class="image-preview-hint">
@@ -591,7 +664,7 @@
 								<view class="character-avatar-wrap">
 									<image 
 										class="character-avatar-compact" 
-										:src="character.avatar" 
+										:src="imgSrc(pAvatar(character))" 
 										mode="aspectFit"
 									></image>
 									<image 
@@ -661,6 +734,14 @@
 
 <script>
 	import errorLog from "@/utils/errorLog.js";
+	import avatarMixin from "@/utils/avatarMixin.js";
+import wideLayout from "@/utils/wideLayout.js";
+import { mergeGuessData, pruneStoredGuessData } from "@/utils/guessData.js";
+	import { boxCtx, emptyFacets, FACET_GROUPS, optionsOf, optionLabel, matchCharFacets, hasFacets } from "@/utils/avatarPref.js";
+import { markDailyTask } from "@/utils/dailyTask.js";
+	import { fetchSelfHosted } from "@/utils/knowCloudProxy.js";
+import * as boxDataSync from "@/utils/boxDataSync.js";
+import { openLink, linkActionText } from "@/utils/openLink.js";
 	// 开源版本：知晓云配置已禁用，使用 GitHub 直链
 	const GITHUB_DATA_SOURCES = {
 		searchWordUrl: 'https://raw.githubusercontent.com/awadwd/ArknightsAuthorization_Series-mirror/refs/heads/main/searchWord.json'
@@ -668,8 +749,8 @@
 	
 	// 知晓云配置 - 开源版本clientId为空，商业版请配置知晓云
 	const KNOW_CLOUD_CONFIG = {
-		clientId: 'YOUR_KNOW_CLOUD_CLIENT_ID',
-		baseUrl: 'https://YOUR_KNOW_CLOUD_CLIENT_ID.myminapp.com/hserve/v2.2',
+		clientId: '21680db9b1362913357c',
+		baseUrl: 'https://21680db9b1362913357c.myminapp.com/hserve/v2.2',
 		tableNames: {
 			choearth_notice: 'choearth_notice',
 			more_notice: 'more_notice',
@@ -679,6 +760,9 @@
 	}
 
 	export default {
+
+		mixins: [avatarMixin, wideLayout],
+
 		data() {
 			return {
 				// 主题模式
@@ -688,12 +772,21 @@
 				hasEnoughResults: false,
 				searchText: '',
 				searchType: 'character',
+				// 两个独立搜索框：干员 / 盒号（query 只存输入，searchText 仍供原逻辑使用）
+				charQuery: '',
+				boxQuery: '',
+				activeField: 'character',
+				mobilePane: 'character',   // 手机端 tab：当前显示的栏（Windows 壳忽略）
 
 				// 隐私协议（官方API）
 				showPrivacyModal: false,
 				privacyContractName: '《隐私保护指引》',
 				pendingScanAction: false,
-				searchResults: [],
+				searchResults: [],            // 兼容旧逻辑（不再渲染）
+				charResults: [],              // 左栏：干员查询结果
+				boxResults: [],               // 右栏：盒号查询结果
+				charSearched: false,
+				boxSearched: false,
 				hasSearched: false,
 				characterData: [],
 				dataStatusMessage: '',
@@ -771,6 +864,11 @@
 				// ============= 新增：高级筛选相关数据 =============
 				showAdvancedFilter: false,           // 是否显示高级筛选模态框
 				// 发布时间筛选值
+				charFacets: emptyFacets(),
+				facetApplyTimer: null,
+				facetExpanded: false,
+				filterBodyHeight: 0,          // scroll-view 实测高度（0 = 自适应）
+				facetGroups: FACET_GROUPS,
 				filterYear: '',                       // 选中的年份，如'2024'
 				filterMonth: '',                       // 选中的月份，如'05'
 				filterDay: '',                         // 选中的日期，如'01'
@@ -815,7 +913,7 @@
 			// 是否有高级筛选条件
 			hasAdvancedFilter() {
 				return this.filterYear !== '' || this.filterMonth !== '' || this.filterDay !== '' ||
-				       this.filterReplicate !== '' || this.filterType !== '';
+				       this.filterReplicate !== '' || this.filterType !== '' || hasFacets(this.charFacets);
 			},
 			// 年份选择器显示文本
 			filterYearText() {
@@ -879,6 +977,18 @@
 		        uni.removeStorageSync('searchCharacterName');
 		    }
 		    
+		    // 预填（日历 / 扫码 / 跳转参数）同步到对应输入框
+		    // ★ 还要把窄屏的分类切过去：搜索类型改了但 pane 没切，
+		    //   手机上会停在「按干员名查询盒号」，按盒号查出来的结果根本看不见
+		    if (this.searchType === 'box') {
+		        this.mobilePane = 'box';
+		        this.activeField = 'box';
+		    } else if (this.searchType === 'character') {
+		        this.mobilePane = 'character';
+		        this.activeField = 'character';
+		    }
+		    this.syncQueryField();
+
 		    this.loadLocalData();
 		    this.loadSearchSettings();
 		    this.loadFavorites();
@@ -896,12 +1006,13 @@
 		        }
 		    }
 		    
-		    uni.showShareMenu({
+		    uni.showShareMenu && uni.showShareMenu({
 		        withShareTicket: true,
 		        menus: ['shareAppMessage', 'shareTimeline']
 		    });
 		},
 		onShow() {
+			this.refreshAvatarPref();
 		    // 每次页面显示时重新加载搜索设置和收藏数据
 		    this.loadSearchSettings();
 		    this.loadFavorites();
@@ -936,8 +1047,9 @@
 					path = `/pages/Search/Search?searchText=${encodeURIComponent(this.searchText)}&searchType=box`;
 				}
 				
-				if (this.searchResults.length > 0) {
-					title += ` (${this.searchResults.length}个结果)`;
+				const total = this.charResults.length + this.boxResults.length;
+				if (total > 0) {
+					title += ` (${total}个结果)`;
 				}
 			}
 			
@@ -953,6 +1065,10 @@
 				imageUrl: ''
 			}
 		},
+		onUnload() {
+			if (this.facetApplyTimer) { clearTimeout(this.facetApplyTimer); this.facetApplyTimer = null; }
+		},
+
 		methods: {
 			logError(e, ctx) {
 				try {
@@ -964,7 +1080,7 @@
 			onResultScroll(e) {
 				const scrollTop = e.detail.scrollTop;
 				const delta = scrollTop - this.lastScrollTop;
-				const hasEnough = this.searchResults.length > 3;
+				const hasEnough = this.charResults.length + this.boxResults.length > 3;
 				
 				if (hasEnough) {
 					if (delta > 10 && !this.toolbarCollapsed) {
@@ -982,7 +1098,7 @@
 				loadThemeSetting() {
 					try {
 						const themeMode = uni.getStorageSync('themeMode');
-						if (themeMode && (themeMode === 'simple' || themeMode === 'ark' || themeMode === 'jieyuan')) {
+						if (themeMode && (themeMode === 'simple' || themeMode === 'ak' || themeMode === 'ark' || themeMode === 'jieyuan' || themeMode === 'liquid' || themeMode === 'liquidDark')) {
 							this.themeMode = themeMode;
 						} else {
 							this.themeMode = 'simple';
@@ -1020,6 +1136,13 @@
 
 			// 知晓云 API 请求封装
 			async knowCloudRequest(tableName, options = {}, retryCount = 0) {
+				// 优先走自建 API，失败则回落知晓云
+				try {
+				  const sh = await fetchSelfHosted(tableName, options);
+				  if (sh) return sh;
+				} catch (e) {
+				  // 忽略，继续走知晓云
+				}
 				if (retryCount > 3) {
 					console.error('知晓云请求重试次数过多');
 					throw new Error('知晓云请求重试次数过多');
@@ -1309,6 +1432,52 @@ validateSearchWords(searchWords) {
 			},
 			
 			// 搜索相关方法
+			// 手机端：双栏收成一张卡片，用顶部 tab 切换查看（Windows 壳不用）
+			switchPane(type) {
+				this.mobilePane = type;
+				this.activeField = type;
+				this.searchType = type;
+				this.searchText = type === 'character' ? this.charQuery : this.boxQuery;
+				this.hideSuggestions();
+			},
+
+			// 两个搜索框共用一个 searchType / searchText 状态，只是入口不同
+			syncQueryField() {
+				if (this.searchType === 'character') this.charQuery = this.searchText;
+				else this.boxQuery = this.searchText;
+			},
+
+			onFieldFocus(type) {
+				this.activeField = type;
+				this.searchType = type;
+				this.searchText = type === 'character' ? this.charQuery : this.boxQuery;
+				this.onSearchFocus();
+			},
+
+			onFieldInput(type, e) {
+				const value = e && e.detail ? e.detail.value : '';
+				this.activeField = type;
+				this.searchType = type;
+				if (type === 'character') this.charQuery = value;
+				else this.boxQuery = value;
+				this.searchText = value;
+				this.onSearchInput();
+			},
+
+			searchCharacter() {
+				this.searchType = 'character';
+				this.activeField = 'character';
+				this.searchText = this.charQuery;
+				this.handleSearch();
+			},
+
+			searchBox() {
+				this.searchType = 'box';
+				this.activeField = 'box';
+				this.searchText = this.boxQuery;
+				this.handleSearch();
+			},
+
 			onSearchFocus() {
 				this.showSearchSuggestions = true;
 				this.loadSearchSuggestions();
@@ -1513,6 +1682,7 @@ validateSearchWords(searchWords) {
 			
 			selectSuggestion(suggestion) {
 				this.searchText = suggestion.name;
+				this.syncQueryField();
 				this.showSearchSuggestions = false;
 				setTimeout(() => {
 					this.handleSearch();
@@ -1537,8 +1707,14 @@ validateSearchWords(searchWords) {
 			setSearchType(type) {
 				this.searchType = type;
 				this.searchResults = [];
+				this.charResults = [];
+				this.boxResults = [];
+				this.charSearched = false;
+				this.boxSearched = false;
 				this.hasSearched = false;
 				this.searchText = '';
+				this.charQuery = '';
+				this.boxQuery = '';
 				this.showSearchSuggestions = false;
 				this.filterIndex = 0;
 			},
@@ -1566,12 +1742,23 @@ validateSearchWords(searchWords) {
 					});
 					return;
 				}
-				this.searchResults = [];
+				// 两栏互不影响：只清本次要查的那一栏
+				if (this.searchType === 'character') {
+					this.charResults = [];
+					this.charSearched = true;
+				} else {
+					this.boxResults = [];
+					this.boxSearched = true;
+				}
 				this.hasSearched = true;
 				this.showSearchSuggestions = false;
 				if (this.searchType === 'character') {
+					// 每日任务打点
+					markDailyTask('search_operator');
 					this.searchByCharacter();
 				} else {
+					// 每日任务打点
+					markDailyTask('query_box');
 					this.searchByBox();
 				}
 			},
@@ -1601,6 +1788,9 @@ validateSearchWords(searchWords) {
 					// 盲抽/单领筛选
 					if (!this.passTypeFilter(box)) return;
 					
+					// 干员属性筛选
+					if (!this.passFacetFilter(box)) return;
+					
 					// 遍历盒中的干员
 					for (let i = 1; i <= 10; i++) {
 						const charKey = `character${i}`;
@@ -1622,6 +1812,8 @@ validateSearchWords(searchWords) {
 							}
 							
 							if (characterName) {
+								// 干员属性筛选按「干员」维度生效：不符合的干员直接跳过，而不是整盒保留
+								if (hasFacets(this.charFacets) && !matchCharFacets(this.charFacets, characterName)) continue;
 								const matchResult = this.checkCharacterMatch(characterName, searchTerm);
 								if (matchResult.isMatch) {
 									if (!characterMap[characterName]) {
@@ -1654,18 +1846,21 @@ validateSearchWords(searchWords) {
 					}
 				});
 				
-				this.searchResults = Object.values(characterMap);
+				this.charResults = Object.values(characterMap);
+				this.charSearched = true;
 			},
 			
 			searchByBox() {
 				const searchTerm = this.searchText.trim();
-				const results = [];
 				const cleanSearchTerm = searchTerm.replace(/\s+/g, '');
-				
+				const exact = [];
+				const loose = [];
+				const lowerTerm = cleanSearchTerm.toLowerCase();
+
 				this.characterData.forEach(box => {
 					const boxId = String(box.Box_id || '');
 					const boxType = box.Box_type || 'normal';
-					
+
 					// 应用盒类型筛选
 					if (this.currentFilter !== 'all') {
 						if (this.currentFilter === 'normal') {
@@ -1674,113 +1869,111 @@ validateSearchWords(searchWords) {
 							if (boxType !== this.currentFilter) return;
 						}
 					}
-					
+
 					// ============= 新增：高级筛选 =============
 					if (!this.passDateFilter(box)) return;
 					if (!this.passReplicateFilter(box)) return;
 					if (!this.passTypeFilter(box)) return;
-					
-					let isMatch = false;
-					
-					// 精确匹配
-					if (boxId === searchTerm || boxId === cleanSearchTerm) {
-						isMatch = true;
-					} 
-					// 常规盒号匹配
-					else if (boxType === 'normal' || !boxType) {
-						const boxNumberMatch = boxId.match(/^(\d+(?:\.\d+)?)$/);
-						if (boxNumberMatch) {
-							const boxNumber = boxNumberMatch[1];
-							const searchPatterns = [
-								boxNumber,
-								boxNumber.replace('.0', ''),
-								boxNumber.split('.')[0]
-							];
-							if (searchPatterns.includes(cleanSearchTerm)) {
-								isMatch = true;
-							}
-						}
-					} 
-					// 特殊盒号匹配
-					else {
-						const specialBoxMatch = boxId.match(/^(.+?)(\d+(?:\.\d+)?)$/);
-						if (specialBoxMatch) {
-							const prefix = specialBoxMatch[1];
-							const numberPart = specialBoxMatch[2];
-							const matchPatterns = [
-								prefix + numberPart,
-								prefix + numberPart.replace('.0', ''),
-								prefix + numberPart.split('.')[0]
-							];
-							if (matchPatterns.some(pattern => pattern === cleanSearchTerm)) {
-								isMatch = true;
-							}
-							if (/^\d+(\.\d+)?$/.test(cleanSearchTerm)) {
-								const searchNumber = cleanSearchTerm;
-								const numberPatterns = [
-									numberPart,
-									numberPart.replace('.0', ''),
-									numberPart.split('.')[0]
-								];
-								if (numberPatterns.includes(searchNumber) && this.currentFilter !== 'all') {
-									isMatch = true;
-								}
-							}
-						}
-					}
-					
-					if (isMatch) {
-						const characters = [];
-						for (let i = 1; i <= 10; i++) {
-							const charKey = `character${i}`;
-							if (box[charKey]) {
-								let characterName = '';
-								let imageUrl = '';
-								let nolyELITE1 = false;
-								let hotcharacter = false;
-								let market_price = null;
-								
-								if (typeof box[charKey] === 'string') {
-									characterName = box[charKey];
-								} else if (box[charKey].name) {
-									characterName = box[charKey].name;
-									imageUrl = box[charKey].imageUrl || '';
-									nolyELITE1 = box[charKey].nolyELITE1 === true;
-									hotcharacter = box[charKey].hotcharacter === true;
-									market_price = box[charKey].market_price || null;
-								}
-								if (characterName && characterName.trim()) {
-									characters.push({
-										name: characterName,
-										avatar: imageUrl || this.defaultAvatar,
-										nolyELITE1: nolyELITE1,
-										hotcharacter: hotcharacter,
-										market_price: market_price
-									});
-								}
-							}
-						}
-						results.push({
-							boxId: boxId,
-							boxType: boxType,
-							Box_ImageUrl: box.Box_ImageUrl || '',
-							release_date: box.release_date || '',
-							retail_price: box.retail_price || '',
-							type: box.type || false,
-							replicate: box.replicate || false,
-							replicate_date: box.replicate_date || '',
-						replicate_date_01: box.replicate_date_01 || '',
-						replicate_date_02: box.replicate_date_02 || '',
-						replicate_date_03: box.replicate_date_03 || '',
-						replicate_date_04: box.replicate_date_04 || '',
-						replicate_date_05: box.replicate_date_05 || '',
-							characters: characters,
-							isImageExpanded: false,
-							showExpandBtn: false
-						});
+					if (!this.passFacetFilter(box)) return;
+
+					if (this.matchBoxId(boxId, boxType, cleanSearchTerm)) {
+						exact.push({ box, boxId, boxType });
+					} else if (lowerTerm && boxId.toLowerCase().indexOf(lowerTerm) >= 0) {
+						// 音律联觉这类纯中文盒号没有数字段，严格规则匹配不到，先记下来做兜底
+						loose.push({ box, boxId, boxType });
 					}
 				});
-				this.searchResults = results;
+
+				// 严格匹配有结果就只用严格结果；空了才退到"包含匹配"，
+				// 否则搜 "1" 会把 11.0 / 21.0 / 31.0 全带出来
+				const chosen = exact.length ? exact : loose;
+				this.boxResults = chosen.map(hit => this.buildBoxResult(hit.box, hit.boxId, hit.boxType));
+				this.boxSearched = true;
+			},
+
+			/* 盒号匹配规则：完全一致 → 常规款数字号（1 / 1.0）→ 特殊款"前缀+数字" */
+			matchBoxId(boxId, boxType, cleanSearchTerm) {
+				if (!cleanSearchTerm) return false;
+				if (boxId === cleanSearchTerm) return true;
+
+				if (boxType === 'normal' || !boxType) {
+					const boxNumberMatch = boxId.match(/^(\d+(?:\.\d+)?)$/);
+					if (!boxNumberMatch) return false;
+					const boxNumber = boxNumberMatch[1];
+					const searchPatterns = [
+						boxNumber,
+						boxNumber.replace('.0', ''),
+						boxNumber.split('.')[0]
+					];
+					return searchPatterns.indexOf(cleanSearchTerm) >= 0;
+				}
+
+				const specialBoxMatch = boxId.match(/^(.+?)(\d+(?:\.\d+)?)$/);
+				if (!specialBoxMatch) return false;
+				const prefix = specialBoxMatch[1];
+				const numberPart = specialBoxMatch[2];
+				const matchPatterns = [
+					prefix + numberPart,
+					prefix + numberPart.replace('.0', ''),
+					prefix + numberPart.split('.')[0]
+				];
+				if (matchPatterns.indexOf(cleanSearchTerm) >= 0) return true;
+				if (/^\d+(\.\d+)?$/.test(cleanSearchTerm) && this.currentFilter !== 'all') {
+					return [numberPart, numberPart.replace('.0', ''), numberPart.split('.')[0]].indexOf(cleanSearchTerm) >= 0;
+				}
+				return false;
+			},
+
+			/* 一条盒数据 → 结果卡片对象 */
+			buildBoxResult(box, boxId, boxType) {
+				const characters = [];
+				for (let i = 1; i <= 10; i++) {
+					const charKey = `character${i}`;
+					if (box[charKey]) {
+						let characterName = '';
+						let imageUrl = '';
+						let nolyELITE1 = false;
+						let hotcharacter = false;
+						let market_price = null;
+
+						if (typeof box[charKey] === 'string') {
+							characterName = box[charKey];
+						} else if (box[charKey].name) {
+							characterName = box[charKey].name;
+							imageUrl = box[charKey].imageUrl || '';
+							nolyELITE1 = box[charKey].nolyELITE1 === true;
+							hotcharacter = box[charKey].hotcharacter === true;
+							market_price = box[charKey].market_price || null;
+						}
+						if (characterName && characterName.trim()) {
+							characters.push({
+								name: characterName,
+								avatar: imageUrl || this.defaultAvatar,
+								nolyELITE1: nolyELITE1,
+								hotcharacter: hotcharacter,
+								market_price: market_price
+							});
+						}
+					}
+				}
+				return {
+					boxId: boxId,
+					boxType: boxType,
+					Box_ImageUrl: box.Box_ImageUrl || '',
+					release_date: box.release_date || '',
+					retail_price: box.retail_price || '',
+					type: box.type || false,
+					replicate: box.replicate || false,
+					replicate_date: box.replicate_date || '',
+					replicate_date_01: box.replicate_date_01 || '',
+					replicate_date_02: box.replicate_date_02 || '',
+					replicate_date_03: box.replicate_date_03 || '',
+					replicate_date_04: box.replicate_date_04 || '',
+					replicate_date_05: box.replicate_date_05 || '',
+					characters: characters,
+					isImageExpanded: false,
+					showExpandBtn: false
+				};
 			},
 			
 			// ============= 新增：高级筛选辅助方法 =============
@@ -1967,11 +2160,11 @@ validateSearchWords(searchWords) {
 			},
 			
 			onAvatarError(index) {
-				this.$set(this.searchResults[index], 'avatar', this.defaultAvatar);
+				this.$set(this.charResults[index], 'avatar', this.defaultAvatar);
 			},
 			
 			onAvatarListError(boxIndex, charIndex) {
-				this.$set(this.searchResults[boxIndex].characters[charIndex], 'avatar', this.defaultAvatar);
+				this.$set(this.boxResults[boxIndex].characters[charIndex], 'avatar', this.defaultAvatar);
 			},
 			
 			onModalAvatarError(index) {
@@ -2084,6 +2277,7 @@ validateSearchWords(searchWords) {
 			if (boxId) {
 				this.searchType = 'box';
 				this.searchText = boxId;
+				this.syncQueryField();
 				this.handleSearch();
 				uni.showToast({ title: '已查询盒号 ' + boxId, icon: 'none' });
 			} else {
@@ -2125,11 +2319,11 @@ validateSearchWords(searchWords) {
 			uni.showModal({
 				title: '条码未收录',
 				content: '条码 ' + barcode + ' 暂未录入数据库。\n欢迎填写问卷补充：\n' + url,
-				confirmText: '复制链接',
+				confirmText: linkActionText(),
 				cancelText: '关闭',
 				success: (res) => {
 					if (res.confirm) {
-						uni.setClipboardData({ data: url, success: () => { uni.showToast({ title: '链接已复制', icon: 'none' }); } });
+						openLink(url);
 					}
 				}
 			});
@@ -2137,7 +2331,7 @@ validateSearchWords(searchWords) {
 
 		goToBoxFeedback(boxId) {
 			uni.navigateTo({
-				url: `/pages/box_feedback_new/box_feedback_new?boxId=${boxId}`
+				url: `/pages/box_feedback_new/box_feedback_new?boxId=${encodeURIComponent(boxId)}`
 			});
 		},
 		
@@ -2225,7 +2419,8 @@ validateSearchWords(searchWords) {
 							name: characterName.trim(),
 							avatar: avatar,
 							nolyELITE1: nolyELITE1,
-							hotcharacter: hotcharacter
+							hotcharacter: hotcharacter,
+							_avatarCtx: boxCtx(box)
 						});
 					}
 				}
@@ -2341,7 +2536,7 @@ validateSearchWords(searchWords) {
 			// 模态框相关方法
 			goToBoxInfo(boxId) {
 				uni.navigateTo({
-					url: `/pages/box_info/box_info?boxId=${boxId}`
+					url: `/pages/box_info/box_info?boxId=${encodeURIComponent(boxId)}`
 				});
 			},
 			
@@ -2454,6 +2649,8 @@ validateSearchWords(searchWords) {
 					const version = uni.getStorageSync('dataVersion');
 					const url = uni.getStorageSync('dataUrl');
 					const enableGuessData = uni.getStorageSync('enableGuessData');
+					// 正式数据上线后清掉重复的预测盒号
+					pruneStoredGuessData();
 					const guessData = uni.getStorageSync('guessData');
 					
 					let allData = [];
@@ -2463,8 +2660,9 @@ validateSearchWords(searchWords) {
 					}
 					
 					if (enableGuessData === 'true' && guessData && Array.isArray(guessData) && guessData.length > 0) {
-						allData = [...allData, ...guessData];
-						this.dataStatusMessage += ` + 预测数据 (${guessData.length} 个盒号)`;
+						const mergedGuess = mergeGuessData(allData, guessData);
+						allData = mergedGuess.data;
+						this.dataStatusMessage += ` + 预测数据 (${mergedGuess.added} 个盒号)`;
 					}
 					
 					if (allData.length > 0) {
@@ -2571,8 +2769,26 @@ validateSearchWords(searchWords) {
 					this.dataUrl = 'https://raw.gitcode.com/huangjinzhou1/ArknightsAuthorization_Series/raw/main/Box_Id.json';
 				}
 
-				// 2. 构建多源列表
+				// 2. 构建多源列表（本地/自定义数据激活时返回空列表，禁止远程下载）
 				const sourceList = this.buildDataSourceList(this.dataUrl);
+				if (!sourceList.length) {
+					this.dataStatusMessage = '当前使用本地/自定义数据，已跳过远程下载';
+					return;
+				}
+				// 增量更新快路径：先探服务端版本 —— 没变直接用本地缓存，变了只拉差异记录
+				// 任何一步不满足（无缓存 / 接口不可用 / 拉取失败）都会返回 null，自然落回下面的完整包下载
+				try {
+					const _inc = await boxDataSync.ensure();
+					if (_inc && _inc.data && _inc.data.length) {
+						console.log('[增量更新] ' + _inc.source + '，' + _inc.data.length + ' 个盒号');
+						this.dataStatusMessage = '数据已是最新';
+						await this.handleSearchDownloadSuccess(_inc.data, _inc.source);
+						return;
+					}
+				} catch (_incErr) {
+					this.logError(_incErr);
+					console.warn('[增量更新] 降级为完整包下载:', _incErr);
+				}
 				this.dataStatusMessage = '正在下载干员数据...';
 
 				// 3. 依次尝试各数据源
@@ -2608,6 +2824,11 @@ validateSearchWords(searchWords) {
 			// 构建数据源列表
 			buildDataSourceList(primaryUrl) {
 				const sources = [];
+				// 本地/自定义数据激活时，禁止从远程获取 box_id.json
+				try {
+					const ds = uni.getStorageSync('dataSource');
+					if (ds === 'local' || ds === 'custom') return sources;
+				} catch (e) { this.logError(e); }
 				const githubRepo = 'awadwd/ArknightsAuthorization_Series-mirror';
 				const boxFile = 'Box_Id.json';
 				
@@ -2692,6 +2913,7 @@ validateSearchWords(searchWords) {
 			
 			// 处理下载成功
 			async handleSearchDownloadSuccess(rawData, sourceName) {
+				boxDataSync.adopt(rawData, this.latestVersion);
 				const cleanedData = rawData.map(box => {
 					const cleanedBox = {};
 					for (const key in box) {
@@ -2725,7 +2947,42 @@ validateSearchWords(searchWords) {
 			
 			// 打开高级筛选模态框
 			openAdvancedFilter() {
+				this.facetExpanded = false;
+				this.filterBodyHeight = 0;
 				this.showAdvancedFilter = true;
+				this.$nextTick(() => setTimeout(() => this.layoutFilterBody(), 60));
+			},
+
+			// 展开/收起干员属性后重新量一次高度
+			toggleFacetPanel() {
+				this.facetExpanded = !this.facetExpanded;
+				this.filterBodyHeight = 0;
+				this.$nextTick(() => setTimeout(() => this.layoutFilterBody(), 60));
+			},
+
+			/**
+			 * scroll-view 在 App 端必须有确定高度才滚得动。
+			 * 先让它按内容撑开，量出真实内容高度；超过卡片可用高度时再锁成固定像素高。
+			 * 内容没超时保持自适应，避免弹窗永远占满 80vh。
+			 */
+			layoutFilterBody() {
+				// 直接量卡片自身高度（已被 max-height 夹住），不用 vh 换算，避免与 webview 视口对不上
+				const q = uni.createSelectorQuery();
+				q.select('#afm-card').boundingClientRect();
+				q.select('#afm-header').boundingClientRect();
+				q.select('#afm-footer').boundingClientRect();
+				q.select('#afm-body').boundingClientRect();
+				q.exec((res) => {
+					if (!res || !res[0] || !res[1] || !res[2] || !res[3]) return;
+					const card = res[0], head = res[1], foot = res[2], body = res[3];
+					// 扣掉头尾和 2px 余量，剩下才是滚动区可用高度
+					// （padding 已挪到内层 .filter-scroll-inner，这里不用再扣）
+					const avail = card.height - head.height - foot.height - 2;
+					if (avail < 160) return;
+					if (body.height > avail + 1) {
+						this.filterBodyHeight = Math.floor(avail);
+					}
+				});
 			},
 			
 			// 关闭高级筛选模态框
@@ -2743,15 +3000,110 @@ validateSearchWords(searchWords) {
 				this.filterDayIndex = 0;
 				this.filterReplicate = '';
 				this.filterType = '';
+				this.charFacets = emptyFacets();
 			},
 			
 			// 应用高级筛选
 			applyAdvancedFilter() {
 				this.closeAdvancedFilter();
-				// 如果已搜索过，重新搜索以应用新筛选
 				if (this.hasSearched) {
+					// 已搜索过：带上新条件重搜
 					this.handleSearch();
+				} else if (this.hasAdvancedFilter) {
+					// 还没搜索过，直接点「确定」不会有结果，明确提示一下
+					uni.showToast({ title: '请先输入关键词搜索', icon: 'none' });
 				}
+			},
+
+
+			// ===== 干员属性筛选（默认折叠） =====
+			facetOptions(key) {
+				return optionsOf(key, this.charFacets.prof);
+			},
+
+			facetOptionLabel(key, value) {
+				return optionLabel(key, value);
+			},
+
+			toggleFacet(key, value) {
+				const arr = this.charFacets[key];
+				const i = arr.indexOf(value);
+				if (i >= 0) arr.splice(i, 1);
+				else arr.push(value);
+				if (key === 'prof') {
+					const valid = this.facetOptions('sub');
+					this.charFacets.sub = this.charFacets.sub.filter((x) => valid.indexOf(x) >= 0);
+				}
+				// 已搜索过就即时重算，点一项也能马上看到结果
+				this.scheduleFacetApply();
+			},
+
+			selectAllFacet(key) {
+				this.charFacets[key] = this.facetOptions(key).slice();
+				if (key === 'prof') {
+					const valid = this.facetOptions('sub');
+					this.charFacets.sub = this.charFacets.sub.filter((x) => valid.indexOf(x) >= 0);
+				}
+				this.scheduleFacetApply();
+			},
+
+			clearFacet(key) {
+				this.charFacets[key] = [];
+				this.scheduleFacetApply();
+			},
+
+			clearAllFacets() {
+				this.charFacets = emptyFacets();
+				this.scheduleFacetApply();
+			},
+
+			scheduleFacetApply() {
+				if (this.facetApplyTimer) clearTimeout(this.facetApplyTimer);
+				this.facetApplyTimer = setTimeout(() => {
+					this.facetApplyTimer = null;
+					if (!this.hasSearched || !String(this.searchText || '').trim()) return;
+				// 直接重算，避免重复打点/弹提示
+				if (this.searchType === 'character') this.searchByCharacter();
+				else this.searchByBox();
+				}, 260);
+			},
+
+			// 只按干员属性统计命中的干员数
+			facetHitCount() {
+				if (!hasFacets(this.charFacets)) return 0;
+				const seen = {};
+				this.characterData.forEach((box) => {
+					for (let i = 1; i <= 10; i++) {
+						const c = box['character' + i];
+						const nm = typeof c === 'string' ? c : (c && c.name);
+						if (nm && matchCharFacets(this.charFacets, nm)) seen[nm] = 1;
+					}
+				});
+				return Object.keys(seen).length;
+			},
+
+			facetSummaryText() {
+				const n = this.facetCount();
+				if (!n) return '未选条件 · 选一项即可筛选';
+				return '已选 ' + n + ' 项 · 命中 ' + this.facetHitCount() + ' 位干员';
+			},
+
+			facetCount() {
+				let n = 0;
+				this.facetGroups.forEach((g) => { n += (this.charFacets[g.key] || []).length; });
+				return n;
+			},
+
+
+			// 盒内是否至少有一位干员满足全部属性条件
+			passFacetFilter(box) {
+				if (!hasFacets(this.charFacets)) return true;
+				for (let i = 1; i <= 10; i++) {
+					const c = box['character' + i];
+					const nm = typeof c === 'string' ? c : (c && c.name);
+					if (nm && matchCharFacets(this.charFacets, nm)) return true;
+				}
+				return false;
 			},
 			
 			// 更新日期选项（从数据中提取年份）
@@ -2828,14 +3180,130 @@ validateSearchWords(searchWords) {
 	}
 	
 	.search-section {
+		/* 手机：整块是一张卡片，内部两个 pane 一次只显示一个 */
 		background-color: #fff;
 		border-radius: 16rpx;
-		padding: 30rpx;
+		padding: 26rpx;
 		box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
 		margin-bottom: 30rpx;
 		position: relative;
-		overflow: hidden;
+		overflow: visible;
 		transition: all 0.3s ease;
+	}
+
+	/* 手机：单卡片，一次显示一个 pane；Windows 壳内才左右两栏 */
+	.search-grid {
+		display: flex;
+		flex-direction: column;
+		gap: 0;
+	}
+
+	.search-pane {
+		/* 手机上卡片由 .search-section 承担，pane 自身不再画卡片 */
+		background-color: transparent;
+		border-radius: 0;
+		padding: 0;
+		box-shadow: none;
+	}
+
+	.pane-head {
+		/* 手机端标题由顶部 tab 承担，不再重复显示 */
+		display: none;
+		align-items: baseline;
+		gap: 14rpx;
+		margin-bottom: 18rpx;
+	}
+
+	.pane-title {
+		font-size: 30rpx;
+		font-weight: 600;
+		color: #2b3138;
+	}
+
+	.pane-sub {
+		font-size: 22rpx;
+		color: #9aa3ad;
+	}
+
+	.pane-search {
+		position: relative;
+		/* 建议遮罩是 fixed/z-index:999，输入行必须压在它上面，否则点“查询”只会关掉建议 */
+		z-index: 1001;
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 16rpx;
+	}
+
+	.pane-search .search-input-container {
+		flex: 1;
+		min-width: 0;
+	}
+
+	/* 建议遮罩是 .pane-search 的子节点（fixed + z-index:999），
+	   输入框/按钮必须显式抬到它上面，否则输入后第一次点“查询”只会关掉建议 */
+	.pane-search .search-input-container,
+	.pane-search .search-btn,
+	.pane-search .scan-btn-icon {
+		position: relative;
+		z-index: 1002;
+	}
+
+	.pane-search .suggestions-dropdown {
+		z-index: 1003;
+	}
+
+	/* 建议下拉挂在输入框下方，不再把结果区往下顶 */
+	.pane-search .suggestions-dropdown {
+		position: absolute;
+		top: calc(100% + 8rpx);
+		left: 0;
+		right: 0;
+		margin-top: 0;
+		max-height: 420rpx;
+		border-radius: 12rpx;
+		z-index: 1000;
+	}
+
+	.pane-tips {
+		margin-top: 14rpx;
+	}
+
+	.pane-body {
+		margin-top: 20rpx;
+	}
+
+	.pane-body .result-item {
+		margin-bottom: 20rpx;
+	}
+
+	.pane-body .result-item:last-child {
+		margin-bottom: 0;
+		border-bottom: none;
+	}
+
+	.pane-state {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 10rpx;
+		padding: 40rpx 20rpx;
+		text-align: center;
+	}
+
+	.pane-state.idle {
+		padding: 64rpx 20rpx;
+	}
+
+	.pane-state-text {
+		font-size: 24rpx;
+		color: #9aa3ad;
+	}
+
+	.footer-hint {
+		font-size: 22rpx;
+		color: #9aa3ad;
 	}
 	
 	.search-section.collapsed {
@@ -2850,6 +3318,124 @@ validateSearchWords(searchWords) {
 		margin-bottom: 30rpx;
 		gap: 20rpx;
 	}
+
+	/* 两个独立搜索框：左标签 + 输入 + 查询 */
+	.search-field {
+		display: flex;
+		align-items: center;
+		gap: 18rpx;
+		margin-bottom: 22rpx;
+	}
+
+	.search-field:last-of-type {
+		margin-bottom: 0;
+	}
+
+	.search-field-head {
+		display: flex;
+		flex-direction: column;
+		flex: 0 0 auto;
+		width: 128rpx;
+	}
+
+	.search-field-label {
+		font-size: 28rpx;
+		font-weight: 600;
+		line-height: 1.3;
+		color: #2b3138;
+	}
+
+	.search-field-hint {
+		font-size: 20rpx;
+		line-height: 1.4;
+		color: #9aa3ad;
+	}
+
+	.search-field.active .search-field-label {
+		color: #409EFF;
+	}
+
+	.search-prefix {
+		font-size: 24rpx;
+		color: #9aa3ad;
+		margin-right: 14rpx;
+	}
+
+	.field-btn {
+		/* 手机：查询按钮换行占满，和之前单栏一致 */
+		width: 100%;
+		min-width: 0;
+		flex: 0 0 100%;
+		margin: 0;
+		padding: 20rpx 0;
+		font-size: 28rpx;
+	}
+
+	/* 工具条：筛选按钮固定在双栏上方，不要被结果挤到页面底部 */
+	.search-toolbar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 16rpx;
+		margin-bottom: 18rpx;
+	}
+
+	/* 手机端用 tab 切换；提示语只对 Windows 双栏有意义 */
+	.pane-tabs {
+		display: flex;
+		flex: 1;
+		gap: 12rpx;
+		min-width: 0;
+	}
+
+	.pane-tab {
+		flex: 1;
+		text-align: center;
+		background-color: #f0f0f0;
+		color: #666;
+		font-size: 24rpx;
+		border-radius: 10rpx;
+		padding: 14rpx 0;
+		font-weight: 500;
+		transition: all 0.3s ease;
+	}
+
+	.pane-tab.active {
+		background-color: #409EFF;
+		color: #fff;
+	}
+
+	.pane-tab:active {
+		transform: scale(0.98);
+	}
+
+	/* 手机端筛选按钮与 tab 同高，别把 tab 挤窄 */
+	html:not(.is-win-shell) .advanced-filter-btn {
+		flex: 0 0 auto;
+		width: 116rpx;
+		min-width: 116rpx;
+		height: 60rpx;
+		padding: 0;
+		font-size: 24rpx;
+		line-height: 60rpx;
+		border-radius: 10rpx;
+		white-space: nowrap;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.toolbar-hint {
+		display: none;
+		font-size: 22rpx;
+		color: #9aa3ad;
+	}
+
+	/* uni-button 自带 margin:auto，会把按钮挤到中间 */
+	.search-toolbar .advanced-filter-btn {
+		margin: 0;
+		flex: 0 0 auto;
+	}
 	
 	.search-input-container {
 		display: flex;
@@ -2862,10 +3448,11 @@ validateSearchWords(searchWords) {
 		border: 2rpx solid transparent;
 	}
 	
+	.search-input-container:focus-within,
 	.search-input-container.focus {
-		border-color: #409EFF;
+		border-color: var(--ak-focus-border, #2f7ed8);
 		background-color: #fff;
-		box-shadow: 0 0 10rpx rgba(64, 158, 255, 0.2);
+		box-shadow: var(--ak-focus-shadow, 0 0 0 4rpx rgba(64, 158, 255, 0.18), 0 10rpx 24rpx -6rpx rgba(31, 94, 168, 0.28), inset 0 0 0 2rpx rgba(64, 158, 255, 0.45), inset 0 2rpx 8rpx rgba(31, 94, 168, 0.10));
 	}
 	
 	.search-icon {
@@ -3479,7 +4066,7 @@ validateSearchWords(searchWords) {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		z-index: 10000;
+		z-index: 12000;
 		padding: 40rpx;
 	}
 	
@@ -3615,7 +4202,7 @@ validateSearchWords(searchWords) {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		z-index: 9999;
+		z-index: 11000;
 		padding: 40rpx;
 	}
 	
@@ -3834,7 +4421,7 @@ validateSearchWords(searchWords) {
 		}
 		
 		.search-section {
-			padding: 25rpx;
+			padding: 0;
 			margin-bottom: 25rpx;
 		}
 		
@@ -3957,82 +4544,43 @@ validateSearchWords(searchWords) {
 		}
 	}
 
-	/* ========== 科技风格 ========== */
-	.container.theme-ark {
-		background: linear-gradient(180deg, #0D0D15 0%, #1A1A2E 100%);
+	/* ========== 查询页双栏 · 深色（全局，不限桌面） ========== */
+	.container.theme-ark .search-pane,
+	.container.theme-liquidDark .search-pane {
+		background-color: #1c2026;
+		border: 1rpx solid rgba(255, 255, 255, 0.08);
+		box-shadow: none;
 	}
-	.container.theme-ark .container { background: transparent; }
-	.container.theme-ark .search-section,
-	.container.theme-ark .result-card,
-	.container.theme-ark .box-selection-modal,
-	.container.theme-ark .modal-content,
-	.container.theme-ark .advanced-filter-modal .modal-content {
-		background: linear-gradient(135deg, #16162A 0%, #1E1E3A 100%);
-		border: 1rpx solid #2A2A4A;
+	.container.theme-ark .pane-title,
+	.container.theme-liquidDark .pane-title {
+		color: #e6e8eb;
 	}
-	.container.theme-ark .search-input-container { background-color: #16162A; border-color: #2A2A4A; }
-	.container.theme-ark .search-input-container.focus { border-color: #FF6B35; }
-	.container.theme-ark .search-input { color: #e0e0e0; }
-	.container.theme-ark .search-icon { filter: brightness(0) invert(1); opacity: 0.7; }
-	.container.theme-ark .filter-picker,
-	.container.theme-ark .picker-text { background-color: #16162A; color: #e0e0e0; }
-	.container.theme-ark .advanced-filter-btn,
-	.container.theme-ark .search-btn,
-	.container.theme-ark .update-btn,
-	.container.theme-ark .load-more-text,
-	.container.theme-ark .select-all-btn { background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%); color: #fff; border: none; }
-	.container.theme-ark .suggestion-item { border-bottom-color: #2A2A4A; }
-	.container.theme-ark .suggestion-name { color: #e0e0e0; }
-	.container.theme-ark .suggestion-type { color: #888; }
-	.container.theme-ark .box-id { color: #FF6B35; }
-	.container.theme-ark .character-tag { background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%); color: #fff; }
-	.container.theme-ark .favorite-btn { background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%); color: #fff; border: none; }
-	.container.theme-ark .favorite-btn.favorited { background: #555; color: #FF6B35; }
-	.container.theme-ark .view-info-btn { background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%); color: #fff; border: none; }
-	.container.theme-ark .data-status { background: rgba(255,107,53,0.1); border-left-color: #FF6B35; color: #FF6B35; }
-	.container.theme-ark .pagination { background: rgba(22,22,42,0.8); }
-	.container.theme-ark .page-btn { background: #16162A; color: #e0e0e0; border-color: #2A2A4A; }
-	.container.theme-ark .page-btn:active { background: #FF6B35; color: #fff; }
-	.container.theme-ark .close-btn { background: rgba(255,107,53,0.1); color: #FF6B35; }
-	.container.theme-ark .close-btn:active { background: #FF6B35; color: #fff; }
-	.container.theme-ark .modal-header { border-bottom-color: #2A2A4A; }
-	.container.theme-ark .modal-title { color: #FF6B35; }
-	.container.theme-ark .box-selection-header { border-bottom-color: #2A2A4A; }
-	.container.theme-ark .box-selection-title { color: #FF6B35; }
-	.container.theme-ark .box-card { background: rgba(22,22,42,0.6); border-color: #2A2A4A; }
-	.container.theme-ark .box-card:active { border-color: #FF6B35; }
-	.container.theme-ark .box-name { color: #e0e0e0; }
-	.container.theme-ark .box-date { color: #888; }
-	.container.theme-ark .market-price-hint { background: rgba(255,107,53,0.08); border-color: rgba(255,107,53,0.2); }
-	.container.theme-ark .hint-text { color: #FF6B35; }
-	.container.theme-ark .advanced-filter-section { background: linear-gradient(135deg, #16162A 0%, #1E1E3A 100%); border-color: #2A2A4A; }
-	.container.theme-ark .advanced-filter-title { color: #FF6B35; }
-	.container.theme-ark .section-title { color: #e0e0e0; }
-	.container.theme-ark .date-pickers { background-color: #16162A; }
-	.container.theme-ark .section-subtitle { color: #888; }
-	.container.theme-ark .character-result-card { background: linear-gradient(135deg, #16162A 0%, #1E1E3A 100%); border: 1rpx solid #2A2A4A; }
-	.container.theme-ark .character-name { color: #e0e0e0; }
-	.container.theme-ark .box-characters-list { background: transparent; }
-	.container.theme-ark .box-character-item { background: rgba(22,22,42,0.4); border-color: #2A2A4A; }
-	.container.theme-ark .character-details { color: #e0e0e0; }
-	.container.theme-ark .go-to-settings-btn { background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%); color: #fff; border: none; }
-	.container.theme-ark .modal-body { color: #e0e0e0; }
-	.container.theme-ark .favorite-box-btn { background: rgba(255,107,53,0.1); color: #FF6B35; border-color: rgba(255,107,53,0.3); }
-	.container.theme-ark .favorite-box-btn.favorited { background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%); color: #fff; }
-	.container.theme-ark .filter-options { background: linear-gradient(135deg, #16162A 0%, #1E1E3A 100%); border-color: #2A2A4A; }
-	.container.theme-ark .option-btn { background: #16162A; color: #e0e0e0; border-color: #2A2A4A; }
-	.container.theme-ark .option-btn.active { background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%); color: #fff; border-color: transparent; }
-	.container.theme-ark .option-btn:active { opacity: 0.8; }
-	.container.theme-ark .search-type-tabs { background: transparent; }
-	.container.theme-ark .tab-item { color: #888; }
-	.container.theme-ark .tab-item.active { color: #FF6B35; border-bottom-color: #FF6B35; }
-	.container.theme-ark .clear-search { color: #888; }
+	.container.theme-ark .pane-sub,
+	.container.theme-liquidDark .pane-sub,
+	.container.theme-ark .pane-state-text,
+	.container.theme-liquidDark .pane-state-text,
+	.container.theme-ark .toolbar-hint,
+	.container.theme-liquidDark .toolbar-hint {
+		color: #8b939d;
+	}
+	.container.theme-ark .pane-search .search-input-container,
+	.container.theme-liquidDark .pane-search .search-input-container {
+		background-color: #242931;
+	}
+	.container.theme-ark .pane-search .search-input,
+	.container.theme-liquidDark .pane-search .search-input {
+		color: #e6e8eb;
+	}
+	.container.theme-ark .pane-body .result-item,
+	.container.theme-liquidDark .pane-body .result-item {
+		border-bottom-color: rgba(255, 255, 255, 0.06);
+	}
 
 	/* ========== 界园风格 ========== */
 	.container.theme-jieyuan {
 		background-color: #FAF3E0;
 	}
-	.container.theme-jieyuan .search-section,
+	.container.theme-jieyuan .search-pane,
 	.container.theme-jieyuan .result-card,
 	.container.theme-jieyuan .box-selection-modal,
 	.container.theme-jieyuan .modal-content,
@@ -4045,8 +4593,8 @@ validateSearchWords(searchWords) {
 		border-color: rgba(226, 88, 132, 0.2);
 	}
 	.container.theme-jieyuan .search-input-container.focus {
-		border-color: #e25884;
-		box-shadow: 0 0 10rpx rgba(226, 88, 132, 0.2);
+		border-color: var(--ak-focus-border, #c2385f);
+		box-shadow: var(--ak-focus-shadow, 0 0 0 4rpx rgba(226, 88, 132, 0.18), 0 10rpx 24rpx -6rpx rgba(150, 40, 75, 0.28), inset 0 0 0 2rpx rgba(226, 88, 132, 0.45), inset 0 2rpx 8rpx rgba(150, 40, 75, 0.10));
 	}
 	.container.theme-jieyuan .search-input { color: #333; }
 	.container.theme-jieyuan .filter-picker { background: rgba(0,0,0,0.05); }
@@ -4459,19 +5007,7 @@ validateSearchWords(searchWords) {
 	background-color: #fff;
 	border: 1rpx solid #e0e0e0;
 	box-shadow: none;
-}
-
-/* 主题适配 - Ark主题 */
-.container.theme-ark .result-item.box-card {
-	background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(240,248,255,0.95) 100%);
-	border: 1rpx solid rgba(64, 158, 255, 0.2);
-}
-
-.container.theme-ark .box-card-title {
-	color: #409EFF;
-}
-
-/* 主题适配 - 结缘主题 */
+}/* 主题适配 - 结缘主题 */
 .container.theme-jieyuan .result-item.box-card {
 	background: #fff;
 	border: 1rpx solid rgba(226, 88, 132, 0.15);
@@ -4861,19 +5397,7 @@ validateSearchWords(searchWords) {
 	background-color: #fff;
 	border: 1rpx solid #e0e0e0;
 	box-shadow: none;
-}
-
-/* 主题适配 - Ark主题 */
-.container.theme-ark .result-item.box-card {
-	background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(240,248,255,0.95) 100%);
-	border: 1rpx solid rgba(64, 158, 255, 0.2);
-}
-
-.container.theme-ark .box-card-title {
-	color: #409EFF;
-}
-
-/* 主题适配 - 结缘主题 */
+}/* 主题适配 - 结缘主题 */
 .container.theme-jieyuan .result-item.box-card {
 	background: #fff;
 	border: 1rpx solid rgba(226, 88, 132, 0.15);
@@ -5263,19 +5787,7 @@ validateSearchWords(searchWords) {
 	background-color: #fff;
 	border: 1rpx solid #e0e0e0;
 	box-shadow: none;
-}
-
-/* 主题适配 - Ark主题 */
-.container.theme-ark .result-item.box-card {
-	background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(240,248,255,0.95) 100%);
-	border: 1rpx solid rgba(64, 158, 255, 0.2);
-}
-
-.container.theme-ark .box-card-title {
-	color: #409EFF;
-}
-
-/* 主题适配 - 结缘主题 */
+}/* 主题适配 - 结缘主题 */
 .container.theme-jieyuan .result-item.box-card {
 	background: #fff;
 	border: 1rpx solid rgba(226, 88, 132, 0.15);
@@ -5665,19 +6177,7 @@ validateSearchWords(searchWords) {
 	background-color: #fff;
 	border: 1rpx solid #e0e0e0;
 	box-shadow: none;
-}
-
-/* 主题适配 - Ark主题 */
-.container.theme-ark .result-item.box-card {
-	background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(240,248,255,0.95) 100%);
-	border: 1rpx solid rgba(64, 158, 255, 0.2);
-}
-
-.container.theme-ark .box-card-title {
-	color: #409EFF;
-}
-
-/* 主题适配 - 结缘主题 */
+}/* 主题适配 - 结缘主题 */
 .container.theme-jieyuan .result-item.box-card {
 	background: #fff;
 	border: 1rpx solid rgba(226, 88, 132, 0.15);
@@ -6067,19 +6567,7 @@ validateSearchWords(searchWords) {
 	background-color: #fff;
 	border: 1rpx solid #e0e0e0;
 	box-shadow: none;
-}
-
-/* 主题适配 - Ark主题 */
-.container.theme-ark .result-item.box-card {
-	background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(240,248,255,0.95) 100%);
-	border: 1rpx solid rgba(64, 158, 255, 0.2);
-}
-
-.container.theme-ark .box-card-title {
-	color: #409EFF;
-}
-
-/* 主题适配 - 结缘主题 */
+}/* 主题适配 - 结缘主题 */
 .container.theme-jieyuan .result-item.box-card {
 	background: #fff;
 	border: 1rpx solid rgba(226, 88, 132, 0.15);
@@ -6469,19 +6957,7 @@ validateSearchWords(searchWords) {
 	background-color: #fff;
 	border: 1rpx solid #e0e0e0;
 	box-shadow: none;
-}
-
-/* 主题适配 - Ark主题 */
-.container.theme-ark .result-item.box-card {
-	background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(240,248,255,0.95) 100%);
-	border: 1rpx solid rgba(64, 158, 255, 0.2);
-}
-
-.container.theme-ark .box-card-title {
-	color: #409EFF;
-}
-
-/* 主题适配 - 结缘主题 */
+}/* 主题适配 - 结缘主题 */
 .container.theme-jieyuan .result-item.box-card {
 	background: #fff;
 	border: 1rpx solid rgba(226, 88, 132, 0.15);
@@ -6871,19 +7347,7 @@ validateSearchWords(searchWords) {
 	background-color: #fff;
 	border: 1rpx solid #e0e0e0;
 	box-shadow: none;
-}
-
-/* 主题适配 - Ark主题 */
-.container.theme-ark .result-item.box-card {
-	background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(240,248,255,0.95) 100%);
-	border: 1rpx solid rgba(64, 158, 255, 0.2);
-}
-
-.container.theme-ark .box-card-title {
-	color: #409EFF;
-}
-
-/* 主题适配 - 结缘主题 */
+}/* 主题适配 - 结缘主题 */
 .container.theme-jieyuan .result-item.box-card {
 	background: #fff;
 	border: 1rpx solid rgba(226, 88, 132, 0.15);
@@ -7273,19 +7737,7 @@ validateSearchWords(searchWords) {
 	background-color: #fff;
 	border: 1rpx solid #e0e0e0;
 	box-shadow: none;
-}
-
-/* 主题适配 - Ark主题 */
-.container.theme-ark .result-item.box-card {
-	background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(240,248,255,0.95) 100%);
-	border: 1rpx solid rgba(64, 158, 255, 0.2);
-}
-
-.container.theme-ark .box-card-title {
-	color: #409EFF;
-}
-
-/* 主题适配 - 结缘主题 */
+}/* 主题适配 - 结缘主题 */
 .container.theme-jieyuan .result-item.box-card {
 	background: #fff;
 	border: 1rpx solid rgba(226, 88, 132, 0.15);
@@ -7675,19 +8127,7 @@ validateSearchWords(searchWords) {
 	background-color: #fff;
 	border: 1rpx solid #e0e0e0;
 	box-shadow: none;
-}
-
-/* 主题适配 - Ark主题 */
-.container.theme-ark .result-item.box-card {
-	background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(240,248,255,0.95) 100%);
-	border: 1rpx solid rgba(64, 158, 255, 0.2);
-}
-
-.container.theme-ark .box-card-title {
-	color: #409EFF;
-}
-
-/* 主题适配 - 结缘主题 */
+}/* 主题适配 - 结缘主题 */
 .container.theme-jieyuan .result-item.box-card {
 	background: #fff;
 	border: 1rpx solid rgba(226, 88, 132, 0.15);
@@ -8077,19 +8517,7 @@ validateSearchWords(searchWords) {
 	background-color: #fff;
 	border: 1rpx solid #e0e0e0;
 	box-shadow: none;
-}
-
-/* 主题适配 - Ark主题 */
-.container.theme-ark .result-item.box-card {
-	background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(240,248,255,0.95) 100%);
-	border: 1rpx solid rgba(64, 158, 255, 0.2);
-}
-
-.container.theme-ark .box-card-title {
-	color: #409EFF;
-}
-
-/* 主题适配 - 结缘主题 */
+}/* 主题适配 - 结缘主题 */
 .container.theme-jieyuan .result-item.box-card {
 	background: #fff;
 	border: 1rpx solid rgba(226, 88, 132, 0.15);
@@ -8124,7 +8552,8 @@ validateSearchWords(searchWords) {
 	right: 0;
 	bottom: 0;
 	background: rgba(0, 0, 0, 0.6);
-	z-index: 1000;
+	/* 搜索栏是 1001~1003，弹窗必须压在它上面 */
+	z-index: 10000;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -8192,15 +8621,7 @@ validateSearchWords(searchWords) {
 	gap: 20rpx;
 	padding: 20rpx 30rpx;
 	border-top: 1rpx solid #f0f0f0;
-}
-
-/* 暗色主题适配 */
-.container.theme-ark .box-detail-content {
-	background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(240,248,255,0.95) 100%);
-	border: 1rpx solid rgba(64, 158, 255, 0.2);
-}
-
-.container.theme-jieyuan .box-detail-content {
+}.container.theme-jieyuan .box-detail-content {
 	background: #fff;
 	border: 1rpx solid rgba(226, 88, 132, 0.15);
 }
@@ -8274,7 +8695,6 @@ validateSearchWords(searchWords) {
 			color: #999;
 		}
 
-
 		/* 通用弹窗遮罩（跨盒查询弹窗复用） */
 		.modal-mask {
 			position: fixed;
@@ -8286,7 +8706,8 @@ validateSearchWords(searchWords) {
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			z-index: 999;
+			/* 同上：要压住搜索栏 */
+			z-index: 10000;
 		}
 		.modal-close {
 			font-size: 36rpx;
@@ -8294,6 +8715,457 @@ validateSearchWords(searchWords) {
 			padding: 0 10rpx;
 		}
 
-
 	/* 隐私协议弹窗 */
+
+	/* ===== 干员属性筛选（折叠面板） ===== */
+	.facet-toggle {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 20rpx 24rpx;
+		border-radius: 12rpx;
+		background: #f7f8fa;
+	}
+
+	.facet-toggle-right {
+		display: flex;
+		align-items: center;
+	}
+
+	.facet-count {
+		margin-right: 10rpx;
+		padding: 2rpx 12rpx;
+		border-radius: 999rpx;
+		font-size: 20rpx;
+		color: #007aff;
+		background: rgba(0, 122, 255, 0.1);
+	}
+
+	.facet-arrow {
+		font-size: 32rpx;
+		color: #bbb;
+		transition: transform 0.2s;
+	}
+
+	.facet-arrow.open {
+		transform: rotate(90deg);
+	}
+
+	.facet-panel {
+		margin-top: 16rpx;
+		padding: 0 4rpx;
+	}
+
+	.facet-group {
+		padding: 12rpx 0;
+		border-bottom: 1rpx dashed #eee;
+	}
+
+	.facet-group:last-child {
+		border-bottom: none;
+	}
+
+	.facet-group-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 10rpx;
+	}
+
+	.facet-group-title {
+		font-size: 24rpx;
+		font-weight: 600;
+		color: #444;
+	}
+
+	.facet-ops {
+		display: flex;
+		align-items: center;
+	}
+
+	.facet-op {
+		margin-left: 24rpx;
+		padding: 2rpx 0;
+		font-size: 22rpx;
+		color: #999;
+	}
+
+	.facet-summary {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin: 0 0 16rpx;
+		padding: 14rpx 18rpx;
+		border-radius: 10rpx;
+		background: rgba(0, 122, 255, 0.06);
+	}
+
+	.facet-summary-text {
+		font-size: 22rpx;
+		color: #007aff;
+	}
+
+	.facet-summary-clear {
+		margin-left: 16rpx;
+		font-size: 22rpx;
+		color: #007aff;
+		text-decoration: underline;
+	}
+
+	.facet-chips {
+		display: flex;
+		flex-wrap: wrap;
+	}
+
+	.facet-chip {
+		margin: 0 12rpx 12rpx 0;
+		padding: 10rpx 20rpx;
+		border-radius: 8rpx;
+		font-size: 23rpx;
+		line-height: 1.3;
+		color: #555;
+		background: #f2f3f5;
+		border: 1rpx solid transparent;
+	}
+
+	.facet-chip.active {
+		color: #007aff;
+		background: rgba(0, 122, 255, 0.08);
+		border-color: #007aff;
+	}
+
+	.facet-tip {
+		display: block;
+		padding: 12rpx 0 4rpx;
+		font-size: 21rpx;
+		line-height: 1.6;
+		color: #999;
+	}
+
+	/* 高级筛选弹窗：关闭按钮固定贴右 */
+	.advanced-filter-modal .close-btn {
+		margin-left: auto !important;
+		margin-right: 0 !important;
+		flex-shrink: 0;
+	}
+
+	/* ===== 高级筛选弹窗：滚动修复 =====
+	 * 问题：scroll-view 在 App 端没有确定高度就滚不动 —— 内容一多会直接顶开卡片，
+	 * 底部被 overflow:hidden 裁掉，手指也滑不动。
+	 * 处理：默认按内容撑开（flex:0 0 auto）先量出真实高度，超过卡片能给的余量时，
+	 * 由 layoutFilterBody() 写入固定像素高（行内 style），scroll-view 内部才滚得动。
+	 */
+	.advanced-filter-modal .modal-header,
+	.advanced-filter-modal .modal-footer {
+		flex-shrink: 0;
+	}
+
+	.advanced-filter-modal .modal-body {
+		/* 高度由 layoutFilterBody() 实测后写入行内样式，
+		   这里只保证在未写入前按内容撑开（不要用 flex:1，否则量不到真实内容高度） */
+		flex: 0 0 auto;
+		min-height: 0;
+		/* 行内 height 是含内边距的总高，必须 border-box */
+		box-sizing: border-box;
+		/* 内边距交给内层，滚动区高度计算才干净 */
+		padding: 0 !important;
+	}
+
+	.advanced-filter-modal .filter-scroll-inner {
+		padding: 30rpx 30rpx 48rpx;
+	}
+
+	/* 底部按钮区永远露出，不参与压缩 */
+	.advanced-filter-modal .modal-footer {
+		flex-shrink: 0;
+	}
+
+	.advanced-filter-modal .modal-footer {
+		flex-wrap: wrap;
+	}
+
+	.footer-facet-hint {
+		flex: 0 0 100%;
+		font-size: 22rpx;
+		color: #007aff;
+		padding-bottom: 4rpx;
+	}
+	/* ==========================================================================
+	   Windows 宽屏：搜索卡收成一条，按钮不再拉满整行
+	   ========================================================================== */
+	@media (min-width: 720px) {
+		html.is-win-shell .container {
+			padding: 22px 24px 40px;
+		}
+
+		html.is-win-shell .data-status,
+		html.is-win-shell .update-section,
+		html.is-win-shell .result-section,
+		html.is-win-shell .empty-state {
+			max-width: 880px;
+			margin-left: auto;
+			margin-right: auto;
+		}
+
+		html.is-win-shell .search-section {
+			max-width: 1180px;
+			margin-left: auto;
+			margin-right: auto;
+		}
+
+		html.is-win-shell .search-section {
+			display: block;
+			background-color: transparent;
+			padding: 0;
+			border: 0;
+			border-radius: 0;
+			box-shadow: none;
+			margin-bottom: 14px;
+			overflow: visible;
+		}
+
+		html.is-win-shell .search-grid {
+			flex-direction: row;
+			align-items: flex-start;
+			gap: 16px;
+		}
+
+		html.is-win-shell .search-pane {
+			flex: 1 1 0;
+			min-width: 0;
+			padding: 18px 20px;
+			border: 1px solid #e9edf3;
+			border-radius: 14px;
+			box-shadow: 0 2px 10px rgba(28, 34, 43, 0.04);
+		}
+
+		html.is-win-shell .pane-head {
+			display: flex;
+			gap: 10px;
+			margin-bottom: 14px;
+		}
+
+		html.is-win-shell .pane-tabs {
+			display: none;
+		}
+
+		html.is-win-shell .pane-search {
+			flex-direction: row;
+			align-items: center;
+		}
+
+		html.is-win-shell .pane-title {
+			font-size: 14px;
+		}
+
+		html.is-win-shell .pane-sub {
+			font-size: 11.5px;
+		}
+
+		html.is-win-shell .pane-body {
+			margin-top: 16px;
+		}
+
+		html.is-win-shell .search-toolbar {
+			margin-bottom: 12px;
+		}
+
+		html.is-win-shell .toolbar-hint {
+			display: inline;
+			font-size: 11.5px;
+		}
+
+		html.is-win-shell .search-row {
+			flex: 1 1 100%;
+			margin-bottom: 0;
+			gap: 10px;
+		}
+
+		/* 双输入框：桌面端各占一整行，标签列固定宽度 */
+		html.is-win-shell .search-field {
+			flex: 1 1 100%;
+			gap: 14px;
+			margin-bottom: 12px;
+		}
+
+		html.is-win-shell .search-footer {
+			flex: 1 1 100%;
+		}
+
+		html.is-win-shell .search-field-head {
+			width: 68px;
+		}
+
+		html.is-win-shell .search-field-label {
+			font-size: 13.5px;
+		}
+
+		html.is-win-shell .search-field-hint {
+			font-size: 11px;
+		}
+
+		html.is-win-shell .field-btn {
+			width: auto;
+			flex: 0 0 auto;
+			min-width: 84px;
+			padding: 9px 18px;
+			font-size: 13.5px;
+			border-radius: 9px;
+		}
+
+		html.is-win-shell .search-footer {
+			margin-top: 14px;
+		}
+
+		html.is-win-shell .search-input-container {
+			padding: 10px 16px;
+			border-radius: 10px;
+		}
+
+		html.is-win-shell .search-options {
+			flex: 1 1 auto;
+			min-width: 300px;
+			margin-bottom: 0;
+			gap: 10px;
+		}
+
+		html.is-win-shell .option-btn {
+			padding: 9px 0;
+			font-size: 13px;
+			border-radius: 9px;
+		}
+
+		html.is-win-shell .search-btn:not(.field-btn) {
+			order: 3;
+			flex: 0 0 auto;
+			width: 150px;
+			padding: 9px 0;
+			font-size: 13.5px;
+			border-radius: 9px;
+			margin: 0;
+		}
+
+		html.is-win-shell .search-tips {
+			order: 4;
+			flex: 1 1 100%;
+			margin: 0;
+			padding: 0;
+		}
+
+		html.is-win-shell .data-status {
+			padding: 14px 18px;
+			margin-bottom: 14px;
+			border-radius: 12px;
+		}
+
+		html.is-win-shell .data-status-main {
+			margin-bottom: 10px;
+		}
+
+		/* 状态信息横排成标签流，不要一列拉到底 */
+		html.is-win-shell .data-details {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 8px 10px;
+			padding-top: 12px;
+		}
+
+		html.is-win-shell .data-detail-item {
+			border-radius: 7px;
+			padding: 3px 10px;
+		}
+
+		html.is-win-shell .update-section {
+			margin: 0 auto 18px;
+			text-align: right;
+		}
+
+		html.is-win-shell .update-btn {
+			display: inline-block;
+			width: auto;
+			padding: 8px 18px;
+			font-size: 12.5px;
+			border-radius: 8px;
+			margin: 0;
+		}
+
+		html.is-win-shell .result-section {
+			padding: 18px 20px;
+			border: 1px solid #e9edf3;
+			border-radius: 14px;
+			box-shadow: 0 2px 10px rgba(28, 34, 43, 0.04);
+		}
+
+		/* ── 深色主题 ─────────────────────────────────────────────── */
+		html.is-win-shell .theme-ark .search-pane,
+		html.is-win-shell .theme-liquidDark .search-pane {
+			background: #1c2026;
+			border: 1px solid rgba(255, 255, 255, 0.08);
+		}
+
+		html.is-win-shell .theme-ark .pane-title,
+		html.is-win-shell .theme-liquidDark .pane-title {
+			color: #e6e8eb;
+		}
+
+		html.is-win-shell .theme-ark .pane-sub,
+		html.is-win-shell .theme-liquidDark .pane-sub,
+		html.is-win-shell .theme-ark .pane-state-text,
+		html.is-win-shell .theme-liquidDark .pane-state-text,
+		html.is-win-shell .theme-ark .toolbar-hint,
+		html.is-win-shell .theme-liquidDark .toolbar-hint {
+			color: #8b939d;
+		}
+
+		html.is-win-shell .theme-ark .pane-body .result-item,
+		html.is-win-shell .theme-liquidDark .pane-body .result-item {
+			border-bottom-color: rgba(255, 255, 255, 0.06);
+		}
+
+		html.is-win-shell .theme-ark .search-input-container,
+		html.is-win-shell .theme-liquidDark .search-input-container {
+			background: #242931;
+		}
+
+		html.is-win-shell .theme-ark .search-input,
+		html.is-win-shell .theme-liquidDark .search-input {
+			color: #e6e8eb;
+		}
+
+		html.is-win-shell .theme-ark .search-field-label,
+		html.is-win-shell .theme-liquidDark .search-field-label {
+			color: #e6e8eb;
+		}
+
+		html.is-win-shell .theme-ark .search-field-hint,
+		html.is-win-shell .theme-liquidDark .search-field-hint,
+		html.is-win-shell .theme-ark .search-prefix,
+		html.is-win-shell .theme-liquidDark .search-prefix {
+			color: #8b939d;
+		}
+
+		html.is-win-shell .theme-ark .search-field.active .search-field-label,
+		html.is-win-shell .theme-liquidDark .search-field.active .search-field-label {
+			color: #4da3ff;
+		}
+
+		html.is-win-shell .theme-ark .search-field .search-input-container,
+		html.is-win-shell .theme-liquidDark .search-field .search-input-container,
+		html.is-win-shell .theme-ark .pane-search .search-input-container,
+		html.is-win-shell .theme-liquidDark .pane-search .search-input-container {
+			background: #242931;
+		}
+
+		html.is-win-shell .theme-ark .option-btn,
+		html.is-win-shell .theme-liquidDark .option-btn {
+			background: #242931;
+			color: #b9c0c9;
+		}
+
+		html.is-win-shell .theme-ark .option-btn.active,
+		html.is-win-shell .theme-liquidDark .option-btn.active {
+			background: #0a84ff;
+			color: #ffffff;
+		}
+	}
 </style>

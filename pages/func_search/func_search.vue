@@ -1,5 +1,5 @@
 <template>
-	<view class="container">
+	<view class="container" :class="'theme-' + themeMode">
 		<!-- 搜索区域 -->
 		<view class="search-header">
 			<view class="search-box">
@@ -93,6 +93,8 @@ import errorLog from "@/utils/errorLog.js";
 export default {
 	data() {
 		return {
+			// 主题模式
+			themeMode: 'simple',
 			searchText: '',
 			
 			// 设置项状态
@@ -175,13 +177,13 @@ export default {
 				{ name: '通行证查询', path: '/pages/Search/Search', desc: '通过干员名或盒号查询', keywords: '查询,搜索,search,prts' },
 				{ name: '通行证列表', path: '/pages/list/list', desc: '查看所有通行证列表', keywords: '列表,全部,list' },
 				{ name: '扫码查盒', path: '/pages/scan_barcode/scan_barcode', desc: '扫描条形码查询盒号', keywords: '扫码,条形码,barcode,scan' },
-				{ name: '模拟抽卡', path: '/pages/gacha_simulated/gacha_simulated', desc: '模拟抽卡体验', keywords: '抽卡,模拟,gacha,十连' },
+				{ name: '模拟抽卡', path: '/packageB/pages/gacha_simulated/gacha_simulated', desc: '模拟抽卡体验', keywords: '抽卡,模拟,gacha,十连' },
 				{ name: '我的展柜', path: '/pages/card_share/card_share', desc: '查看已点亮的通行证', keywords: '展柜,点亮,收藏' },
 				{ name: '数据源设置', path: '/packageA/Setting/Setting?tab=data', desc: '切换数据来源', keywords: '数据源,github,gitcode,设置' },
 				{ name: '主题设置', path: '/packageA/Setting/Setting?tab=theme', desc: '切换界面主题', keywords: '主题,颜色,皮肤,theme' },
 				{ name: '关于', path: '/packageA/aboutus/aboutus', desc: '关于本小程序', keywords: '关于,版本,about' },
 				{ name: '友情小工具', path: '/pages/friend_links/friend_links', desc: '友情链接与小工具', keywords: '友情,链接,工具' },
-				{ name: '反馈纠错', path: '/pages/box_feedback/box_feedback', desc: '反馈数据问题', keywords: '反馈,纠错,错误,问题' }
+				{ name: '反馈纠错', path: '/pages/box_feedback_new/box_feedback_new', desc: '反馈数据问题', keywords: '反馈,纠错,错误,问题' }
 			];
 		},
 		
@@ -214,12 +216,21 @@ export default {
 	},
 	
 	onShow() {
+		this.loadThemeSetting();
 		console.log('[func_search] onShow triggered');
 		// 每次显示页面时重新加载设置，保持与 Setting 页面同步
 		this.loadSettings();
 	},
 	
 	methods: {
+loadThemeSetting() {
+			try {
+				const t = uni.getStorageSync('themeMode');
+				this.themeMode = (t && ['simple', 'ak', 'ark', 'jieyuan', 'liquid', 'liquidDark'].indexOf(t) > -1) ? t : 'simple';
+			} catch (e) {
+				this.themeMode = 'simple';
+			}
+		},
 		logError(e, ctx) {
 				try {
 					errorLog.logError(e, ctx);
@@ -406,6 +417,10 @@ export default {
 	align-items: center;
 	padding: 0 12px;
 	margin-right: 12px;
+}
+.search-box:focus-within {
+	border-color: var(--ak-focus-border, #2f7ed8);
+	box-shadow: var(--ak-focus-shadow, 0 0 0 4rpx rgba(64, 158, 255, 0.18), 0 10rpx 24rpx -6rpx rgba(31, 94, 168, 0.28), inset 0 0 0 2rpx rgba(64, 158, 255, 0.45), inset 0 2rpx 8rpx rgba(31, 94, 168, 0.10));
 }
 
 .search-icon {

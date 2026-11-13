@@ -1,13 +1,16 @@
 <template>
-	<view class="calendar-container">
-		<!-- 月份选择 -->
-		<view class="month-selector">
-			<text class="month-arrow" @click="prevMonth">◀</text>
-			<text class="month-text" @click="showMonthPicker">{{ currentYear }}年{{ currentMonth }}月 ▼</text>
-			<text class="month-arrow" @click="nextMonth">▶</text>
+	<view class="container calendar-container" :class="'theme-' + themeMode">
+		<!-- 视图切换：只在窄屏出现；宽屏下左右两栏同时展示，无需切换 -->
+		<view class="view-switch" v-if="!wideLayout">
+			<view class="switch-item" :class="{ active: viewMode === 'calendar' }" @click="switchView('calendar')">
+				<text class="switch-text">日历</text>
+			</view>
+			<view class="switch-item" :class="{ active: viewMode === 'timeline' }" @click="switchView('timeline')">
+				<text class="switch-text">时间线</text>
+			</view>
 		</view>
 
-		<!-- 统计概览 -->
+		<!-- 统计概览（两栏共用） -->
 		<view class="calendar-stats">
 			<view class="stat-item">
 				<text class="stat-num">{{ monthBoxes.length }}</text>
@@ -23,52 +26,93 @@
 			</view>
 		</view>
 
-		<!-- 盒子时间线 -->
-		<view class="timeline">
-			<view class="timeline-item" v-for="(box, index) in monthBoxes" :key="index" @click="goToBox(box)">
-				<view class="timeline-dot" :class="'dot-' + getBoxTypeClass(box.Box_type)"></view>
-				<view class="timeline-line" v-if="index < monthBoxes.length - 1"></view>
-				<view class="timeline-card">
-					<view class="card-header">
-						<view class="card-title-row">
-							<text class="card-name">{{ box.Box_id || box.box_id }}</text>
-							<text class="card-action-tag">{{ getMonthTag(box) }}</text>
-						</view>
-						<text class="card-date">{{ getMonthDate(box) }}</text>
+		<!-- 宽屏：左「日历 + 当天盒子」/ 右「月份 + 当月时间线」同时展示；窄屏只渲染当前视图 -->
+		<view class="calendar-split" :class="{ 'is-wide': wideLayout }">
+			<view
+				class="calendar-col"
+				:class="'col-' + pane"
+				v-for="pane in visiblePanes"
+				:key="pane"
+			>
+				<!-- 月份选择（时间线栏） -->
+				<view class="month-selector" v-if="pane === 'timeline'">
+					<view class="month-arrow" hover-class="month-arrow-hover" @click="prevMonth">
+						<view class="chev chev-left"></view>
 					</view>
-					<view class="card-subheader">
-						<text class="card-type-tag" :class="'tag-' + getBoxTypeClass(box.Box_type)">{{ getBoxTypeText(box.Box_type) }}</text>
+					<view class="month-text" @click="showMonthPicker">
+						<text class="month-text-label">{{ currentYear }}年{{ currentMonth }}月</text>
+						<view class="caret-down"></view>
 					</view>
-					<view class="card-body">
-						<text class="card-characters">包含 {{ getBoxCharacters(box).length }} 个角色</text>
-						<!-- 角色名字标签 -->
-						<view class="card-char-tags" v-if="getBoxCharacters(box).length > 0">
-							<text
-								class="char-tag"
-								v-for="(char, ci) in getBoxCharacters(box)"
-								:key="ci"
-							>{{ char.name }}</text>
-						</view>
-						<view class="card-replicate">
-							<text class="card-replicate-label">复刻记录</text>
-							<view class="card-replicate-list" v-if="getReplicateRecords(box).length">
-								<text class="card-replicate-line" v-for="(rec, ri) in getReplicateRecords(box)" :key="ri">{{ rec }}</text>
-							</view>
-							<text class="card-replicate-empty" v-else>暂无记录</text>
-						</view>
-						<view class="card-progress">
-							<view class="mini-progress-bar">
-								<view class="mini-progress-fill" :style="{ width: getBoxRate(box) + '%' }"></view>
-							</view>
-							<text class="card-progress-text">{{ getBoxOwnedCount(box) }}/{{ getBoxCharacters(box).length }}</text>
-						</view>
+					<view class="month-arrow" hover-class="month-arrow-hover" @click="nextMonth">
+						<view class="chev chev-right"></view>
 					</view>
 				</view>
-			</view>
 
-			<view class="empty-month" v-if="monthBoxes.length === 0">
-				<text class="empty-icon">📭</text>
-				<text class="empty-text">该月没有通行证盒子</text>
+				<!-- 日历面板（日历栏，uni-calendar） -->
+				<view class="calendar-panel" v-if="pane === 'calendar'">
+					<uni-calendar
+						:insert="true"
+						:lunar="false"
+						:show-month="false"
+						:selected="calendarMarks"
+						:date="calendarSyncDate"
+						@change="onCalendarChange"
+						@monthSwitch="onCalendarMonthSwitch"
+					></uni-calendar>
+				</view>
+
+				<!-- 盒子列表：日历栏=选中日期当天；时间线栏=当月全部 -->
+				<view class="timeline" :class="{ 'timeline-flat': pane === 'calendar' }">
+					<view class="timeline-item" v-for="(box, index) in paneData[pane].boxes" :key="index" @click="goToBox(box)">
+						<block v-if="pane === 'timeline'">
+							<view class="timeline-dot" :class="'dot-' + getBoxTypeClass(box.Box_type)"></view>
+							<view class="timeline-line" v-if="index < paneData[pane].boxes.length - 1"></view>
+						</block>
+						<view class="timeline-card">
+							<view class="card-header">
+								<view class="card-title-row">
+									<text class="card-name">{{ box.Box_id || box.box_id }}</text>
+									<text class="card-action-tag">{{ box._tag }}</text>
+								</view>
+								<text class="card-date">{{ box._dateText }}</text>
+							</view>
+							<view class="card-subheader">
+								<text class="card-type-tag" :class="'tag-' + getBoxTypeClass(box.Box_type)">{{ getBoxTypeText(box.Box_type) }}</text>
+							</view>
+							<view class="card-body">
+								<text class="card-characters">包含 {{ getBoxCharacters(box).length }} 个角色</text>
+								<!-- 角色名字标签 -->
+								<view class="card-char-tags" v-if="getBoxCharacters(box).length > 0">
+									<text
+										class="char-tag"
+										v-for="(char, ci) in getBoxCharacters(box)"
+										:key="ci"
+									>{{ char.name }}</text>
+								</view>
+								<view class="card-replicate">
+									<text class="card-replicate-label">复刻记录</text>
+									<view class="card-replicate-list" v-if="getReplicateRecords(box).length">
+										<text class="card-replicate-line" v-for="(rec, ri) in getReplicateRecords(box)" :key="ri">{{ rec }}</text>
+									</view>
+									<text class="card-replicate-empty" v-else>暂无记录</text>
+								</view>
+								<view class="card-progress">
+									<view class="mini-progress-bar">
+										<view class="mini-progress-fill" :style="{ width: getBoxRate(box) + '%' }"></view>
+									</view>
+									<text class="card-progress-text">{{ getBoxOwnedCount(box) }}/{{ getBoxCharacters(box).length }}</text>
+								</view>
+							</view>
+						</view>
+					</view>
+
+					<view class="empty-month" v-if="paneData[pane].boxes.length === 0">
+						<view class="empty-mark">
+							<view class="empty-mark-line"></view>
+						</view>
+						<text class="empty-text">{{ paneData[pane].empty }}</text>
+					</view>
+				</view>
 			</view>
 		</view>
 
@@ -104,7 +148,10 @@
 			<view class="month-picker-sheet" @click.stop>
 				<view class="picker-header">
 					<text class="picker-title">选择年月</text>
-					<text class="picker-close" @click="closeMonthPicker">✕</text>
+					<view class="picker-close" @click="closeMonthPicker">
+					<view class="x-line x-line-a"></view>
+					<view class="x-line x-line-b"></view>
+				</view>
 				</view>
 				<scroll-view class="picker-list" scroll-y>
 					<view
@@ -125,16 +172,30 @@
 
 <script>
 import errorLog from "@/utils/errorLog.js";
+import { markDailyTask } from "@/utils/dailyTask.js";
+import uniCalendar from '@/uni_modules/uni-calendar/components/uni-calendar/uni-calendar.vue';
+import wideLayout from "@/utils/wideLayout.js";
+
 export default {
+	mixins: [wideLayout],
+	components: { uniCalendar },
 	data() {
 		return {
+			// 主题模式
+			themeMode: 'simple',
 			boxes: [],
 			ownedCharacters: {},
 			currentYear: 2025,
 			currentMonth: 1,
 			minMonth: { year: 2024, month: 1 },
 			maxMonth: { year: 2026, month: 12 },
-			showMonthPickerFlag: false
+			showMonthPickerFlag: false,
+			// 视图模式：calendar（日历样式）/ timeline（时间线样式）
+			viewMode: 'calendar',
+			// 日历视图选中的日期（YYYY-MM-DD）
+			selectedDate: '',
+			// 传给 uni-calendar 的受控日期，用于切回日历视图时同步月份
+			calendarSyncDate: ''
 		};
 	},
 	computed: {
@@ -151,6 +212,28 @@ export default {
 			return this.monthBoxes.reduce((sum, box) => {
 				return sum + (box.characters || []).filter(c => c && c.name && this.ownedCharacters[c.name]).length;
 			}, 0);
+		},
+		// 日历打点：所有盒子的上线 + 复刻日期
+		calendarMarks() {
+			const map = {};
+			this.boxes.forEach(box => {
+				this.boxDates(box).forEach(d => {
+					if (!map[d.key]) map[d.key] = { date: d.key, info: '' };
+				});
+			});
+			return Object.keys(map).map(k => map[k]);
+		},
+		// 宽屏：左右两栏同时展示；窄屏：只展示当前视图
+		visiblePanes() {
+			return this.wideLayout ? ['calendar', 'timeline'] : [this.viewMode];
+		},
+		// 每一栏自己的数据（互不影响）
+		paneData() {
+			const map = {};
+			this.visiblePanes.forEach(mode => {
+				map[mode] = { boxes: this.boxesFor(mode), empty: this.emptyTextFor(mode) };
+			});
+			return map;
 		},
 		// 收集所有有数据的年月，按最新在前排列
 		availableMonths() {
@@ -172,12 +255,29 @@ export default {
 		}
 	},
 	onLoad() {
+		this.syncWideLayout();
+		// 每日任务打点
+		markDailyTask('view_calendar');
 		this.loadData();
+		const now = new Date();
+		const y = now.getFullYear();
+		const m = now.getMonth() + 1;
+		this.selectedDate = y + '-' + this.pad2(m) + '-' + this.pad2(now.getDate());
+		this.calendarSyncDate = y + '-' + this.pad2(m) + '-01';
 	},
 	onShow() {
+		this.loadThemeSetting();
 		this.ownedCharacters = uni.getStorageSync('ownedCharacters') || {};
 	},
 	methods: {
+loadThemeSetting() {
+			try {
+				const t = uni.getStorageSync('themeMode');
+				this.themeMode = (t && ['simple', 'ak', 'ark', 'jieyuan', 'liquid', 'liquidDark'].indexOf(t) > -1) ? t : 'simple';
+			} catch (e) {
+				this.themeMode = 'simple';
+			}
+		},
 		logError(e, ctx) {
 				try {
 					errorLog.logError(e, ctx);
@@ -218,6 +318,99 @@ export default {
 			const now = new Date();
 			this.currentYear = now.getFullYear();
 			this.currentMonth = now.getMonth() + 1;
+		},
+
+		// ===== 日期工具 =====
+		pad2(n) {
+			const v = Number(n) || 0;
+			return v < 10 ? '0' + v : '' + v;
+		},
+
+		parseDateParts(str) {
+			const m = String(str || '').match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})/);
+			return m ? { y: Number(m[1]), m: Number(m[2]), d: Number(m[3]) } : null;
+		},
+
+		dateKeyOf(parts) {
+			return parts.y + '-' + this.pad2(parts.m) + '-' + this.pad2(parts.d);
+		},
+
+		// 盒子的全部日期（上线 + 每次复刻）
+		boxDates(box) {
+			const fields = ['release_date', 'replicate_date', 'replicate_date_01', 'replicate_date_02', 'replicate_date_03', 'replicate_date_04', 'replicate_date_05'];
+			const list = [];
+			fields.forEach(field => {
+				if (!box || !box[field]) return;
+				const parts = this.parseDateParts(box[field]);
+				if (parts) list.push({ field: field, text: box[field], parts: parts, key: this.dateKeyOf(parts) });
+			});
+			return list;
+		},
+
+		// 日期字段 -> 中文标签
+		dateFieldLabel(field) {
+			if (field === 'release_date') return '上线';
+			if (field === 'replicate_date') return '第一次复刻';
+			const m = String(field).match(/^replicate_date_(\d+)$/);
+			if (m) return '第' + this.toChineseOrdinal(Number(m[1]) + 1) + '次复刻';
+			return '上线';
+		},
+
+		// 指定视图的盒子列表：时间线=当月全部；日历=选中日期当天
+		boxesFor(mode) {
+			if (mode === 'timeline') {
+				return this.monthBoxes.map(box => Object.assign({}, box, {
+					_tag: this.getMonthTag(box),
+					_dateText: this.getMonthDate(box)
+				}));
+			}
+			const target = this.selectedDate;
+			if (!target) return [];
+			const list = [];
+			this.boxes.forEach(box => {
+				const hit = this.boxDates(box).find(d => d.key === target);
+				if (hit) {
+					list.push(Object.assign({}, box, {
+						_tag: this.dateFieldLabel(hit.field),
+						_dateText: hit.text
+					}));
+				}
+			});
+			return list.sort((a, b) => String(a._dateText).localeCompare(String(b._dateText)));
+		},
+		// 指定视图的空状态文案
+		emptyTextFor(mode) {
+			if (mode === 'timeline') return '该月没有通行证盒子';
+			if (!this.selectedDate) return '请选择日期查看当天的通行证盒子';
+			const total = this.monthBoxes.length;
+			return total ? '这一天没有通行证盒子，本月共 ' + total + ' 个' : '这一天没有通行证盒子';
+		},
+
+		// ===== 视图切换与日历联动 =====
+		switchView(mode) {
+			if (mode === this.viewMode) return;
+			this.viewMode = mode;
+			if (mode === 'calendar') {
+				const now = new Date();
+				const d = (this.currentYear || now.getFullYear()) + '-' + this.pad2(this.currentMonth || (now.getMonth() + 1)) + '-01';
+				if (d !== this.calendarSyncDate) this.calendarSyncDate = d;
+			}
+		},
+
+		onCalendarChange(e) {
+			const fd = String((e && e.fulldate) || '');
+			const parts = fd.split('-');
+			if (parts.length === 3) {
+				this.selectedDate = parts[0] + '-' + this.pad2(parts[1]) + '-' + this.pad2(parts[2]);
+			}
+		},
+
+		onCalendarMonthSwitch(e) {
+			if (!e || !e.year) return;
+			this.currentYear = Number(e.year);
+			this.currentMonth = Number(e.month);
+			// 翻月后清空选中日期，避免列表仍停留在上个月某一天
+			this.selectedDate = '';
 		},
 
 		getBoxMonth(box) {
@@ -411,25 +604,66 @@ export default {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 24rpx;
-    background: #fff;
+    padding: 8rpx 16rpx;
+    background: var(--cal-card-bg, #fff);
     border-radius: 16rpx;
     margin-bottom: 24rpx;
     box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
 }
 
+/* 翻页箭头：纯 CSS 绘制（不使用左右三角字符，iOS 会把它们渲染成 emoji） */
 .month-arrow {
-    font-size: 28rpx;
-    color: #666;
-    padding: 12rpx 24rpx;
+    width: 88rpx;
+    height: 88rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.month-arrow-hover {
+    background: var(--cal-switch-bg, #f2f3f5);
+}
+
+.chev {
+    width: 18rpx;
+    height: 18rpx;
+    border-left: 4rpx solid var(--cal-sub, #666);
+    border-bottom: 4rpx solid var(--cal-sub, #666);
+    border-radius: 3rpx;
+}
+
+.chev-left {
+    transform: rotate(45deg);
+    margin-left: 6rpx;
+}
+
+.chev-right {
+    transform: rotate(-135deg);
+    margin-right: 6rpx;
+}
+
+.caret-down {
+    width: 0;
+    height: 0;
+    border-left: 10rpx solid transparent;
+    border-right: 10rpx solid transparent;
+    border-top: 12rpx solid var(--cal-sub, #999);
+    margin-left: 12rpx;
 }
 
 .month-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 240rpx;
+    padding: 12rpx 8rpx;
+}
+
+.month-text-label {
     font-size: 32rpx;
     font-weight: bold;
-    color: #333;
-    min-width: 240rpx;
-    text-align: center;
+    color: var(--cal-text, #333);
 }
 
 .calendar-stats {
@@ -766,5 +1000,192 @@ export default {
 
 .picker-item.active .picker-count {
     color: #FF6B35;
+}
+
+/* ================= 主题变量（简约 / 工业浅色 / 工业深色 / 界园） ================= */
+.container.calendar-container {
+    --cal-card-bg: #ffffff;
+    --cal-text: #333333;
+    --cal-sub: #999999;
+    --cal-border: #f0f0f0;
+    --cal-accent: #FF6B35;
+    --cal-switch-bg: #f2f3f5;
+    --cal-switch-active-bg: #ffffff;
+    --cal-today-bg: rgba(255, 107, 53, 0.12);
+    --cal-dot: #FF6B35;
+    --cal-disabled: #c8c9cc;
+}
+
+.container.calendar-container.theme-ak,
+.container.calendar-container.theme-ark {
+    --cal-card-bg: var(--ak-surface-panel, #fdfdfb);
+    --cal-text: var(--ak-text-primary, #1b1d1f);
+    --cal-sub: var(--ak-text-muted, #8d908e);
+    --cal-border: var(--ak-hairline-soft, rgba(0, 0, 0, 0.08));
+    --cal-accent: var(--ak-color-accent, #f6540e);
+    --cal-switch-bg: var(--ak-surface-muted, #ecece9);
+    --cal-switch-active-bg: var(--ak-surface-panel, #fdfdfb);
+    --cal-today-bg: rgba(255, 106, 38, 0.16);
+    --cal-dot: var(--ak-color-accent, #f6540e);
+    --cal-disabled: var(--ak-text-muted, #8b8f8c);
+}
+
+.container.calendar-container.theme-jieyuan {
+    --cal-card-bg: rgba(255, 255, 255, 0.92);
+    --cal-text: #333333;
+    --cal-sub: #8a8a8a;
+    --cal-border: rgba(226, 88, 132, 0.15);
+    --cal-accent: #e25884;
+    --cal-switch-bg: #f7ecdd;
+    --cal-switch-active-bg: #ffffff;
+    --cal-today-bg: rgba(226, 88, 132, 0.12);
+    --cal-dot: #e25884;
+    --cal-disabled: #cbbfb4;
+}
+
+/* ================= 视图切换 ================= */
+.view-switch {
+    display: flex;
+    padding: 6rpx;
+    background: var(--cal-switch-bg, #f2f3f5);
+    border-radius: 14rpx;
+    margin-bottom: 24rpx;
+}
+
+.switch-item {
+    flex: 1;
+    height: 64rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10rpx;
+}
+
+.switch-item.active {
+    background: var(--cal-switch-active-bg, #fff);
+    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+
+.switch-text {
+    font-size: 26rpx;
+    color: var(--cal-sub, #888);
+}
+
+.switch-item.active .switch-text {
+    color: var(--cal-accent, #FF6B35);
+    font-weight: 600;
+}
+
+/* ================= 日历面板（uni-calendar 主题变量） ================= */
+.calendar-panel {
+    background: var(--cal-card-bg, #fff);
+    border-radius: 16rpx;
+    padding: 8rpx 12rpx 16rpx;
+    margin-bottom: 24rpx;
+    overflow: hidden;
+    box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
+
+    --uc-bg: var(--cal-card-bg, #fff);
+    --uc-text: var(--cal-text, #333);
+    --uc-sub: var(--cal-sub, #9aa0a6);
+    --uc-border: var(--cal-border, #f0f0f0);
+    --uc-border-soft: var(--cal-border, #f5f5f5);
+    --uc-primary: var(--cal-accent, #FF6B35);
+    --uc-on-primary: #ffffff;
+    --uc-today-bg: var(--cal-today-bg, rgba(255, 107, 53, 0.12));
+    --uc-dot: var(--cal-dot, #FF6B35);
+    --uc-disabled: var(--cal-disabled, #c8c9cc);
+    --uc-hover-bg: var(--cal-switch-bg, #f2f3f5);
+    --uc-watermark: var(--cal-border, #ededed);
+}
+
+/* ================= 日历视图下的列表（去掉时间线缩进） ================= */
+.timeline-flat {
+    padding-left: 0;
+}
+
+.timeline-flat .timeline-item {
+    padding-left: 0;
+    padding-bottom: 20rpx;
+}
+
+/* ================= 空状态图形（替换 emoji） ================= */
+.empty-mark {
+    width: 96rpx;
+    height: 96rpx;
+    border-radius: 50%;
+    border: 4rpx dashed var(--cal-disabled, #d9d9d9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20rpx;
+}
+
+.empty-mark-line {
+    width: 36rpx;
+    height: 4rpx;
+    border-radius: 2rpx;
+    background: var(--cal-disabled, #d9d9d9);
+}
+
+/* ================= 关闭按钮（CSS 十字，替换叉号字符） ================= */
+.picker-close {
+    width: 64rpx;
+    height: 64rpx;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.x-line {
+    position: absolute;
+    width: 26rpx;
+    height: 3rpx;
+    border-radius: 2rpx;
+    background: var(--cal-sub, #999);
+}
+
+.x-line-a {
+    transform: rotate(45deg);
+}
+
+.x-line-b {
+    transform: rotate(-45deg);
+}
+/* ================= 宽屏两栏：左日历 / 右时间线 ================= */
+.calendar-split.is-wide {
+    display: flex;
+    align-items: flex-start;
+    gap: 24rpx;
+    margin-bottom: 24rpx;
+}
+
+.calendar-split.is-wide .calendar-col {
+    min-width: 0;
+}
+
+/* 左栏放日历，宽度占比略小；右栏时间线更长 */
+.calendar-split.is-wide .col-calendar {
+    flex: 0 0 45%;
+}
+
+.calendar-split.is-wide .col-timeline {
+    flex: 1 1 0;
+}
+
+/* 两栏内部不再叠加底部外边距，避免左右高低错位 */
+.calendar-split.is-wide .calendar-panel,
+.calendar-split.is-wide .month-selector {
+    margin-bottom: 20rpx;
+}
+
+.calendar-split.is-wide .timeline {
+    margin-bottom: 0;
+}
+
+/* 窄屏保持原来的单栏排布 */
+.calendar-split:not(.is-wide) {
+    display: block;
 }
 </style>

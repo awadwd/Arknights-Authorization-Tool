@@ -1,0 +1,5985 @@
+/* ==========================================================================
+   ak-theme.css · 全局主题层（工业浅色 theme-ak / 工业深色 theme-ark）
+   --------------------------------------------------------------------------
+   设计语言来源：ak-ui（D:\Users\huang\Downloads\ak-ui-master）
+   设计原则：
+     1) 表面分层：画布 / 面板 / 内衬三级，靠明度差 + 发丝线区分，不靠阴影与发光
+     2) 几何：直角化（4rpx），去掉圆胶囊与柔和投影
+     3) 信号色：蓝=信息  黄=操作  橙=强调  红=危险（颜色只表达语义，不做装饰）
+     4) 排版：区块标题用衬线 900；数据/编号/版本用等宽 + 字距
+     5) 反馈：按压态同时改变填充与线条，不靠缩放
+
+   为什么统一使用 !important：
+     本文件是「皮肤层」，加载顺序在所有页面样式之前（app.wxss 先于页面 wxss），
+     而同名规则在各页面内以 .container.theme-ark .x 的形式存在（特异性更高）。
+     为保证皮肤层可以完整接管配色，这里对配色类属性统一 !important；
+     页面自身的 !important 特效规则（金卡、稀有度、幸运色等）特异性更高，仍会保留。
+     几何与排版类属性不使用 !important，避免影响布局。
+
+   明确排除（颜色承载语义，不做统一）：
+     .box-card / .result-item / .box-image-section / .card-front / .card-stage /
+     .card-rarity-ring / .result-card / .character-tag / .character-price /
+     .box-progress-fill / .luck-gold / .luck-eu / .gacha-ten-btn / .achievement-* /
+     .box-rank / .rank-* / .hot-character-icon / .contributor-avatar
+   ========================================================================== */
+
+/* ==========================================================================
+   1 · 设计令牌
+   ========================================================================== */
+
+/* ---------- 工业浅色（theme-ak）：纸面 + 石墨 ---------- */
+.container.theme-ak,
+.list-page.theme-ak,
+.custom-nav-bar.theme-ak,
+.wh.theme-ak {
+	--ak-color-primary: #4aabea;
+	--ak-color-advanced: #f1c644;
+	--ak-color-accent: #f6540e;
+	--ak-color-low: #9c9c9c;
+	--ak-surface-canvas: #efefec;
+	--ak-surface-panel: #fdfdfb;
+	--ak-surface-muted: #ecece9;
+	--ak-surface-sunken: #e6e6e1;
+	--ak-surface-press: #f0f1ed;
+	--ak-surface-dark: #2b2d2f;
+	--ak-text-primary: #1b1d1f;
+	--ak-text-secondary: rgba(27, 29, 31, 0.68);
+	--ak-text-muted: #8d908e;
+	--ak-text-inverse: #f8f8f5;
+	--ak-text-on-action: #1b1d1f;
+	--ak-signal-info: var(--ak-color-primary);
+	--ak-signal-action: var(--ak-color-advanced);
+	--ak-signal-accent: var(--ak-color-accent);
+	--ak-signal-danger: #e33b3b;
+	--ak-hairline: rgba(27, 29, 31, 0.22);
+	--ak-hairline-soft: rgba(27, 29, 31, 0.1);
+	--ak-mask: rgba(20, 22, 23, 0.42);
+	--ak-font-serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", serif;
+	--ak-font-sans: -apple-system, "PingFang SC", "HarmonyOS Sans SC", "Noto Sans SC", Roboto, "Helvetica Neue", Arial, sans-serif;
+	--ak-font-mono: "SF Mono", SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
+	--ak-radius: 4rpx;
+	font-family: var(--ak-font-sans);
+}
+
+/* ---------- 工业深色（theme-ark）：石墨 + 纸白 ---------- */
+.container.theme-ark,
+.list-page.theme-ark,
+.custom-nav-bar.theme-ark,
+.wh.theme-ark {
+	--ak-color-primary: #5fb6ef;
+	--ak-color-advanced: #f1c644;
+	--ak-color-accent: #ff6a26;
+	--ak-color-low: #7c807e;
+	--ak-surface-canvas: #131415;
+	--ak-surface-panel: #1b1d1e;
+	--ak-surface-muted: #232628;
+	--ak-surface-sunken: #0e0f10;
+	--ak-surface-press: #2c3032;
+	--ak-surface-dark: #e6e5df;
+	--ak-text-primary: #ecebe6;
+	--ak-text-secondary: rgba(236, 235, 230, 0.66);
+	--ak-text-muted: #8b8f8c;
+	--ak-text-inverse: #141516;
+	--ak-text-on-action: #131415;
+	--ak-signal-info: var(--ak-color-primary);
+	--ak-signal-action: var(--ak-color-advanced);
+	--ak-signal-accent: var(--ak-color-accent);
+	--ak-signal-danger: #ff5f56;
+	--ak-hairline: rgba(255, 255, 255, 0.22);
+	--ak-hairline-soft: rgba(255, 255, 255, 0.12);
+	--ak-mask: rgba(0, 0, 0, 0.64);
+	--ak-font-serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", serif;
+	--ak-font-sans: -apple-system, "PingFang SC", "HarmonyOS Sans SC", "Noto Sans SC", Roboto, "Helvetica Neue", Arial, sans-serif;
+	--ak-font-mono: "SF Mono", SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
+	--ak-radius: 4rpx;
+	font-family: var(--ak-font-sans);
+}
+
+/* ==========================================================================
+   2 · 外壳与画布
+   ========================================================================== */
+.container.theme-ak,
+.scan-page.theme-ak,
+.chat-page.theme-ak,
+.page-root.theme-ak,
+.list-page.theme-ak {
+	background-color: var(--ak-surface-canvas) !important;
+	background-image: none !important;
+}
+
+.container.theme-ark,
+.scan-page.theme-ark,
+.chat-page.theme-ark,
+.page-root.theme-ark,
+.list-page.theme-ark {
+	background-color: var(--ak-surface-canvas) !important;
+	background-image: none !important;
+}
+
+/* 旧深色主题的网格暗纹 / 发光背景一律移除 */
+.theme-ark::before {
+	background-image: none !important;
+}
+
+/* 导航栏：纸面/石墨底 + 底部发丝线，直角化 */
+.custom-nav-bar.theme-ak,
+.custom-nav-bar.theme-ark {
+	background-color: var(--ak-surface-panel) !important;
+	background-image: none !important;
+	box-shadow: none !important;
+	border-bottom: 1rpx solid var(--ak-hairline-soft);
+}
+.custom-nav-bar.theme-ak .nav-switch-btn {
+	background-color: var(--ak-color-advanced) !important;
+	border: 1rpx solid var(--ak-color-advanced) !important;
+	border-radius: 2rpx !important;
+	box-shadow: none !important;
+}
+.custom-nav-bar.theme-ak .nav-switch-text {
+	color: #1b1d1f !important;
+	font-weight: 800 !important;
+	letter-spacing: 0.06em !important;
+}
+.custom-nav-bar.theme-ark .nav-switch-btn {
+	background-color: transparent !important;
+	border: 1rpx solid var(--ak-hairline) !important;
+	border-radius: 2rpx !important;
+	box-shadow: none !important;
+}
+.custom-nav-bar.theme-ark .nav-switch-text {
+	color: var(--ak-color-advanced) !important;
+	font-weight: 800 !important;
+	letter-spacing: 0.06em !important;
+}
+.custom-nav-bar.theme-ak .nav-search-box,
+.custom-nav-bar.theme-ark .nav-search-box {
+	border-radius: 2rpx !important;
+	box-shadow: none !important;
+}
+.custom-nav-bar.theme-ak .nav-search-box {
+	background-color: var(--ak-surface-muted) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.custom-nav-bar.theme-ark .nav-search-box {
+	background-color: var(--ak-surface-muted) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.custom-nav-bar.theme-ak .nav-search-text {
+	color: var(--ak-text-muted) !important;
+}
+.custom-nav-bar.theme-ark .nav-search-text {
+	color: var(--ak-text-muted) !important;
+}
+
+/* ==========================================================================
+   3 · 面板与卡片（结构性表面；颜色语义组件已排除）
+   ========================================================================== */
+.theme-ak .card,
+.theme-ak .section,
+.theme-ak .section-content,
+.theme-ak .search-section,
+.theme-ak .notice-section,
+.theme-ak .advanced-filter-section,
+.theme-ak .stats-section,
+.theme-ak .support-item,
+.theme-ak .contributor-item,
+.theme-ak .setting-item,
+.theme-ak .history-item,
+.theme-ak .data-detail-item,
+.theme-ak .debug-item,
+.theme-ak .form-item,
+.theme-ak .field-modify-item,
+.theme-ak .image-container,
+.theme-ak .picker-display,
+.theme-ak .selector-item,
+.theme-ak .suggestion-item {
+	background-color: var(--ak-surface-panel) !important;
+	background-image: none !important;
+	border-color: var(--ak-hairline-soft) !important;
+	border-radius: var(--ak-radius) !important;
+	box-shadow: none !important;
+}
+
+.theme-ark .card,
+.theme-ark .section,
+.theme-ark .section-content,
+.theme-ark .search-section,
+.theme-ark .notice-section,
+.theme-ark .advanced-filter-section,
+.theme-ark .stats-section,
+.theme-ark .support-item,
+.theme-ark .contributor-item,
+.theme-ark .setting-item,
+.theme-ark .history-item,
+.theme-ark .data-detail-item,
+.theme-ark .debug-item,
+.theme-ark .form-item,
+.theme-ark .field-modify-item,
+.theme-ark .image-container,
+.theme-ark .picker-display,
+.theme-ark .selector-item,
+.theme-ark .suggestion-item {
+	background-color: var(--ak-surface-panel) !important;
+	background-image: none !important;
+	border-color: var(--ak-hairline-soft) !important;
+	border-radius: var(--ak-radius) !important;
+	box-shadow: none !important;
+}
+
+/* 内衬行（次级表面） */
+.theme-ak .history-item,
+.theme-ak .data-detail-item,
+.theme-ak .debug-item,
+.theme-ak .selector-item,
+.theme-ak .suggestion-item {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ark .history-item,
+.theme-ark .data-detail-item,
+.theme-ark .debug-item,
+.theme-ark .selector-item,
+.theme-ark .suggestion-item {
+	background-color: var(--ak-surface-muted) !important;
+}
+
+/* ==========================================================================
+   4 · 排版层级
+   ========================================================================== */
+.theme-ak .section-title,
+.theme-ak .advanced-filter-title,
+.theme-ak .filter-group-title,
+.theme-ak .modal-title,
+.theme-ak .section-subtitle,
+.theme-ak .setting-name,
+.theme-ak .stat-value {
+	font-family: var(--ak-font-serif) !important;
+	font-weight: 900 !important;
+	color: var(--ak-text-primary) !important;
+	letter-spacing: 0.02em !important;
+	text-shadow: none !important;
+	background-image: none !important;
+}
+
+.theme-ark .section-title,
+.theme-ark .advanced-filter-title,
+.theme-ark .filter-group-title,
+.theme-ark .modal-title,
+.theme-ark .section-subtitle,
+.theme-ark .setting-name,
+.theme-ark .stat-value {
+	font-family: var(--ak-font-serif) !important;
+	font-weight: 900 !important;
+	color: var(--ak-text-primary) !important;
+	letter-spacing: 0.02em !important;
+	text-shadow: none !important;
+	background-image: none !important;
+}
+
+/* 数据与正文 */
+.theme-ak .info-label,
+.theme-ak .stat-label,
+.theme-ak .status-label,
+.theme-ak .filter-label,
+.theme-ak .field-label,
+.theme-ak .debug-label,
+.theme-ak .setting-desc,
+.theme-ak .image-tip,
+.theme-ak .tip-text,
+.theme-ak .empty-tip,
+.theme-ak .notice-text {
+	color: var(--ak-text-secondary) !important;
+	text-shadow: none !important;
+}
+
+.theme-ark .info-label,
+.theme-ark .stat-label,
+.theme-ark .status-label,
+.theme-ark .filter-label,
+.theme-ark .field-label,
+.theme-ark .debug-label,
+.theme-ark .setting-desc,
+.theme-ark .image-tip,
+.theme-ark .tip-text,
+.theme-ark .empty-tip,
+.theme-ark .notice-text {
+	color: var(--ak-text-secondary) !important;
+	text-shadow: none !important;
+}
+
+.theme-ak .info-label,
+.theme-ak .stat-label,
+.theme-ak .status-label,
+.theme-ak .filter-group-title,
+.theme-ak .filter-label,
+.theme-ak .field-label {
+	letter-spacing: 0.08em !important;
+	font-weight: 700 !important;
+}
+
+.theme-ark .info-label,
+.theme-ark .stat-label,
+.theme-ark .status-label,
+.theme-ark .filter-group-title,
+.theme-ark .filter-label,
+.theme-ark .field-label {
+	letter-spacing: 0.08em !important;
+	font-weight: 700 !important;
+}
+
+/* 数值 / 编号 / 版本 / 版权：等宽 */
+.theme-ak .info-value,
+.theme-ak .status-value,
+.theme-ak .stat-value,
+.theme-ak .debug-value,
+.theme-ak .box-id,
+.theme-ak .price-value,
+.theme-ak .copyright-text,
+.theme-ak .character-price,
+.theme-ak .picker-text {
+	font-family: var(--ak-font-mono) !important;
+	color: var(--ak-text-primary) !important;
+	letter-spacing: 0.04em !important;
+	background-image: none !important;
+}
+
+.theme-ark .info-value,
+.theme-ark .status-value,
+.theme-ark .stat-value,
+.theme-ark .debug-value,
+.theme-ark .box-id,
+.theme-ark .price-value,
+.theme-ark .copyright-text,
+.theme-ark .character-price,
+.theme-ark .picker-text {
+	font-family: var(--ak-font-mono) !important;
+	color: var(--ak-text-primary) !important;
+	letter-spacing: 0.04em !important;
+	background-image: none !important;
+}
+
+/* 弱化文字 */
+.theme-ak .tip-text,
+.theme-ak .warning-text,
+.theme-ak .empty-text,
+.theme-ak .copyright-text,
+.theme-ak .image-tip,
+.theme-ak .notice-text {
+	color: var(--ak-text-muted) !important;
+}
+.theme-ark .tip-text,
+.theme-ark .warning-text,
+.theme-ark .empty-text,
+.theme-ark .copyright-text,
+.theme-ark .image-tip,
+.theme-ark .notice-text {
+	color: var(--ak-text-muted) !important;
+}
+
+.theme-ak .character-name,
+.theme-ak .box-card-title,
+.theme-ak .box-card-name,
+.theme-ak .contributor-name,
+.theme-ak .setting-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .character-name,
+.theme-ark .box-card-title,
+.theme-ark .box-card-name,
+.theme-ark .contributor-name,
+.theme-ark .setting-name {
+	color: var(--ak-text-primary) !important;
+}
+
+/* 区块头：底部发丝线分隔，替代投影与渐变标题条 */
+.theme-ak .section-header,
+.theme-ak .modal-header,
+.theme-ak .field-header {
+	border-bottom: 1rpx solid var(--ak-hairline-soft);
+	background-image: none !important;
+}
+.theme-ark .section-header,
+.theme-ark .modal-header,
+.theme-ark .field-header {
+	border-bottom: 1rpx solid var(--ak-hairline-soft);
+	background-image: none !important;
+}
+
+/* ==========================================================================
+   5 · 交互控件
+   ========================================================================== */
+
+/* —— 主操作按钮：黄块 + 墨字（浅色）/ 黄块 + 墨字（深色同样醒目） —— */
+.theme-ak .action-btn,
+.theme-ak .confirm-btn,
+.theme-ak .update-btn,
+.theme-ak .generate-btn,
+.theme-ak .save-btn {
+	background-color: var(--ak-signal-action) !important;
+	background-image: none !important;
+	color: #1b1d1f !important;
+	border-color: var(--ak-signal-action) !important;
+	border-radius: 2rpx !important;
+	box-shadow: none !important;
+	text-shadow: none !important;
+	font-weight: 800 !important;
+}
+.theme-ark .action-btn,
+.theme-ark .confirm-btn,
+.theme-ark .update-btn,
+.theme-ark .generate-btn,
+.theme-ark .save-btn {
+	background-color: var(--ak-signal-action) !important;
+	background-image: none !important;
+	color: #1b1d1f !important;
+	border-color: var(--ak-signal-action) !important;
+	border-radius: 2rpx !important;
+	box-shadow: none !important;
+	text-shadow: none !important;
+	font-weight: 800 !important;
+}
+.theme-ak .action-btn:active,
+.theme-ak .confirm-btn:active,
+.theme-ak .update-btn:active,
+.theme-ak .generate-btn:active,
+.theme-ak .save-btn:active {
+	background-color: var(--ak-text-primary) !important;
+	color: var(--ak-color-advanced) !important;
+	border-color: var(--ak-text-primary) !important;
+}
+.theme-ark .action-btn:active,
+.theme-ark .confirm-btn:active,
+.theme-ark .update-btn:active,
+.theme-ark .generate-btn:active,
+.theme-ark .save-btn:active {
+	background-color: var(--ak-color-advanced) !important;
+	color: #141516 !important;
+	border-color: var(--ak-color-advanced) !important;
+}
+
+/* —— 次级按钮：透明底 + 发丝框 + 墨字 —— */
+.theme-ak .cancel-btn,
+.theme-ak .close-btn,
+.theme-ak .clear-search,
+.theme-ak .sort-btn,
+.theme-ak .advanced-filter-btn,
+.theme-ak .edit-btn,
+.theme-ak .view-info-btn,
+.theme-ak .option-btn,
+.theme-ak .select-all-btn,
+.theme-ak .expand-btn,
+.theme-ak .page-btn,
+.theme-ak .ufm-btn,
+.theme-ak .tools-manage-btn {
+	background-color: transparent !important;
+	background-image: none !important;
+	color: var(--ak-text-secondary) !important;
+	border-color: var(--ak-hairline) !important;
+	border-radius: 2rpx !important;
+	box-shadow: none !important;
+	text-shadow: none !important;
+	font-weight: 700 !important;
+}
+.theme-ark .cancel-btn,
+.theme-ark .close-btn,
+.theme-ark .clear-search,
+.theme-ark .sort-btn,
+.theme-ark .advanced-filter-btn,
+.theme-ark .edit-btn,
+.theme-ark .view-info-btn,
+.theme-ark .option-btn,
+.theme-ark .select-all-btn,
+.theme-ark .expand-btn,
+.theme-ark .page-btn,
+.theme-ark .ufm-btn,
+.theme-ark .tools-manage-btn {
+	background-color: transparent !important;
+	background-image: none !important;
+	color: var(--ak-text-secondary) !important;
+	border-color: var(--ak-hairline) !important;
+	border-radius: 2rpx !important;
+	box-shadow: none !important;
+	text-shadow: none !important;
+	font-weight: 700 !important;
+}
+.theme-ak .cancel-btn:active,
+.theme-ak .close-btn:active,
+.theme-ak .clear-search:active,
+.theme-ak .sort-btn:active,
+.theme-ak .advanced-filter-btn:active,
+.theme-ak .edit-btn:active,
+.theme-ak .view-info-btn:active,
+.theme-ak .option-btn:active,
+.theme-ak .select-all-btn:active,
+.theme-ak .expand-btn:active,
+.theme-ak .page-btn:active {
+	background-color: var(--ak-text-primary) !important;
+	color: var(--ak-text-inverse) !important;
+	border-color: var(--ak-text-primary) !important;
+}
+.theme-ark .cancel-btn:active,
+.theme-ark .close-btn:active,
+.theme-ark .clear-search:active,
+.theme-ark .sort-btn:active,
+.theme-ark .advanced-filter-btn:active,
+.theme-ark .edit-btn:active,
+.theme-ark .view-info-btn:active,
+.theme-ark .option-btn:active,
+.theme-ark .select-all-btn:active,
+.theme-ark .expand-btn:active,
+.theme-ark .page-btn:active {
+	background-color: var(--ak-text-primary) !important;
+	color: var(--ak-text-inverse) !important;
+	border-color: var(--ak-text-primary) !important;
+}
+
+/* 选中态：当前分页 / 当前选项 —— 墨底反白 */
+.theme-ak .page-btn.active,
+.theme-ak .option-btn.active,
+.theme-ak .selector-item.active,
+.theme-ak .filter-item.active,
+.theme-ak .tab-item.active,
+.theme-ak .sort-btn.active,
+.theme-ak .advanced-filter-btn.active {
+	background-color: var(--ak-text-primary) !important;
+	color: var(--ak-text-inverse) !important;
+	border-color: var(--ak-text-primary) !important;
+}
+.theme-ark .page-btn.active,
+.theme-ark .option-btn.active,
+.theme-ark .selector-item.active,
+.theme-ark .filter-item.active,
+.theme-ark .tab-item.active,
+.theme-ark .sort-btn.active,
+.theme-ark .advanced-filter-btn.active {
+	background-color: var(--ak-text-primary) !important;
+	color: var(--ak-text-inverse) !important;
+	border-color: var(--ak-text-primary) !important;
+}
+
+/* 危险操作 */
+.theme-ak .delete-btn,
+.theme-ak .reset-btn,
+.theme-ak .danger-btn {
+	background-color: transparent !important;
+	background-image: none !important;
+	color: var(--ak-signal-danger) !important;
+	border-color: var(--ak-signal-danger) !important;
+	border-radius: 2rpx !important;
+	box-shadow: none !important;
+}
+.theme-ark .delete-btn,
+.theme-ark .reset-btn,
+.theme-ark .danger-btn {
+	background-color: transparent !important;
+	background-image: none !important;
+	color: var(--ak-signal-danger) !important;
+	border-color: var(--ak-signal-danger) !important;
+	border-radius: 2rpx !important;
+	box-shadow: none !important;
+}
+
+/* 箭头 / 展开 / 收藏：功能性小控件去底色 */
+.theme-ak .arrow-btn,
+.theme-ak .expand-btn,
+.theme-ak .favorite-btn,
+.theme-ak .favorite-box-btn {
+	box-shadow: none !important;
+	text-shadow: none !important;
+	border-radius: 2rpx !important;
+}
+.theme-ark .arrow-btn,
+.theme-ark .expand-btn,
+.theme-ark .favorite-btn,
+.theme-ark .favorite-box-btn {
+	box-shadow: none !important;
+	text-shadow: none !important;
+	border-radius: 2rpx !important;
+}
+.theme-ak .expand-text,
+.theme-ak .arrow-text {
+	color: var(--ak-signal-info) !important;
+}
+.theme-ark .expand-text,
+.theme-ark .arrow-text {
+	color: var(--ak-signal-info) !important;
+}
+
+/* ==========================================================================
+   6 · 标签与筹码
+   ========================================================================== */
+.theme-ak .tag,
+.theme-ak .status-tag,
+.theme-ak .suggestion-tag {
+	background-color: var(--ak-surface-muted) !important;
+	background-image: none !important;
+	color: var(--ak-text-secondary) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+	border-radius: 2rpx !important;
+}
+.theme-ark .tag,
+.theme-ark .status-tag,
+.theme-ark .suggestion-tag {
+	background-color: var(--ak-surface-muted) !important;
+	background-image: none !important;
+	color: var(--ak-text-secondary) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+	border-radius: 2rpx !important;
+}
+
+/* 市价 / 价格：橙 = 强调 */
+.theme-ak .price-tag {
+	background-color: rgba(246, 84, 14, 0.1) !important;
+	background-image: none !important;
+	color: var(--ak-signal-accent) !important;
+	border: 1rpx solid rgba(246, 84, 14, 0.32) !important;
+	border-radius: 2rpx !important;
+	font-weight: 800 !important;
+}
+.theme-ark .price-tag {
+	background-color: rgba(255, 106, 38, 0.14) !important;
+	background-image: none !important;
+	color: var(--ak-signal-accent) !important;
+	border: 1rpx solid rgba(255, 106, 38, 0.36) !important;
+	border-radius: 2rpx !important;
+	font-weight: 800 !important;
+}
+
+/* 精英化：精一=信息蓝  精二=强调橙（颜色表达语义） */
+.theme-ak .elite-tag,
+.theme-ak .elite1-tag {
+	background-color: rgba(74, 171, 234, 0.12) !important;
+	background-image: none !important;
+	color: #2f7fb0 !important;
+	border: 1rpx solid rgba(74, 171, 234, 0.32) !important;
+	border-radius: 2rpx !important;
+}
+.theme-ak .elite2-tag {
+	background-color: rgba(246, 84, 14, 0.1) !important;
+	background-image: none !important;
+	color: var(--ak-signal-accent) !important;
+	border: 1rpx solid rgba(246, 84, 14, 0.32) !important;
+	border-radius: 2rpx !important;
+}
+.theme-ark .elite-tag,
+.theme-ark .elite1-tag {
+	background-color: rgba(95, 182, 239, 0.16) !important;
+	background-image: none !important;
+	color: var(--ak-signal-info) !important;
+	border: 1rpx solid rgba(95, 182, 239, 0.36) !important;
+	border-radius: 2rpx !important;
+}
+.theme-ark .elite2-tag {
+	background-color: rgba(255, 106, 38, 0.16) !important;
+	background-image: none !important;
+	color: var(--ak-signal-accent) !important;
+	border: 1rpx solid rgba(255, 106, 38, 0.36) !important;
+	border-radius: 2rpx !important;
+}
+
+/* ==========================================================================
+   7 · 表单控件
+   ========================================================================== */
+.theme-ak .input,
+.theme-ak .search-input,
+.theme-ak .search-input-container,
+.theme-ak .date-picker,
+.theme-ak .filter-picker {
+	background-color: var(--ak-surface-muted) !important;
+	background-image: none !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+	border-radius: 2rpx !important;
+	color: var(--ak-text-primary) !important;
+	box-shadow: none !important;
+}
+.theme-ark .input,
+.theme-ark .search-input,
+.theme-ark .search-input-container,
+.theme-ark .date-picker,
+.theme-ark .filter-picker {
+	background-color: var(--ak-surface-muted) !important;
+	background-image: none !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+	border-radius: 2rpx !important;
+	color: var(--ak-text-primary) !important;
+	box-shadow: none !important;
+}
+.theme-ak .picker-text {
+	color: var(--ak-text-muted) !important;
+}
+.theme-ark .picker-text {
+	color: var(--ak-text-muted) !important;
+}
+.theme-ak .radio,
+.theme-ak .radio-inner {
+	border-radius: 2rpx !important;
+}
+.theme-ark .radio,
+.theme-ark .radio-inner {
+	border-radius: 2rpx !important;
+}
+.theme-ak .radio-label,
+.theme-ak .setting-desc {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .radio-label,
+.theme-ark .setting-desc {
+	color: var(--ak-text-secondary) !important;
+}
+
+/* ==========================================================================
+   8 · 弹层
+   ========================================================================== */
+.theme-ak .modal-mask {
+	background-color: var(--ak-mask) !important;
+}
+.theme-ark .modal-mask {
+	background-color: var(--ak-mask) !important;
+}
+.theme-ak .modal-content,
+.theme-ak .advanced-filter-modal {
+	background-color: var(--ak-surface-panel) !important;
+	background-image: none !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+	border-radius: var(--ak-radius) !important;
+	box-shadow: none !important;
+}
+.theme-ark .modal-content,
+.theme-ark .advanced-filter-modal {
+	background-color: var(--ak-surface-panel) !important;
+	background-image: none !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+	border-radius: var(--ak-radius) !important;
+	box-shadow: none !important;
+}
+
+/* ==========================================================================
+   9 · 图像与图标
+   ========================================================================== */
+/* 深色主题下，单色线条图标反色以保证对比度（彩色插画类不处理） */
+.theme-ark .tool-icon,
+.theme-ark .expand-icon,
+.theme-ark .arrow-icon,
+.theme-ark .close-icon,
+.theme-ark .search-icon,
+.theme-ark .manage-icon,
+.theme-ark .nav-search-icon,
+.theme-ark .toggle-icon,
+.theme-ark .icon-img {
+	filter: invert(1) brightness(1.08) !important;
+}
+.theme-ark .icon-dark {
+	filter: none !important;
+}
+.theme-ak .icon-dark {
+	filter: brightness(0) saturate(100%) !important;
+}
+
+/* 空状态 */
+.theme-ak .empty-state,
+.theme-ak .empty-icon {
+	background-image: none !important;
+	box-shadow: none !important;
+}
+.theme-ark .empty-state,
+.theme-ark .empty-icon {
+	background-image: none !important;
+	box-shadow: none !important;
+}
+
+/* 进度条轨道 */
+.theme-ak .progress-bar,
+.theme-ak .box-progress-bar {
+	background-color: var(--ak-surface-sunken) !important;
+	background-image: none !important;
+	border-radius: 2rpx !important;
+}
+.theme-ark .progress-bar,
+.theme-ark .box-progress-bar {
+	background-color: var(--ak-surface-sunken) !important;
+	background-image: none !important;
+	border-radius: 2rpx !important;
+}
+
+/* 分页器 / 通用分隔 */
+.theme-ak .pagination {
+	background-image: none !important;
+	box-shadow: none !important;
+}
+.theme-ark .pagination {
+	background-image: none !important;
+	box-shadow: none !important;
+}
+
+/* 旧深色主题的发光与渐变描边统一清除 */
+.theme-ark .carousel-section,
+.theme-ark .data-status,
+.theme-ark .footer-section,
+.theme-ark .notice-toggle,
+.theme-ark .search-icon,
+.theme-ark .box-card,
+.theme-ark .result-item,
+.theme-ark .view-info-btn {
+	box-shadow: none !important;
+	text-shadow: none !important;
+}
+
+/* ==========================================================================
+   10 · 首页专属样式（ak-ui 原样迁移，含工具箱切角面板 / 公告条 / 数据面板 /
+        更新按钮 / 关于弹窗 / 问卷弹窗 / 长按提示 等）
+        放在文件末尾，以便在同权重下覆盖上面的通用规则
+   ========================================================================== */
+/* ==========================================================================
+   首页（index）的 ak-ui 规则
+   来源：pages/index/index.vue 原有 ak-ui 样式块（原文迁移，未改动任何几何/布局属性）
+   生效条件：用户选择「工业风格」时页面根节点带 .theme-ak
+   ========================================================================== */
+/* ---------- 画布 ---------- */
+.container.theme-ak {
+	background-color: var(--ak-surface-canvas) !important;
+}
+
+/* ---------- 导航栏：纸面 + 发丝分隔线 ---------- */
+.custom-nav-bar.theme-ak {
+	background: var(--ak-surface-panel) !important;
+	border-bottom: 1rpx solid var(--ak-hairline);
+}
+.custom-nav-bar.theme-ak .nav-switch-btn {
+	background: var(--ak-signal-action) !important;
+	border: 1rpx solid var(--ak-text-primary);
+	border-radius: 4rpx;
+	box-shadow: 0 4rpx 0 rgba(27, 29, 31, 0.16) !important;
+}
+.custom-nav-bar.theme-ak .nav-switch-text {
+	color: var(--ak-text-primary) !important;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+}
+.custom-nav-bar.theme-ak .nav-switch-btn:active {
+	background: var(--ak-text-primary) !important;
+	box-shadow: none !important;
+}
+.custom-nav-bar.theme-ak .nav-switch-btn:active .nav-switch-text {
+	color: var(--ak-signal-action) !important;
+}
+.custom-nav-bar.theme-ak .nav-search-box {
+	background: var(--ak-surface-muted) !important;
+	border: 1rpx solid var(--ak-hairline-soft);
+	border-radius: 4rpx;
+}
+.custom-nav-bar.theme-ak .nav-search-text {
+	color: var(--ak-text-secondary) !important;
+	letter-spacing: 0.02em;
+}
+.custom-nav-bar.theme-ak .nav-search-box:active {
+	background: var(--ak-surface-panel) !important;
+	border-color: var(--ak-hairline) !important;
+}
+
+/* ---------- 公告：ak-notice 纸面 + 左侧信号条 ---------- */
+.container.theme-ak .notice-section {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft);
+	border-left: 8rpx solid var(--ak-signal-info);
+	border-radius: 4rpx;
+	box-shadow: none !important;
+}
+.container.theme-ak .notice-title {
+	font-family: var(--ak-font-serif);
+	font-weight: 900;
+	color: var(--ak-text-primary) !important;
+	letter-spacing: 0.06em;
+}
+.container.theme-ak .notice-close {
+	border-radius: 2rpx;
+}
+.container.theme-ak .notice-close:active {
+	background-color: rgba(27, 29, 31, 0.08) !important;
+}
+.container.theme-ak .close-btn {
+	color: var(--ak-text-muted) !important;
+	font-weight: 700;
+}
+.container.theme-ak .notice-toggle {
+	color: var(--ak-signal-info) !important;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	border-radius: 2rpx;
+}
+.container.theme-ak .notice-toggle:active {
+	background-color: rgba(27, 29, 31, 0.08) !important;
+}
+.container.theme-ak .notice-text {
+	color: var(--ak-text-secondary) !important;
+}
+.container.theme-ak .expand-btn {
+	background-color: var(--ak-surface-muted) !important;
+	border: 1rpx solid var(--ak-hairline-soft);
+	border-radius: 2rpx;
+	color: var(--ak-text-primary) !important;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+}
+.container.theme-ak .expand-btn:active {
+	background-color: var(--ak-text-primary) !important;
+	border-color: var(--ak-text-primary) !important;
+	color: var(--ak-text-inverse) !important;
+}
+
+/* ---------- 轮播：纸面面板 + 发丝线 ---------- */
+.container.theme-ak .carousel-section {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft);
+	border-radius: 4rpx;
+	box-shadow: none !important;
+}
+.container.theme-ak .carousel {
+	border-radius: 2rpx;
+}
+.container.theme-ak .carousel-image {
+	border-radius: 2rpx;
+}
+
+/* ---------- 工具箱：主面板，切角 + 顶部强调条 + 内衬发丝框 ---------- */
+.container.theme-ak .tools-section {
+	position: relative;
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft);
+	border-radius: 4rpx;
+	box-shadow: none !important;
+	clip-path: polygon(0 0, calc(100% - 24rpx) 0, 100% 24rpx, 100% 100%, 0 100%);
+}
+.container.theme-ak .tools-section::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 180rpx;
+	height: 6rpx;
+	background-color: var(--ak-signal-accent) !important;
+}
+.container.theme-ak .tools-section::after {
+	content: '';
+	position: absolute;
+	top: 20rpx;
+	right: 20rpx;
+	bottom: 20rpx;
+	left: 20rpx;
+	border: 1rpx solid var(--ak-hairline-soft);
+	pointer-events: none;
+}
+.container.theme-ak .tools-title {
+	font-family: var(--ak-font-serif);
+	font-weight: 900;
+	color: var(--ak-text-primary) !important;
+	letter-spacing: 0.02em;
+}
+.container.theme-ak .tools-manage-btn {
+	background-color: transparent !important;
+	border: 1rpx solid var(--ak-hairline);
+	border-radius: 2rpx;
+}
+.container.theme-ak .manage-text {
+	color: var(--ak-text-secondary) !important;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+}
+.container.theme-ak .tools-manage-btn:active {
+	background-color: var(--ak-text-primary) !important;
+	border-color: var(--ak-text-primary) !important;
+}
+.container.theme-ak .tools-manage-btn:active .manage-text {
+	color: var(--ak-text-inverse) !important;
+}
+.container.theme-ak .tools-manage-btn:active .manage-icon {
+	filter: invert(1);
+}
+
+/* ---------- 工具卡片：单层细线框 + 单行描述，降低视觉噪音 ---------- */
+.container.theme-ak .tool-card {
+	box-sizing: border-box;
+	min-width: 0; /* 防止 nowrap 长文本撑爆 1fr 网格轨道 */
+	height: auto;
+	min-height: 196rpx;
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft);
+	border-radius: 4rpx;
+	box-shadow: none !important;
+}
+.container.theme-ak .tool-card:active {
+	background-color: var(--ak-surface-press) !important;
+	border-color: var(--ak-hairline) !important;
+}
+.container.theme-ak .tool-icon-container {
+	box-sizing: border-box;
+	background-color: transparent !important;
+	border: none;
+	border-radius: 0;
+}
+.container.theme-ak .tool-name {
+	font-family: var(--ak-font-serif);
+	font-weight: 900;
+	color: var(--ak-text-primary) !important;
+}
+.container.theme-ak .tool-info {
+	min-width: 0;
+	overflow: visible;
+	height: auto;
+}
+.container.theme-ak .tool-desc {
+	overflow: visible;
+	white-space: normal;
+	text-overflow: clip;
+	line-height: 1.35;
+	color: var(--ak-text-muted) !important;
+}
+.container.theme-ak .longpress-hint .hint-text {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft);
+	border-radius: 2rpx;
+	color: var(--ak-text-secondary) !important;
+	font-family: var(--ak-font-mono);
+	font-weight: 800;
+	letter-spacing: 0.12em;
+}
+
+/* ---------- 编辑模式 ---------- */
+.container.theme-ak .tool-card.editing-card {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx dashed var(--ak-hairline);
+}
+.container.theme-ak .delete-btn {
+	background-color: var(--ak-signal-danger) !important;
+	border-radius: 2rpx;
+	box-shadow: none !important;
+}
+.container.theme-ak .arrow-btn {
+	background-color: var(--ak-signal-info) !important;
+	border-radius: 2rpx;
+	box-shadow: none !important;
+}
+.container.theme-ak .arrow-btn:active {
+	background-color: var(--ak-text-primary) !important;
+}
+.container.theme-ak .tool-edit-controls {
+	border-top: 1rpx solid var(--ak-hairline-soft);
+}
+.container.theme-ak .visibility-label {
+	color: var(--ak-text-secondary) !important;
+	font-family: var(--ak-font-mono);
+	letter-spacing: 0.08em;
+}
+.container.theme-ak .edit-controls-bar {
+	background-color: var(--ak-surface-muted) !important;
+	border: 1rpx solid var(--ak-hairline-soft);
+	border-radius: 2rpx;
+}
+.container.theme-ak .info-text {
+	color: var(--ak-text-secondary) !important;
+	font-family: var(--ak-font-mono);
+	letter-spacing: 0.04em;
+}
+.container.theme-ak .edit-btn {
+	border: 1rpx solid transparent;
+	border-radius: 2rpx;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+}
+.container.theme-ak .edit-btn.reset {
+	background-color: transparent !important;
+	border-color: var(--ak-signal-danger) !important;
+	color: var(--ak-signal-danger) !important;
+}
+.container.theme-ak .edit-btn.reset:active {
+	background-color: var(--ak-signal-danger) !important;
+	color: #fff !important;
+}
+.container.theme-ak .edit-btn.cancel {
+	background-color: transparent !important;
+	border-color: var(--ak-hairline) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.container.theme-ak .edit-btn.cancel:active {
+	background-color: var(--ak-text-primary) !important;
+	border-color: var(--ak-text-primary) !important;
+	color: var(--ak-text-inverse) !important;
+}
+.container.theme-ak .edit-btn.save {
+	background-color: var(--ak-signal-info) !important;
+	border-color: var(--ak-signal-info) !important;
+	color: #fff !important;
+}
+.container.theme-ak .edit-btn.save:active {
+	background-color: var(--ak-text-primary) !important;
+	border-color: var(--ak-text-primary) !important;
+}
+
+/* ---------- 数据状态：纸面 + 左侧信息信号条 ---------- */
+.container.theme-ak .data-status {
+	position: relative;
+	background-color: var(--ak-surface-panel) !important;
+	border-radius: 2rpx;
+}
+.container.theme-ak .data-status::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	width: 6rpx;
+	background-color: var(--ak-signal-info) !important;
+}
+.container.theme-ak .status-text {
+	color: var(--ak-text-primary) !important;
+	letter-spacing: 0.01em;
+}
+.container.theme-ak .data-detail-item {
+	color: var(--ak-text-muted) !important;
+	font-family: var(--ak-font-mono);
+	letter-spacing: 0.02em;
+}
+
+/* ---------- 更新按钮：ak 操作黄（黄色=操作） ---------- */
+.container.theme-ak .update-btn {
+	background-color: var(--ak-signal-action) !important;
+	color: var(--ak-text-on-action) !important;
+	border-radius: 4rpx;
+	font-weight: 500;
+	letter-spacing: 0.04em;
+	box-shadow: 0 6rpx 0 rgba(27, 29, 31, 0.14) !important;
+}
+.container.theme-ak .update-btn-img {
+	filter: brightness(0);
+}
+.container.theme-ak .update-btn:active {
+	background-color: #e3b73c !important;
+	box-shadow: 0 2rpx 0 rgba(27, 29, 31, 0.14) !important;
+	transform: translateY(2rpx);
+}
+.container.theme-ak .update-btn.small {
+	background-color: var(--ak-surface-dark) !important;
+	color: var(--ak-text-inverse) !important;
+	border-radius: 2rpx;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+}
+.container.theme-ak .update-btn.small:active {
+	background-color: var(--ak-text-primary) !important;
+}
+
+/* ---------- 底部版权：发丝线 + 等宽字距 ---------- */
+.container.theme-ak .footer-section {
+	position: relative;
+}
+.container.theme-ak .footer-section::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 20%;
+	right: 20%;
+	height: 1rpx;
+	background-color: var(--ak-hairline) !important;
+}
+.container.theme-ak .copyright-text {
+	color: var(--ak-text-muted) !important;
+	font-family: var(--ak-font-mono);
+	letter-spacing: 0.04em;
+}
+.container.theme-ak .about-link {
+	color: var(--ak-signal-info) !important;
+}
+
+/* ---------- 弹窗：纸面 + 发丝线 + 切角徽标 ---------- */
+.container.theme-ak .modal-mask {
+	background: rgba(17, 19, 21, 0.56) !important;
+}
+.container.theme-ak .update-found-modal {
+	background: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft);
+	border-radius: 4rpx;
+	box-shadow: 0 16rpx 48rpx rgba(17, 19, 21, 0.28) !important;
+}
+.container.theme-ak .ufm-badge {
+	background: var(--ak-signal-accent) !important;
+	color: var(--ak-text-primary) !important;
+	border-radius: 2rpx;
+	font-family: var(--ak-font-mono);
+	font-weight: 900;
+	letter-spacing: 0.14em;
+	box-shadow: none !important;
+}
+.container.theme-ak .ufm-title {
+	font-family: var(--ak-font-serif);
+	font-weight: 900;
+	color: var(--ak-text-primary) !important;
+}
+.container.theme-ak .ufm-desc {
+	color: var(--ak-text-secondary) !important;
+}
+.container.theme-ak .ufm-versions {
+	background: var(--ak-surface-muted) !important;
+	border: 1rpx solid var(--ak-hairline-soft);
+	border-radius: 2rpx;
+}
+.container.theme-ak .ufm-ver-label {
+	color: var(--ak-text-muted) !important;
+	font-family: var(--ak-font-mono);
+	letter-spacing: 0.06em;
+}
+.container.theme-ak .ufm-ver-value {
+	color: var(--ak-text-primary) !important;
+	font-family: var(--ak-font-mono);
+	font-weight: 700;
+}
+.container.theme-ak .ufm-ver-value.highlight {
+	color: var(--ak-signal-accent) !important;
+}
+.container.theme-ak .ufm-btn {
+	border: 1rpx solid transparent;
+	border-radius: 4rpx;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+}
+.container.theme-ak .ufm-btn.primary {
+	background: var(--ak-signal-action) !important;
+	color: var(--ak-text-primary) !important;
+	box-shadow: 0 6rpx 0 rgba(27, 29, 31, 0.14) !important;
+}
+.container.theme-ak .ufm-btn.primary:active {
+	background: #e3b73c !important;
+	box-shadow: none !important;
+	transform: translateY(2rpx);
+}
+.container.theme-ak .ufm-btn.ghost {
+	background: var(--ak-surface-muted) !important;
+	color: var(--ak-text-primary) !important;
+	border-color: var(--ak-hairline-soft) !important;
+}
+.container.theme-ak .ufm-btn.ghost:active {
+	background: var(--ak-text-primary) !important;
+	color: var(--ak-text-inverse) !important;
+}
+.container.theme-ak .ufm-btn.mute {
+	color: var(--ak-text-muted) !important;
+	border-color: var(--ak-hairline-soft) !important;
+}
+.container.theme-ak .ufm-btn.mute:active {
+	background: var(--ak-surface-muted) !important;
+}
+.container.theme-ak .questionnaire-modal {
+	background: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft);
+	border-radius: 4rpx;
+}
+.container.theme-ak .questionnaire-modal .modal-header {
+	border-bottom: 1rpx solid var(--ak-hairline-soft);
+}
+.container.theme-ak .questionnaire-modal .modal-title {
+	font-family: var(--ak-font-serif);
+	font-weight: 900;
+	color: var(--ak-text-primary) !important;
+	letter-spacing: 0.04em;
+}
+.container.theme-ak .questionnaire-modal .modal-close {
+	color: var(--ak-text-muted) !important;
+}
+.container.theme-ak .questionnaire-modal .questionnaire-item {
+	border-bottom: 1rpx solid var(--ak-hairline-soft);
+}
+.container.theme-ak .questionnaire-modal .questionnaire-item:active {
+	background-color: var(--ak-surface-muted) !important;
+}
+.container.theme-ak .questionnaire-modal .questionnaire-title {
+	color: var(--ak-text-primary) !important;
+	font-weight: 700;
+}
+.container.theme-ak .questionnaire-modal .questionnaire-content {
+	color: var(--ak-text-secondary) !important;
+}
+.container.theme-ak .questionnaire-modal .status-tag {
+	border-radius: 2rpx;
+	font-family: var(--ak-font-mono);
+	font-weight: 800;
+	letter-spacing: 0.08em;
+}
+.container.theme-ak .questionnaire-modal .tag-paused {
+	background-color: rgba(227, 59, 59, 0.12) !important;
+	color: var(--ak-signal-danger) !important;
+}
+.container.theme-ak .questionnaire-modal .tag-open {
+	background-color: rgba(70, 196, 124, 0.14) !important;
+	color: #2f8f5b !important;
+}
+.container.theme-ak .questionnaire-modal .tag-permanent {
+	background-color: rgba(241, 198, 68, 0.22) !important;
+	color: #8a6a11 !important;
+}
+.container.theme-ak .questionnaire-modal .empty-tip {
+	color: var(--ak-text-muted) !important;
+}
+
+/* ==========================================================================
+   11 · 设置页 · 主题选择行（theme-item）
+   ========================================================================== */
+.theme-ak .theme-item {
+	background-color: var(--ak-surface-panel) !important;
+	background-image: none !important;
+	border-color: var(--ak-hairline-soft) !important;
+	border-radius: var(--ak-radius) !important;
+	box-shadow: none !important;
+}
+.theme-ak .theme-item.active {
+	background-color: var(--ak-surface-muted) !important;
+	border-color: var(--ak-text-primary) !important;
+}
+.theme-ak .theme-label {
+	color: var(--ak-text-primary) !important;
+	font-weight: 800 !important;
+}
+.theme-ak .theme-desc {
+	color: var(--ak-text-muted) !important;
+}
+.theme-ak .theme-radio,
+.theme-ak .radio {
+	border-color: var(--ak-hairline) !important;
+	border-radius: 2rpx !important;
+}
+.theme-ak .theme-item.active .theme-radio {
+	border-color: var(--ak-text-primary) !important;
+}
+.theme-ak .radio-inner {
+	background-color: var(--ak-text-primary) !important;
+	border-radius: 2rpx !important;
+}
+
+.theme-ark .theme-item {
+	background-color: var(--ak-surface-panel) !important;
+	background-image: none !important;
+	border-color: var(--ak-hairline-soft) !important;
+	border-radius: var(--ak-radius) !important;
+	box-shadow: none !important;
+}
+.theme-ark .theme-item.active {
+	background-color: var(--ak-surface-muted) !important;
+	border-color: var(--ak-color-advanced) !important;
+}
+.theme-ark .theme-label {
+	color: var(--ak-text-primary) !important;
+	font-weight: 800 !important;
+}
+.theme-ark .theme-desc {
+	color: var(--ak-text-muted) !important;
+}
+.theme-ark .theme-radio,
+.theme-ark .radio {
+	border-color: var(--ak-hairline) !important;
+	border-radius: 2rpx !important;
+}
+.theme-ark .theme-item.active .theme-radio {
+	border-color: var(--ak-color-advanced) !important;
+}
+.theme-ark .radio-inner {
+	background-color: var(--ak-color-advanced) !important;
+	border-radius: 2rpx !important;
+}
+
+/* ==========================================================================
+   12 · 首页专属样式的深色态（与上一节浅色态一一对应）
+        生成方式：镜像浅色规则 + 复用同一套令牌（深色令牌已在文件开头定义），
+        因此明暗两态的层级关系、几何、字重完全一致，只换配色。
+   ========================================================================== */
+/* ==========================================================================
+   10 · 首页专属样式（ak-ui 原样迁移，含工具箱切角面板 / 公告条 / 数据面板 /
+        更新按钮 / 关于弹窗 / 问卷弹窗 / 长按提示 等）
+        放在文件末尾，以便在同权重下覆盖上面的通用规则
+   ========================================================================== */
+/* ==========================================================================
+   ak-ui 设计语言接入（仅首页 · simple 主题生效）
+   参考：D:\Users\huang\Downloads\ak-ui-master
+   约束：只调整颜色 / 几何 / 字重与交互反馈，不改动任何布局属性；
+        全部规则限定在 .theme-ark 命名空间内，ark / jieyuan 主题与其他页面不受影响
+   ========================================================================== */
+/* ---------- 画布 ---------- */
+.container.theme-ark {
+	background-color: var(--ak-surface-canvas) !important;
+}
+
+/* ---------- 导航栏：纸面 + 发丝分隔线 ---------- */
+.custom-nav-bar.theme-ark {
+	background: var(--ak-surface-panel) !important;
+	border-bottom: 1rpx solid var(--ak-hairline);
+}
+.custom-nav-bar.theme-ark .nav-switch-btn {
+	background: var(--ak-signal-action) !important;
+	border: 1rpx solid var(--ak-text-primary);
+	border-radius: 4rpx;
+	box-shadow: 0 4rpx 0 rgba(255, 255, 255, 0.16) !important;
+}
+.custom-nav-bar.theme-ark .nav-switch-text {
+	color: var(--ak-text-primary) !important;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+}
+.custom-nav-bar.theme-ark .nav-switch-btn:active {
+	background: var(--ak-text-primary) !important;
+	box-shadow: none !important;
+}
+.custom-nav-bar.theme-ark .nav-switch-btn:active .nav-switch-text {
+	color: var(--ak-signal-action) !important;
+}
+.custom-nav-bar.theme-ark .nav-search-box {
+	background: var(--ak-surface-muted) !important;
+	border: 1rpx solid var(--ak-hairline-soft);
+	border-radius: 4rpx;
+}
+.custom-nav-bar.theme-ark .nav-search-text {
+	color: var(--ak-text-secondary) !important;
+	letter-spacing: 0.02em;
+}
+.custom-nav-bar.theme-ark .nav-search-box:active {
+	background: var(--ak-surface-panel) !important;
+	border-color: var(--ak-hairline) !important;
+}
+
+/* ---------- 公告：ak-notice 纸面 + 左侧信号条 ---------- */
+.container.theme-ark .notice-section {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft);
+	border-left: 8rpx solid var(--ak-signal-info);
+	border-radius: 4rpx;
+	box-shadow: none !important;
+}
+.container.theme-ark .notice-title {
+	font-family: var(--ak-font-serif);
+	font-weight: 900;
+	color: var(--ak-text-primary) !important;
+	letter-spacing: 0.06em;
+}
+.container.theme-ark .notice-close {
+	border-radius: 2rpx;
+}
+.container.theme-ark .notice-close:active {
+	background-color: rgba(255, 255, 255, 0.08) !important;
+}
+.container.theme-ark .close-btn {
+	color: var(--ak-text-muted) !important;
+	font-weight: 700;
+}
+.container.theme-ark .notice-toggle {
+	color: var(--ak-signal-info) !important;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	border-radius: 2rpx;
+}
+.container.theme-ark .notice-toggle:active {
+	background-color: rgba(255, 255, 255, 0.08) !important;
+}
+.container.theme-ark .notice-text {
+	color: var(--ak-text-secondary) !important;
+}
+.container.theme-ark .expand-btn {
+	background-color: var(--ak-surface-muted) !important;
+	border: 1rpx solid var(--ak-hairline-soft);
+	border-radius: 2rpx;
+	color: var(--ak-text-primary) !important;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+}
+.container.theme-ark .expand-btn:active {
+	background-color: var(--ak-text-primary) !important;
+	border-color: var(--ak-text-primary) !important;
+	color: var(--ak-text-inverse) !important;
+}
+
+/* ---------- 轮播：纸面面板 + 发丝线 ---------- */
+.container.theme-ark .carousel-section {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft);
+	border-radius: 4rpx;
+	box-shadow: none !important;
+}
+.container.theme-ark .carousel {
+	border-radius: 2rpx;
+}
+.container.theme-ark .carousel-image {
+	border-radius: 2rpx;
+}
+
+/* ---------- 工具箱：主面板，切角 + 顶部强调条 + 内衬发丝框 ---------- */
+.container.theme-ark .tools-section {
+	position: relative;
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft);
+	border-radius: 4rpx;
+	box-shadow: none !important;
+	clip-path: polygon(0 0, calc(100% - 24rpx) 0, 100% 24rpx, 100% 100%, 0 100%);
+}
+.container.theme-ark .tools-section::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 180rpx;
+	height: 6rpx;
+	background-color: var(--ak-signal-accent) !important;
+}
+.container.theme-ark .tools-section::after {
+	content: '';
+	position: absolute;
+	top: 20rpx;
+	right: 20rpx;
+	bottom: 20rpx;
+	left: 20rpx;
+	border: 1rpx solid var(--ak-hairline-soft);
+	pointer-events: none;
+}
+.container.theme-ark .tools-title {
+	font-family: var(--ak-font-serif);
+	font-weight: 900;
+	color: var(--ak-text-primary) !important;
+	letter-spacing: 0.02em;
+}
+.container.theme-ark .tools-manage-btn {
+	background-color: transparent !important;
+	border: 1rpx solid var(--ak-hairline);
+	border-radius: 2rpx;
+}
+.container.theme-ark .manage-text {
+	color: var(--ak-text-secondary) !important;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+}
+.container.theme-ark .tools-manage-btn:active {
+	background-color: var(--ak-text-primary) !important;
+	border-color: var(--ak-text-primary) !important;
+}
+.container.theme-ark .tools-manage-btn:active .manage-text {
+	color: var(--ak-text-inverse) !important;
+}
+.container.theme-ark .tools-manage-btn:active .manage-icon {
+	filter: invert(1);
+}
+
+/* ---------- 工具卡片：单层细线框 + 单行描述，降低视觉噪音 ---------- */
+.container.theme-ark .tool-card {
+	box-sizing: border-box;
+	min-width: 0; /* 防止 nowrap 长文本撑爆 1fr 网格轨道 */
+	height: auto;
+	min-height: 196rpx;
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft);
+	border-radius: 4rpx;
+	box-shadow: none !important;
+}
+.container.theme-ark .tool-card:active {
+	background-color: var(--ak-surface-press) !important;
+	border-color: var(--ak-hairline) !important;
+}
+.container.theme-ark .tool-icon-container {
+	box-sizing: border-box;
+	background-color: transparent !important;
+	border: none;
+	border-radius: 0;
+}
+.container.theme-ark .tool-name {
+	font-family: var(--ak-font-serif);
+	font-weight: 900;
+	color: var(--ak-text-primary) !important;
+}
+.container.theme-ark .tool-info {
+	min-width: 0;
+	overflow: visible;
+	height: auto;
+}
+.container.theme-ark .tool-desc {
+	overflow: visible;
+	white-space: normal;
+	text-overflow: clip;
+	line-height: 1.35;
+	color: var(--ak-text-muted) !important;
+}
+.container.theme-ark .longpress-hint .hint-text {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft);
+	border-radius: 2rpx;
+	color: var(--ak-text-secondary) !important;
+	font-family: var(--ak-font-mono);
+	font-weight: 800;
+	letter-spacing: 0.12em;
+}
+
+/* ---------- 编辑模式 ---------- */
+.container.theme-ark .tool-card.editing-card {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx dashed var(--ak-hairline);
+}
+.container.theme-ark .delete-btn {
+	background-color: var(--ak-signal-danger) !important;
+	border-radius: 2rpx;
+	box-shadow: none !important;
+}
+.container.theme-ark .arrow-btn {
+	background-color: var(--ak-signal-info) !important;
+	border-radius: 2rpx;
+	box-shadow: none !important;
+}
+.container.theme-ark .arrow-btn:active {
+	background-color: var(--ak-text-primary) !important;
+}
+.container.theme-ark .tool-edit-controls {
+	border-top: 1rpx solid var(--ak-hairline-soft);
+}
+.container.theme-ark .visibility-label {
+	color: var(--ak-text-secondary) !important;
+	font-family: var(--ak-font-mono);
+	letter-spacing: 0.08em;
+}
+.container.theme-ark .edit-controls-bar {
+	background-color: var(--ak-surface-muted) !important;
+	border: 1rpx solid var(--ak-hairline-soft);
+	border-radius: 2rpx;
+}
+.container.theme-ark .info-text {
+	color: var(--ak-text-secondary) !important;
+	font-family: var(--ak-font-mono);
+	letter-spacing: 0.04em;
+}
+.container.theme-ark .edit-btn {
+	border: 1rpx solid transparent;
+	border-radius: 2rpx;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+}
+.container.theme-ark .edit-btn.reset {
+	background-color: transparent !important;
+	border-color: var(--ak-signal-danger) !important;
+	color: var(--ak-signal-danger) !important;
+}
+.container.theme-ark .edit-btn.reset:active {
+	background-color: var(--ak-signal-danger) !important;
+	color: #fff !important;
+}
+.container.theme-ark .edit-btn.cancel {
+	background-color: transparent !important;
+	border-color: var(--ak-hairline) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.container.theme-ark .edit-btn.cancel:active {
+	background-color: var(--ak-text-primary) !important;
+	border-color: var(--ak-text-primary) !important;
+	color: var(--ak-text-inverse) !important;
+}
+.container.theme-ark .edit-btn.save {
+	background-color: var(--ak-signal-info) !important;
+	border-color: var(--ak-signal-info) !important;
+	color: #fff !important;
+}
+.container.theme-ark .edit-btn.save:active {
+	background-color: var(--ak-text-primary) !important;
+	border-color: var(--ak-text-primary) !important;
+}
+
+/* ---------- 数据状态：纸面 + 左侧信息信号条 ---------- */
+.container.theme-ark .data-status {
+	position: relative;
+	background-color: var(--ak-surface-panel) !important;
+	border-radius: 2rpx;
+}
+.container.theme-ark .data-status::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	width: 6rpx;
+	background-color: var(--ak-signal-info) !important;
+}
+.container.theme-ark .status-text {
+	color: var(--ak-text-primary) !important;
+	letter-spacing: 0.01em;
+}
+.container.theme-ark .data-detail-item {
+	color: var(--ak-text-muted) !important;
+	font-family: var(--ak-font-mono);
+	letter-spacing: 0.02em;
+}
+
+/* ---------- 更新按钮：ak 操作黄（黄色=操作） ---------- */
+.container.theme-ark .update-btn {
+	background-color: var(--ak-signal-action) !important;
+	color: var(--ak-text-on-action) !important;
+	border-radius: 4rpx;
+	font-weight: 500;
+	letter-spacing: 0.04em;
+	box-shadow: 0 6rpx 0 rgba(255, 255, 255, 0.14) !important;
+}
+.container.theme-ark .update-btn-img {
+	filter: brightness(0);
+}
+.container.theme-ark .update-btn:active {
+	background-color: #e3b73c !important;
+	box-shadow: 0 2rpx 0 rgba(255, 255, 255, 0.14) !important;
+	transform: translateY(2rpx);
+}
+.container.theme-ark .update-btn.small {
+	background-color: var(--ak-surface-dark) !important;
+	color: var(--ak-text-inverse) !important;
+	border-radius: 2rpx;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+}
+.container.theme-ark .update-btn.small:active {
+	background-color: var(--ak-text-primary) !important;
+}
+
+/* ---------- 底部版权：发丝线 + 等宽字距 ---------- */
+.container.theme-ark .footer-section {
+	position: relative;
+}
+.container.theme-ark .footer-section::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 20%;
+	right: 20%;
+	height: 1rpx;
+	background-color: var(--ak-hairline) !important;
+}
+.container.theme-ark .copyright-text {
+	color: var(--ak-text-muted) !important;
+	font-family: var(--ak-font-mono);
+	letter-spacing: 0.04em;
+}
+.container.theme-ark .about-link {
+	color: var(--ak-signal-info) !important;
+}
+
+/* ---------- 弹窗：纸面 + 发丝线 + 切角徽标 ---------- */
+.container.theme-ark .modal-mask {
+	background: rgba(17, 19, 21, 0.56) !important;
+}
+.container.theme-ark .update-found-modal {
+	background: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft);
+	border-radius: 4rpx;
+	box-shadow: 0 16rpx 48rpx rgba(17, 19, 21, 0.28) !important;
+}
+.container.theme-ark .ufm-badge {
+	background: var(--ak-signal-accent) !important;
+	color: var(--ak-text-primary) !important;
+	border-radius: 2rpx;
+	font-family: var(--ak-font-mono);
+	font-weight: 900;
+	letter-spacing: 0.14em;
+	box-shadow: none !important;
+}
+.container.theme-ark .ufm-title {
+	font-family: var(--ak-font-serif);
+	font-weight: 900;
+	color: var(--ak-text-primary) !important;
+}
+.container.theme-ark .ufm-desc {
+	color: var(--ak-text-secondary) !important;
+}
+.container.theme-ark .ufm-versions {
+	background: var(--ak-surface-muted) !important;
+	border: 1rpx solid var(--ak-hairline-soft);
+	border-radius: 2rpx;
+}
+.container.theme-ark .ufm-ver-label {
+	color: var(--ak-text-muted) !important;
+	font-family: var(--ak-font-mono);
+	letter-spacing: 0.06em;
+}
+.container.theme-ark .ufm-ver-value {
+	color: var(--ak-text-primary) !important;
+	font-family: var(--ak-font-mono);
+	font-weight: 700;
+}
+.container.theme-ark .ufm-ver-value.highlight {
+	color: var(--ak-signal-accent) !important;
+}
+.container.theme-ark .ufm-btn {
+	border: 1rpx solid transparent;
+	border-radius: 4rpx;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+}
+.container.theme-ark .ufm-btn.primary {
+	background: var(--ak-signal-action) !important;
+	color: var(--ak-text-primary) !important;
+	box-shadow: 0 6rpx 0 rgba(255, 255, 255, 0.14) !important;
+}
+.container.theme-ark .ufm-btn.primary:active {
+	background: #e3b73c !important;
+	box-shadow: none !important;
+	transform: translateY(2rpx);
+}
+.container.theme-ark .ufm-btn.ghost {
+	background: var(--ak-surface-muted) !important;
+	color: var(--ak-text-primary) !important;
+	border-color: var(--ak-hairline-soft) !important;
+}
+.container.theme-ark .ufm-btn.ghost:active {
+	background: var(--ak-text-primary) !important;
+	color: var(--ak-text-inverse) !important;
+}
+.container.theme-ark .ufm-btn.mute {
+	color: var(--ak-text-muted) !important;
+	border-color: var(--ak-hairline-soft) !important;
+}
+.container.theme-ark .ufm-btn.mute:active {
+	background: var(--ak-surface-muted) !important;
+}
+.container.theme-ark .questionnaire-modal {
+	background: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft);
+	border-radius: 4rpx;
+}
+.container.theme-ark .questionnaire-modal .modal-header {
+	border-bottom: 1rpx solid var(--ak-hairline-soft);
+}
+.container.theme-ark .questionnaire-modal .modal-title {
+	font-family: var(--ak-font-serif);
+	font-weight: 900;
+	color: var(--ak-text-primary) !important;
+	letter-spacing: 0.04em;
+}
+.container.theme-ark .questionnaire-modal .modal-close {
+	color: var(--ak-text-muted) !important;
+}
+.container.theme-ark .questionnaire-modal .questionnaire-item {
+	border-bottom: 1rpx solid var(--ak-hairline-soft);
+}
+.container.theme-ark .questionnaire-modal .questionnaire-item:active {
+	background-color: var(--ak-surface-muted) !important;
+}
+.container.theme-ark .questionnaire-modal .questionnaire-title {
+	color: var(--ak-text-primary) !important;
+	font-weight: 700;
+}
+.container.theme-ark .questionnaire-modal .questionnaire-content {
+	color: var(--ak-text-secondary) !important;
+}
+.container.theme-ark .questionnaire-modal .status-tag {
+	border-radius: 2rpx;
+	font-family: var(--ak-font-mono);
+	font-weight: 800;
+	letter-spacing: 0.08em;
+}
+.container.theme-ark .questionnaire-modal .tag-paused {
+	background-color: rgba(227, 59, 59, 0.12) !important;
+	color: var(--ak-signal-danger) !important;
+}
+.container.theme-ark .questionnaire-modal .tag-open {
+	background-color: rgba(70, 196, 124, 0.14) !important;
+	color: #46c47c !important;
+}
+.container.theme-ark .questionnaire-modal .tag-permanent {
+	background-color: rgba(241, 198, 68, 0.22) !important;
+	color: #f1c644 !important;
+}
+.container.theme-ark .questionnaire-modal .empty-tip {
+	color: var(--ak-text-muted) !important;
+}
+
+/* 深色校正：黄底/强调底按钮的文字必须用墨色（令牌 --ak-text-primary 在深色下是纸白，会失去对比度） */
+.container.theme-ark .update-btn,
+.container.theme-ark .ufm-badge,
+.container.theme-ark .ufm-btn.primary,
+.container.theme-ark .update-btn .update-btn-text,
+.container.theme-ark .ufm-btn.primary .ufm-btn-text {
+	color: var(--ak-text-on-action) !important;
+}
+.container.theme-ark .update-btn .update-btn-img {
+	filter: none !important;
+}
+
+/* ==========================================================================
+   13 · 词汇表外组件的明暗适配（自动生成 · 由页面样式中的硬编码中性色映射而来）
+        规则只改配色（背景/文字/边框），不动任何布局属性；语义色组件（金卡、稀有度、
+        盒号系列色、市价与幸运色）已在生成时排除，保持原色。
+        选择器为 .theme-ak / .theme-ark 前缀，故不影响「简约」与「类界园」主题。
+   ========================================================================== */
+
+/* ---------- 13.1 工业浅色（theme-ak）：统一到纸面调色板 ---------- */
+.theme-ak .container {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .page-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .form-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .section-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .form-label {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .form-input {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .form-picker {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .picker-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .form-textarea {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .modify-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .field-label {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .field-input {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-primary) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .field-input[disabled] {
+	background-color: var(--ak-surface-canvas) !important;
+	border-color: var(--ak-hairline-soft) !important;
+}
+.theme-ak .field-picker {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .field-picker[disabled] {
+	background-color: var(--ak-surface-canvas) !important;
+	border-color: var(--ak-hairline-soft) !important;
+}
+.theme-ak .field-textarea {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-primary) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .field-textarea[disabled] {
+	background-color: var(--ak-surface-canvas) !important;
+	border-color: var(--ak-hairline-soft) !important;
+}
+.theme-ak .reference-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .reference-item {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .reference-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .reference-notice {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .modal-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .modal-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .modal-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .success-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .success-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .success-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* 干员列表区块 */ .market-char-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .character-chip {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-secondary) !important;
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak /* 手动新增干员 */ .custom-char-row {
+	background-color: var(--ak-surface-panel) !important;
+	border: 2rpx dashed var(--ak-hairline-soft) !important;
+}
+.theme-ak .custom-char-input {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .privacy-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .privacy-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .privacy-btn.cancel {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .privacy-btn .btn-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .header {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .box-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .info-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .info-label {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .info-value {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .image-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .box-image {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .loading-state {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .loading-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .empty-state {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak /* 模式选择区域 */ .mode-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .mode-tab {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .want-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* 搜索框样式*/ .search-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .search-input-wrapper {
+	background-color: var(--ak-surface-panel) !important;
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .search-input {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .clear-icon:active {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .search-result-item {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .result-character-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .result-box-id {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* 筛选和统计区域 */ .filter-stats-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .box-filter-picker {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .stat-item {
+	color: var(--ak-text-secondary) !important;
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak /* 盒子到嗙被按钮挳 */ .box-filter-buttons {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .filter-btn {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* 盒子部分 */ .box-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .select-box-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .character-avatar {
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+	background-color: rgba(253, 253, 251, 0.12) !important;
+}
+.theme-ak .owned-indicator, .theme-ak .want-indicator, .theme-ak .trade-indicator, .theme-ak .hot-indicator {
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak /* 成就标记样式 */ .pair-indicator {
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak /* 数量显示区域 */ .quantity-display {
+	background-color: rgba(253, 253, 251, 0.95) !important;
+}
+.theme-ak .quantity-item {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .quantity-value {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .character-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* 空状态 */ .empty-state {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak /* 收集概览样式 - 全新设计 */ .overview-page {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .overview-header {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .overview-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* 概览统计卡片 */ .overview-cards {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .overview-card-item {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .card-value {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* 收集进度区 */ .progress-ring-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .detail-label {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .detail-value {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* 盒子完成度排行 */ .box-ranking-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .box-rank {
+	background-color: var(--ak-surface-muted) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .box-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .box-progress-bar {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ak /* 精英分布 */ .distribution-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .dist-label {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .dist-bar-wrapper {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .dist-value {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* 收集时间线 */ .timeline-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .timeline-label {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .timeline-value {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* 出物列表 */ .overview-list {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .owned-list-item {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .item-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* 底部按钮 */ .overview-footer {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .debug-modal-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .debug-modal-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .debug-close-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .debug-section-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .debug-label {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .debug-value {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .test-result {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .test-result-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .share-preview-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .share-preview-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .share-close-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .owned-item {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .owned-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* 分享内容预览区域样式 */ .share-content-preview {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .share-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .share-subtitle {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .share-stats {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .stat-label {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .stat-value {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .share-divider {
+	background-color: var(--ak-surface-sunken) !important;
+}
+.theme-ak .share-character-item {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .share-character-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .status-tag {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .option-label {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* 底部操作栏*/ .bottom-action-bar {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .quick-btn {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-secondary) !important;
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .clear-btn {
+	background-image: none !important;
+	background-color: var(--ak-surface-panel) !important;
+	border-color: var(--ak-hairline-soft) !important;
+}
+.theme-ak .summary-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* 概览页面区域样式 */ .overview-page {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak /* 概览统计分$墖 */ .overview-cards {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak /* 收集进度 */ .progress-ring-section, .theme-ak .box-ranking-section, .theme-ak .distribution-section, .theme-ak .timeline-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .progress-ring-text {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .box-type-tag {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .type-ambience {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ak .overview-footer {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak /* 分享选项区域 */ .share-options-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .share-option-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .share-image-preview-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .preview-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .preview-close-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .operation-guide-box {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .guide-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* 分享图预览区域 */ .share-pagination {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .page-indicator {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .share-image-preview-section {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .share-preview-actions {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .share-action-btn.secondary {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .page-root {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .top-bar {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .back-btn {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .prompt-main {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .confirm-btn.disabled, .theme-ak .action-btn.disabled {
+	border-color: var(--ak-hairline-soft) !important;
+}
+.theme-ak .barrage {
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .barrage text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .loading-spinner {
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .result-card {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .result-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .op-card {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .op-avatar {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ak .op-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .op-box-id {
+	background-color: var(--ak-surface-muted) !important;
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .reason-box, .theme-ak .warn-box {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .reason-text, .theme-ak .warn-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .action-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-primary) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak /* 导航栏 */ .nav-bar {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .back-icon {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .nav-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .intro-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .link-card {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .link-icon-wrap {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .link-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .link-desc {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* 免责声明 */ .disclaimer {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak /* 搜索头部 */ .search-header {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .search-box {
+	background-color: var(--ak-surface-canvas) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .list-title {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* 设置项（带开关）- 与 Setting.vue 保持一致 */ .setting-item {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .setting-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* 页面跳转项 - 与 Setting.vue 保持一致 */ .result-item {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .result-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .preview-img {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak /* 图片底部红色版权声明 */ .copyright-bar {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.list-page.theme-ak {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .list-page {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak /* 表格 */ .table-wrap {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .label-cell {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .label-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .box-item {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .box-item.missing {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .box-id {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* 统计 */ .summary-bar {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak /* ========== 简约风格（默认） ========== */ .container {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak /* ========== 公告栏样式 ========== /* 简约风格 */ .notice-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .notice-close:active {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .notice-toggle:active {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .notice-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* ========== 展开/收起按钮样式 ========== */ .expand-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .expand-btn:active {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ak /* ========== 轮播图样式 ========== */ /* 简约风格 */ .carousel-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak /* ========== 工具箱区域样式 ========== */ /* 简约风格 */ .tools-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .tools-manage-btn {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .tools-manage-btn:active {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ak .manage-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .tools-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* ========== 工具卡片样式 ========== */ /* 简约风格 */ .tool-card {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .tool-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .update-found-modal {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .ufm-versions {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .ufm-btn.ghost {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .ufm-btn.mute {
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .status-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .data-detail-item {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* ========== 编辑模式下的工具卡片 ========== */ .tool-card.editing-card {
+	background-color: var(--ak-surface-panel) !important;
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .visibility-label {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* ========== 编辑模式控制栏样式 ========== */ .edit-controls-bar {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .info-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .edit-btn.cancel {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .questionnaire-modal {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .questionnaire-modal .questionnaire-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .questionnaire-modal .questionnaire-content {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .questionnaire-modal .tag-open {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ak .search-input-box {
+	background-color: rgba(253, 253, 251, 0.95) !important;
+}
+.theme-ak /* 自定义导航栏 - 简约白 */ .custom-nav-bar {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .nav-switch-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .nav-search-box {
+	background-color: var(--ak-surface-canvas) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak /* 控制区域样式 */ .control-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .toolbar-toggle {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .filter-picker, .theme-ak .sort-picker {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .sort-order-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .pagination-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .page-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .jump-input {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1px solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .boxes-list {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .favorite-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .character-card {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .favorite-indicator {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .image-modal-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .image-modal-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .close-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .box-character-item {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .favorite-box-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .date-picker {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .radio-label {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .radio {
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .reset-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .cancel-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* ========== 卡片大图与基本信息 ========== */ .box-image-wrapper {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .box-info-grid {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .replicate-line {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .box-image-section {
+	background-image: none !important;
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .image-expand-btn {
+	background-image: none !important;
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .character-item-compact {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .character-avatar-compact {
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .character-name-compact {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .mp-value-c {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .scan-page {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .scan-card {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .scan-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .barcode-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* 角色卡片区域 */ .characters-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak /* 调试信息 */ .debug-info {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .history-list {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .history-barcode {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .barcode-input {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .modal-btn.cancel {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .bottom-link {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .privacy-item {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .search-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .search-input-container {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .search-input-container.focus {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .filter-picker {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .suggestions-dropdown {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .suggestion-item:active {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .suggestion-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .load-more {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .load-more:active {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .option-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .search-tip-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .result-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .label {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .close-btn:active {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ak .box-selection-item {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .favorite-btn-small {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* ========== 卡片样式（同步 list.vue）========== */ /* 结果项卡片 */ .result-item.box-card {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak /* 官方图片区域 */ .box-image-section {
+	background-image: none !important;
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak /* 展开/收起按钮 */ .image-expand-btn {
+	background-image: none !important;
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .box-image-wrapper.expanded + .image-expand-btn {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak /* 基本信息网格 */ .box-info-grid {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak /* 收藏指示器 */ .favorite-indicator {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .action-btn.favorite-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .character-avatar-large {
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .character-name-main {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .section-label {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .box-detail-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak /* 干员跨盒查询弹窗 */ .char-boxes-modal {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .char-boxes-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .char-box-chip {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak /* 顶部区域 */ .header-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .app-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* 分区样式 */ .section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak /* 开源贡献 */ .repo-card {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .repo-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .section-header {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .avatar-container {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .contributor-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .contributor-role {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .support-item {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .support-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .support-desc {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .calendar-container {
+	background-image: none !important;
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .month-selector {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .month-arrow {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .month-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .calendar-stats {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .timeline-line {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ak .timeline-card {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .card-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .tag-normal {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ak .mini-progress-bar {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .legend {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .legend-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .legend-item {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .month-picker-sheet {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .picker-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .picker-item {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .picker-item:active {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .subtitle {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* 搜索区域 */ .search-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .stats-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .character-item {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .character-english {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .word-tag.fixed {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .add-word-input {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak /* 分页控件 */ .pagination {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .page-info {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* 提示区域 */ .tip-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .tip-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* 左侧面板样式 - 固定宽度 */ .left-panel {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .panel-header {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .panel-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .title-item {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak /* 置顶项的特殊样式 */ .title-item.top-item {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .title-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* 右侧面板样式 - 自适应宽度 */ .right-panel {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .content-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .content-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .content-text >>> b {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .chat-page {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak /* 顶栏 */ .chat-header {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .header-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .sidebar {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .sidebar-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .session-item {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .session-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .empty-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .example-card {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .example-card-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .bubble.assistant {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* 输入栏 */ .input-bar {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .input-box {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* 报错日志功能区 */ .error-log-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .error-log-section .section-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .error-log-modal {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .error-log-modal-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .error-log-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .data-source-item {
+	background-color: var(--ak-surface-panel) !important;
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .data-source-item.loading {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .data-source-label {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .custom-data-info {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .info-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .data-source-tips {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .switch-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* 搜索数据状态 */ .search-data-status {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .data-info {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* 预测数据状态 */ .guess-data-status {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .secondary-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* 数据状态区域 */ .data-status-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .status-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .status-label {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .status-value {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .validation-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .validation-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .validation-result.valid {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .validation-result.invalid {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .detail-item {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .upload-progress .progress-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .upload-progress .progress-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .upload-progress .progress-tip {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .upload-progress .progress-bar {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .upload-progress .progress-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .download-progress .progress-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .download-progress .progress-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .download-progress .progress-tip {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .download-progress .progress-bar {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .download-progress .progress-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .download-progress .cancel-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .setting-label {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .picker-view {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .modal-tips {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .disclaimer-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .disclaimer-header {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .disclaimer-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .section-content {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* 隐私协议弹窗 */ .privacy-btn.cancel {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak /* 分享内容预览样式 */ .share-content-preview {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak /* 底部操作栏 */ .bottom-action-bar {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak /* ========== 基础样式 ========== */ .container {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak /* 普通模式样式（保留原样） */ .gacha-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .selector-label {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .picker-display {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .picker-display.disabled {
+	background-color: var(--ak-surface-canvas) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .checkbox-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .mix-filter-options {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .filter-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .filter-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .filter-stat-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .desc-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* 盒号控制区域 */ .box-controls {
+	background-image: none !important;
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak /* 本盒卡面面板 */ .box-card-panel {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .box-card-item.drawn {
+	background-color: var(--ak-surface-canvas) !important;
+	border-color: var(--ak-hairline-soft) !important;
+}
+.theme-ak /* 历史记录按钮 */ .history-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .stats-panel {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .stats-collapse-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .stats-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .history-index {
+	background-color: rgba(253, 253, 251, 0.8) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .history-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .history-box, .theme-ak .history-time {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .mode-seg {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .mode-seg-item {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* 盈亏展示信息区（紧凑版） */ .pnl-panel {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .pnl-value {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .ten-modal-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak /* ===== 对战模式样式（最终简化版，无通配符） ===== */ .battle-mode {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .battle-setup-area {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .setup-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .player-area {
+	background-color: var(--ak-surface-panel) !important;
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .pool-info {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .battle-result-banner {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ak .category-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .stats-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .favorites-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .app-version-link {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* 展开/收起区域 */ .expand-section {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* endspace: #fafafa / #fff / #e4e4e7 / #18181b / #FBFB45 */ .calendar-page {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .stat-num {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .char-tag {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .reload-btn {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-primary) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .add-word-btn:disabled {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ak .page-btn:disabled {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ak /* 超级大混池选项 */ .super-mix-option {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .box-type {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .box-card-panel-title {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .box-card-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .gacha-btn:disabled {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ak .history-exclude-tag {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ak /* 模式切换 */ .mode-switch {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .player-status {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* 自定义导航栏 */ .custom-nav-bar {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .nav-title-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* 公告栏样式 - 修改顶部间距 */ .notice-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .notice-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* 展开/收起按钮样式 */ .notice-toggle {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .expand-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak /* 轮播图样式 */ .carousel-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak /* 工具箱区域样式 - 修改为两列布局 */ .tools-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .empty-placeholder {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak .tool-card {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak /* 数据状态区域 — 白底细边 */ .data-status {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak /* 终末地主按钮：亮黄底 + 黑字 */ .update-btn {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .about-link {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* 编辑模式下的工具卡片 */ .tool-card.editing-card {
+	background-color: var(--ak-surface-panel) !important;
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak /* 编辑模式控制栏 */ .edit-controls-bar {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak /* ===== endspace-theme 对齐 ===== */ .container.ef-page, .theme-ak .ef-page {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* 卡片 */ .tool-card, .theme-ak .notice-section, .theme-ak .data-status, .theme-ak .ef-card, .theme-ak .result-item, .theme-ak .box-item, .theme-ak .box-card, .theme-ak .gacha-section, .theme-ak .search-section, .theme-ak .timeline-card, .theme-ak .stat-item, .theme-ak .month-selector {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-primary) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak /* 文字 */ .tool-name, .theme-ak .card-name, .theme-ak .month-text, .theme-ak .character-name-main, .theme-ak .box-card-title, .theme-ak .result-title, .theme-ak .box-id, .theme-ak .status-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .value, .theme-ak .info-value {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* 导航 */ .custom-nav-bar {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ak /* 主按钮：#FBFB45 亮柠檬黄 + 黑字黑边 */ .update-btn, .theme-ak .search-btn, .theme-ak .reset-btn, .theme-ak .gacha-btn, .theme-ak .ef-btn-primary, .theme-ak .go-to-settings-btn {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* 次要按钮 */ .option-btn, .theme-ak .view-info-btn, .theme-ak .favorite-btn, .theme-ak .ef-btn, .theme-ak .page-btn, .theme-ak .sort-order-btn, .theme-ak .history-btn, .theme-ak .action-btn {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-primary) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak /* 盒类型标签 */ .box-card-type, .theme-ak .box-type {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak /* 本盒卡面 chips */ .box-card-panel {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .box-card-item {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak /* 更新提示条 */ .update-hint {
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .update-hint .hint-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ak .box-card-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .box-image-wrapper {
+	background-color: var(--ak-surface-canvas) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .expand-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak /* 筛选输入 */ .picker-text, .theme-ak .picker-display, .theme-ak .search-input-container {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-primary) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak /* 列表信息网格颜色统一 */ .section-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .type-cooperation {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ak .mp-settings-btn {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .hint-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .filter-group-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .radio.active {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .expand-icon {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .title-item.active .title-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .suggestion-tag.type-cooperation {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ak .load-more-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .value {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .box-selection-id {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .box-tag-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .box-tag-arrow {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .box-detail-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .box-detail-type-tag.tag-ambience {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ak .char-box-chip-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .data-source-radio {
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ak .dev-tag-small {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ak .dev-tag {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ak .status-loading {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ak .loading-status {
+	color: var(--ak-text-primary) !important;
+}
+
+/* ---------- 13.2 工业深色（theme-ark）：统一到石墨调色板 ---------- */
+.theme-ark .container {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .page-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .form-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .section-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .form-label {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .form-input {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .form-picker {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .picker-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .form-textarea {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .modify-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .field-label {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .field-input {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-primary) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .field-input[disabled] {
+	background-color: var(--ak-surface-canvas) !important;
+	border-color: var(--ak-hairline-soft) !important;
+}
+.theme-ark .field-picker {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .field-picker[disabled] {
+	background-color: var(--ak-surface-canvas) !important;
+	border-color: var(--ak-hairline-soft) !important;
+}
+.theme-ark .field-textarea {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-primary) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .field-textarea[disabled] {
+	background-color: var(--ak-surface-canvas) !important;
+	border-color: var(--ak-hairline-soft) !important;
+}
+.theme-ark .reference-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .reference-item {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .reference-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .reference-notice {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .modal-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .modal-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .modal-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .success-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .success-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .success-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* 干员列表区块 */ .market-char-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .character-chip {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-secondary) !important;
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark /* 手动新增干员 */ .custom-char-row {
+	background-color: var(--ak-surface-panel) !important;
+	border: 2rpx dashed var(--ak-hairline-soft) !important;
+}
+.theme-ark .custom-char-input {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .privacy-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .privacy-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .privacy-btn.cancel {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .privacy-btn .btn-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .header {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .box-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .info-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .info-label {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .info-value {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .image-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .box-image {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .loading-state {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .loading-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .empty-state {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark /* 模式选择区域 */ .mode-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .mode-tab {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .want-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* 搜索框样式*/ .search-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .search-input-wrapper {
+	background-color: var(--ak-surface-panel) !important;
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .search-input {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .clear-icon:active {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .search-result-item {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .result-character-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .result-box-id {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* 筛选和统计区域 */ .filter-stats-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .box-filter-picker {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .stat-item {
+	color: var(--ak-text-secondary) !important;
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark /* 盒子到嗙被按钮挳 */ .box-filter-buttons {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .filter-btn {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* 盒子部分 */ .box-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .select-box-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .character-avatar {
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+	background-color: rgba(27, 29, 30, 0.12) !important;
+}
+.theme-ark .owned-indicator, .theme-ark .want-indicator, .theme-ark .trade-indicator, .theme-ark .hot-indicator {
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark /* 成就标记样式 */ .pair-indicator {
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark /* 数量显示区域 */ .quantity-display {
+	background-color: rgba(27, 29, 30, 0.95) !important;
+}
+.theme-ark .quantity-item {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .quantity-value {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .character-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* 空状态 */ .empty-state {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark /* 收集概览样式 - 全新设计 */ .overview-page {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .overview-header {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .overview-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* 概览统计卡片 */ .overview-cards {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .overview-card-item {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .card-value {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* 收集进度区 */ .progress-ring-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .detail-label {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .detail-value {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* 盒子完成度排行 */ .box-ranking-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .box-rank {
+	background-color: var(--ak-surface-muted) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .box-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .box-progress-bar {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ark /* 精英分布 */ .distribution-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .dist-label {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .dist-bar-wrapper {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .dist-value {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* 收集时间线 */ .timeline-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .timeline-label {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .timeline-value {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* 出物列表 */ .overview-list {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .owned-list-item {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .item-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* 底部按钮 */ .overview-footer {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .debug-modal-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .debug-modal-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .debug-close-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .debug-section-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .debug-label {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .debug-value {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .test-result {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .test-result-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .share-preview-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .share-preview-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .share-close-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .owned-item {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .owned-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* 分享内容预览区域样式 */ .share-content-preview {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .share-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .share-subtitle {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .share-stats {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .stat-label {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .stat-value {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .share-divider {
+	background-color: var(--ak-surface-sunken) !important;
+}
+.theme-ark .share-character-item {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .share-character-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .status-tag {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .option-label {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* 底部操作栏*/ .bottom-action-bar {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .quick-btn {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-secondary) !important;
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .clear-btn {
+	background-image: none !important;
+	background-color: var(--ak-surface-panel) !important;
+	border-color: var(--ak-hairline-soft) !important;
+}
+.theme-ark .summary-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* 概览页面区域样式 */ .overview-page {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark /* 概览统计分$墖 */ .overview-cards {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark /* 收集进度 */ .progress-ring-section, .theme-ark .box-ranking-section, .theme-ark .distribution-section, .theme-ark .timeline-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .progress-ring-text {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .box-type-tag {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .type-ambience {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ark .overview-footer {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark /* 分享选项区域 */ .share-options-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .share-option-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .share-image-preview-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .preview-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .preview-close-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .operation-guide-box {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .guide-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* 分享图预览区域 */ .share-pagination {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .page-indicator {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .share-image-preview-section {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .share-preview-actions {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .share-action-btn.secondary {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .page-root {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .top-bar {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .back-btn {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .prompt-main {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .confirm-btn.disabled, .theme-ark .action-btn.disabled {
+	border-color: var(--ak-hairline-soft) !important;
+}
+.theme-ark .barrage {
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .barrage text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .loading-spinner {
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .result-card {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .result-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .op-card {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .op-avatar {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ark .op-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .op-box-id {
+	background-color: var(--ak-surface-muted) !important;
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .reason-box, .theme-ark .warn-box {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .reason-text, .theme-ark .warn-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .action-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-primary) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark /* 导航栏 */ .nav-bar {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .back-icon {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .nav-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .intro-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .link-card {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .link-icon-wrap {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .link-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .link-desc {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* 免责声明 */ .disclaimer {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark /* 搜索头部 */ .search-header {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .search-box {
+	background-color: var(--ak-surface-canvas) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .list-title {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* 设置项（带开关）- 与 Setting.vue 保持一致 */ .setting-item {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .setting-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* 页面跳转项 - 与 Setting.vue 保持一致 */ .result-item {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .result-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .preview-img {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark /* 图片底部红色版权声明 */ .copyright-bar {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.list-page.theme-ark {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .list-page {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark /* 表格 */ .table-wrap {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .label-cell {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .label-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .box-item {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .box-item.missing {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .box-id {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* 统计 */ .summary-bar {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark /* ========== 简约风格（默认） ========== */ .container {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark /* ========== 公告栏样式 ========== /* 简约风格 */ .notice-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .notice-close:active {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .notice-toggle:active {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .notice-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* ========== 展开/收起按钮样式 ========== */ .expand-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .expand-btn:active {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ark /* ========== 轮播图样式 ========== */ /* 简约风格 */ .carousel-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark /* ========== 工具箱区域样式 ========== */ /* 简约风格 */ .tools-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .tools-manage-btn {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .tools-manage-btn:active {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ark .manage-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .tools-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* ========== 工具卡片样式 ========== */ /* 简约风格 */ .tool-card {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .tool-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .update-found-modal {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .ufm-versions {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .ufm-btn.ghost {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .ufm-btn.mute {
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .status-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .data-detail-item {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* ========== 编辑模式下的工具卡片 ========== */ .tool-card.editing-card {
+	background-color: var(--ak-surface-panel) !important;
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .visibility-label {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* ========== 编辑模式控制栏样式 ========== */ .edit-controls-bar {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .info-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .edit-btn.cancel {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .questionnaire-modal {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .questionnaire-modal .questionnaire-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .questionnaire-modal .questionnaire-content {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .questionnaire-modal .tag-open {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ark .search-input-box {
+	background-color: rgba(27, 29, 30, 0.95) !important;
+}
+.theme-ark /* 自定义导航栏 - 简约白 */ .custom-nav-bar {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .nav-switch-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .nav-search-box {
+	background-color: var(--ak-surface-canvas) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark /* 控制区域样式 */ .control-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .toolbar-toggle {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .filter-picker, .theme-ark .sort-picker {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .sort-order-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .pagination-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .page-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .jump-input {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1px solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .boxes-list {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .favorite-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .character-card {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .favorite-indicator {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .image-modal-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .image-modal-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .close-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .box-character-item {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .favorite-box-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .date-picker {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .radio-label {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .radio {
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .reset-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .cancel-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* ========== 卡片大图与基本信息 ========== */ .box-image-wrapper {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .box-info-grid {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .replicate-line {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .box-image-section {
+	background-image: none !important;
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .image-expand-btn {
+	background-image: none !important;
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .character-item-compact {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .character-avatar-compact {
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .character-name-compact {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .mp-value-c {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .scan-page {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .scan-card {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .scan-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .barcode-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* 角色卡片区域 */ .characters-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark /* 调试信息 */ .debug-info {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .history-list {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .history-barcode {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .barcode-input {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .modal-btn.cancel {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .bottom-link {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .privacy-item {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .search-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .search-input-container {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .search-input-container.focus {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .filter-picker {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .suggestions-dropdown {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .suggestion-item:active {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .suggestion-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .load-more {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .load-more:active {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .option-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .search-tip-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .result-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .label {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .close-btn:active {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ark .box-selection-item {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .favorite-btn-small {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* ========== 卡片样式（同步 list.vue）========== */ /* 结果项卡片 */ .result-item.box-card {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark /* 官方图片区域 */ .box-image-section {
+	background-image: none !important;
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark /* 展开/收起按钮 */ .image-expand-btn {
+	background-image: none !important;
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .box-image-wrapper.expanded + .image-expand-btn {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark /* 基本信息网格 */ .box-info-grid {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark /* 收藏指示器 */ .favorite-indicator {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .action-btn.favorite-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .character-avatar-large {
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .character-name-main {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .section-label {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .box-detail-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark /* 干员跨盒查询弹窗 */ .char-boxes-modal {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .char-boxes-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .char-box-chip {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark /* 顶部区域 */ .header-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .app-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* 分区样式 */ .section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark /* 开源贡献 */ .repo-card {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .repo-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .section-header {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .avatar-container {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .contributor-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .contributor-role {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .support-item {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .support-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .support-desc {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .calendar-container {
+	background-image: none !important;
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .month-selector {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .month-arrow {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .month-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .calendar-stats {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .timeline-line {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ark .timeline-card {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .card-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .tag-normal {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ark .mini-progress-bar {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .legend {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .legend-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .legend-item {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .month-picker-sheet {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .picker-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .picker-item {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .picker-item:active {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .subtitle {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* 搜索区域 */ .search-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .stats-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .character-item {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .character-english {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .word-tag.fixed {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .add-word-input {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark /* 分页控件 */ .pagination {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .page-info {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* 提示区域 */ .tip-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .tip-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* 左侧面板样式 - 固定宽度 */ .left-panel {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .panel-header {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .panel-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .title-item {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark /* 置顶项的特殊样式 */ .title-item.top-item {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .title-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* 右侧面板样式 - 自适应宽度 */ .right-panel {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .content-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .content-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .content-text >>> b {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .chat-page {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark /* 顶栏 */ .chat-header {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .header-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .sidebar {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .sidebar-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .session-item {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .session-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .empty-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .example-card {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .example-card-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .bubble.assistant {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* 输入栏 */ .input-bar {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .input-box {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* 报错日志功能区 */ .error-log-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .error-log-section .section-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .error-log-modal {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .error-log-modal-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .error-log-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .data-source-item {
+	background-color: var(--ak-surface-panel) !important;
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .data-source-item.loading {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .data-source-label {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .custom-data-info {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .info-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .data-source-tips {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .switch-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* 搜索数据状态 */ .search-data-status {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .data-info {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* 预测数据状态 */ .guess-data-status {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .secondary-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* 数据状态区域 */ .data-status-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .status-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .status-label {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .status-value {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .validation-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .validation-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .validation-result.valid {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .validation-result.invalid {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .detail-item {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .upload-progress .progress-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .upload-progress .progress-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .upload-progress .progress-tip {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .upload-progress .progress-bar {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .upload-progress .progress-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .download-progress .progress-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .download-progress .progress-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .download-progress .progress-tip {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .download-progress .progress-bar {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .download-progress .progress-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .download-progress .cancel-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .setting-label {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .picker-view {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .modal-tips {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .disclaimer-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .disclaimer-header {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .disclaimer-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .section-content {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* 隐私协议弹窗 */ .privacy-btn.cancel {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark /* 分享内容预览样式 */ .share-content-preview {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark /* 底部操作栏 */ .bottom-action-bar {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark /* ========== 基础样式 ========== */ .container {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark /* 普通模式样式（保留原样） */ .gacha-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .selector-label {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .picker-display {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .picker-display.disabled {
+	background-color: var(--ak-surface-canvas) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .checkbox-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .mix-filter-options {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .filter-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .filter-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .filter-stat-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .desc-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* 盒号控制区域 */ .box-controls {
+	background-image: none !important;
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark /* 本盒卡面面板 */ .box-card-panel {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .box-card-item.drawn {
+	background-color: var(--ak-surface-canvas) !important;
+	border-color: var(--ak-hairline-soft) !important;
+}
+.theme-ark /* 历史记录按钮 */ .history-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .stats-panel {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .stats-collapse-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .stats-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .history-index {
+	background-color: rgba(27, 29, 30, 0.8) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .history-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .history-box, .theme-ark .history-time {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .mode-seg {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .mode-seg-item {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* 盈亏展示信息区（紧凑版） */ .pnl-panel {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .pnl-value {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .ten-modal-content {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark /* ===== 对战模式样式（最终简化版，无通配符） ===== */ .battle-mode {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .battle-setup-area {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .setup-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .player-area {
+	background-color: var(--ak-surface-panel) !important;
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .pool-info {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .battle-result-banner {
+	background-color: var(--ak-surface-canvas) !important;
+}
+.theme-ark .category-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .stats-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .favorites-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .app-version-link {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* 展开/收起区域 */ .expand-section {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* endspace: #fafafa / #fff / #e4e4e7 / #18181b / #FBFB45 */ .calendar-page {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .stat-num {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .char-tag {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .reload-btn {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-primary) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .add-word-btn:disabled {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ark .page-btn:disabled {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ark /* 超级大混池选项 */ .super-mix-option {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .box-type {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .box-card-panel-title {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .box-card-name {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .gacha-btn:disabled {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ark .history-exclude-tag {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ark /* 模式切换 */ .mode-switch {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .player-status {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* 自定义导航栏 */ .custom-nav-bar {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .nav-title-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* 公告栏样式 - 修改顶部间距 */ .notice-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .notice-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* 展开/收起按钮样式 */ .notice-toggle {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .expand-btn {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark /* 轮播图样式 */ .carousel-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark /* 工具箱区域样式 - 修改为两列布局 */ .tools-section {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .empty-placeholder {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark .tool-card {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark /* 数据状态区域 — 白底细边 */ .data-status {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark /* 终末地主按钮：亮黄底 + 黑字 */ .update-btn {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .about-link {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* 编辑模式下的工具卡片 */ .tool-card.editing-card {
+	background-color: var(--ak-surface-panel) !important;
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark /* 编辑模式控制栏 */ .edit-controls-bar {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark /* ===== endspace-theme 对齐 ===== */ .container.ef-page, .theme-ark .ef-page {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* 卡片 */ .tool-card, .theme-ark .notice-section, .theme-ark .data-status, .theme-ark .ef-card, .theme-ark .result-item, .theme-ark .box-item, .theme-ark .box-card, .theme-ark .gacha-section, .theme-ark .search-section, .theme-ark .timeline-card, .theme-ark .stat-item, .theme-ark .month-selector {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-primary) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark /* 文字 */ .tool-name, .theme-ark .card-name, .theme-ark .month-text, .theme-ark .character-name-main, .theme-ark .box-card-title, .theme-ark .result-title, .theme-ark .box-id, .theme-ark .status-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .value, .theme-ark .info-value {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* 导航 */ .custom-nav-bar {
+	background-color: var(--ak-surface-panel) !important;
+}
+.theme-ark /* 主按钮：#FBFB45 亮柠檬黄 + 黑字黑边 */ .update-btn, .theme-ark .search-btn, .theme-ark .reset-btn, .theme-ark .gacha-btn, .theme-ark .ef-btn-primary, .theme-ark .go-to-settings-btn {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* 次要按钮 */ .option-btn, .theme-ark .view-info-btn, .theme-ark .favorite-btn, .theme-ark .ef-btn, .theme-ark .page-btn, .theme-ark .sort-order-btn, .theme-ark .history-btn, .theme-ark .action-btn {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-primary) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark /* 盒类型标签 */ .box-card-type, .theme-ark .box-type {
+	background-color: var(--ak-surface-canvas) !important;
+	color: var(--ak-text-secondary) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark /* 本盒卡面 chips */ .box-card-panel {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .box-card-item {
+	background-color: var(--ak-surface-panel) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark /* 更新提示条 */ .update-hint {
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .update-hint .hint-text {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-ark .box-card-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .box-image-wrapper {
+	background-color: var(--ak-surface-canvas) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .expand-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark /* 筛选输入 */ .picker-text, .theme-ark .picker-display, .theme-ark .search-input-container {
+	background-color: var(--ak-surface-panel) !important;
+	color: var(--ak-text-primary) !important;
+	border: 1rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark /* 列表信息网格颜色统一 */ .section-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .type-cooperation {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ark .mp-settings-btn {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .hint-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .filter-group-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .radio.active {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .expand-icon {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .title-item.active .title-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .suggestion-tag.type-cooperation {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ark .load-more-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .value {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .box-selection-id {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .box-tag-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .box-tag-arrow {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .box-detail-title {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .box-detail-type-tag.tag-ambience {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ark .char-box-chip-text {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .data-source-radio {
+	border: 2rpx solid var(--ak-hairline-soft) !important;
+}
+.theme-ark .dev-tag-small {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ark .dev-tag {
+	background-color: var(--ak-surface-muted) !important;
+}
+.theme-ark .status-loading {
+	color: var(--ak-text-primary) !important;
+}
+.theme-ark .loading-status {
+	color: var(--ak-text-primary) !important;
+}
+
+/* ==========================================================================
+   14 · 三字体层级（衬线 / 无衬线 / 等宽）
+        ak-ui 的字体观：标题与展示文字用衬线立骨架，正文用无衬线保可读，
+        编号/版本/时间/统计等元信息用等宽形成"工程标注"质感。
+        正文由根节点 font-family 继承；此处只覆盖「标题」与「元信息」两类，
+        且已排除容器类（避免整块继承等宽导致串味）。
+   ========================================================================== */
+
+/* ---------- 14.1 衬线：标题与展示性文字 ---------- */
+.theme-ak .app-name,
+.theme-ak .battle-name,
+.theme-ak .battle-result-banner,
+.theme-ak .beta-banner,
+.theme-ak .character-name,
+.theme-ak .character-name-compact,
+.theme-ak .contributor-name,
+.theme-ak .history-name,
+.theme-ak .op-name,
+.theme-ak .repo-name,
+.theme-ak .result-character-name,
+.theme-ak .result-eyebrow,
+.theme-ak .result-name,
+.theme-ak .setting-name,
+.theme-ak .share-character-name,
+.theme-ak .small-name,
+.theme-ak .suggestion-name,
+.theme-ak .support-name,
+.theme-ak .switch-name,
+.theme-ak .tool-name {
+	font-family: var(--ak-font-serif) !important;
+	font-weight: 900 !important;
+	letter-spacing: 0.02em !important;
+}
+
+.theme-ark .app-name,
+.theme-ark .battle-name,
+.theme-ark .battle-result-banner,
+.theme-ark .beta-banner,
+.theme-ark .character-name,
+.theme-ark .character-name-compact,
+.theme-ark .contributor-name,
+.theme-ark .history-name,
+.theme-ark .op-name,
+.theme-ark .repo-name,
+.theme-ark .result-character-name,
+.theme-ark .result-eyebrow,
+.theme-ark .result-name,
+.theme-ark .setting-name,
+.theme-ark .share-character-name,
+.theme-ark .small-name,
+.theme-ark .suggestion-name,
+.theme-ark .support-name,
+.theme-ark .switch-name,
+.theme-ark .tool-name {
+	font-family: var(--ak-font-serif) !important;
+	font-weight: 900 !important;
+	letter-spacing: 0.02em !important;
+}
+
+/* ---------- 14.2 等宽：编号 / 日期 / 版本 / 统计 ---------- */
+.theme-ak .app-version,
+.theme-ak .app-version-link,
+.theme-ak .auto-update-time,
+.theme-ak .badge-num,
+.theme-ak .calendar-stats,
+.theme-ak .character-count,
+.theme-ak .custom-count,
+.theme-ak .data-count,
+.theme-ak .date-picker,
+.theme-ak .date-pickers,
+.theme-ak .filter-stats,
+.theme-ak .history-index,
+.theme-ak .history-time,
+.theme-ak .index,
+.theme-ak .mix-pool-stats,
+.theme-ak .pair-count,
+.theme-ak .picker-count,
+.theme-ak .pnl-total-note,
+.theme-ak .progress-percent,
+.theme-ak .repo-stat,
+.theme-ak .repo-stat-num,
+.theme-ak .repo-stats,
+.theme-ak .result-count,
+.theme-ak .session-time,
+.theme-ak .share-stats,
+.theme-ak .stat-num,
+.theme-ak .stat-value,
+.theme-ak .stats-collapse-summary,
+.theme-ak .stats-collapse-toggle,
+.theme-ak .update-time,
+.theme-ak .wanted-stat {
+	font-family: var(--ak-font-mono) !important;
+	letter-spacing: 0.06em !important;
+	font-variant-numeric: tabular-nums !important;
+}
+
+.theme-ark .app-version,
+.theme-ark .app-version-link,
+.theme-ark .auto-update-time,
+.theme-ark .badge-num,
+.theme-ark .calendar-stats,
+.theme-ark .character-count,
+.theme-ark .custom-count,
+.theme-ark .data-count,
+.theme-ark .date-picker,
+.theme-ark .date-pickers,
+.theme-ark .filter-stats,
+.theme-ark .history-index,
+.theme-ark .history-time,
+.theme-ark .index,
+.theme-ark .mix-pool-stats,
+.theme-ark .pair-count,
+.theme-ark .picker-count,
+.theme-ark .pnl-total-note,
+.theme-ark .progress-percent,
+.theme-ark .repo-stat,
+.theme-ark .repo-stat-num,
+.theme-ark .repo-stats,
+.theme-ark .result-count,
+.theme-ark .session-time,
+.theme-ark .share-stats,
+.theme-ark .stat-num,
+.theme-ark .stat-value,
+.theme-ark .stats-collapse-summary,
+.theme-ark .stats-collapse-toggle,
+.theme-ark .update-time,
+.theme-ark .wanted-stat {
+	font-family: var(--ak-font-mono) !important;
+	letter-spacing: 0.06em !important;
+	font-variant-numeric: tabular-nums !important;
+}
+
+/* ==========================================================================
+   15 · 信号色语义层（主操作 / 次操作 / 危险 / 链接）
+        ak-ui 的信号系统：黄=可执行操作、蓝=信息与链接、红=破坏性或重置。
+        只改配色与描边，不动尺寸与布局；交互反馈用同步变化的填充与线条。
+   ========================================================================== */
+
+/* ---------- 15.1 主操作：黄底墨字（两态一致） ---------- */
+.theme-ak .confirm-btn,
+.theme-ak .submit-btn,
+.theme-ak .save-btn,
+.theme-ak .upload-btn,
+.theme-ak .export-btn,
+.theme-ak .scan-btn,
+.theme-ak .refresh-btn,
+.theme-ak .update-btn,
+.theme-ak .search-btn,
+.theme-ak .gacha-btn,
+.theme-ak .battle-draw-btn,
+.theme-ak .select-all-btn,
+.theme-ak .select-box-btn,
+.theme-ak .share-action-btn,
+.theme-ak .preview-action-btn,
+.theme-ak .debug-action-btn,
+.theme-ak .jump-btn,
+.theme-ak .ufm-btn {
+	background-color: var(--ak-signal-action) !important;
+	background-image: none !important;
+	color: var(--ak-text-on-action) !important;
+	border: none !important;
+	border-radius: var(--ak-radius) !important;
+	font-weight: 700 !important;
+}
+.theme-ark .confirm-btn,
+.theme-ark .submit-btn,
+.theme-ark .save-btn,
+.theme-ark .upload-btn,
+.theme-ark .export-btn,
+.theme-ark .scan-btn,
+.theme-ark .refresh-btn,
+.theme-ark .update-btn,
+.theme-ark .search-btn,
+.theme-ark .gacha-btn,
+.theme-ark .battle-draw-btn,
+.theme-ark .select-all-btn,
+.theme-ark .select-box-btn,
+.theme-ark .share-action-btn,
+.theme-ark .preview-action-btn,
+.theme-ark .debug-action-btn,
+.theme-ark .jump-btn,
+.theme-ark .ufm-btn {
+	background-color: var(--ak-signal-action) !important;
+	background-image: none !important;
+	color: var(--ak-text-on-action) !important;
+	border: none !important;
+	border-radius: var(--ak-radius) !important;
+	font-weight: 700 !important;
+}
+.theme-ak .confirm-btn:active,
+.theme-ak .submit-btn:active,
+.theme-ak .save-btn:active,
+.theme-ak .upload-btn:active,
+.theme-ak .export-btn:active,
+.theme-ak .scan-btn:active,
+.theme-ak .refresh-btn:active,
+.theme-ak .update-btn:active,
+.theme-ak .search-btn:active,
+.theme-ak .gacha-btn:active,
+.theme-ak .battle-draw-btn:active,
+.theme-ak .select-all-btn:active,
+.theme-ak .select-box-btn:active,
+.theme-ak .share-action-btn:active,
+.theme-ak .preview-action-btn:active,
+.theme-ak .debug-action-btn:active,
+.theme-ak .jump-btn:active,
+.theme-ak .ufm-btn:active {
+	background-color: #e0b23a !important;
+	color: #131415 !important;
+}
+.theme-ark .confirm-btn:active,
+.theme-ark .submit-btn:active,
+.theme-ark .save-btn:active,
+.theme-ark .upload-btn:active,
+.theme-ark .export-btn:active,
+.theme-ark .scan-btn:active,
+.theme-ark .refresh-btn:active,
+.theme-ark .update-btn:active,
+.theme-ark .search-btn:active,
+.theme-ark .gacha-btn:active,
+.theme-ark .battle-draw-btn:active,
+.theme-ark .select-all-btn:active,
+.theme-ark .select-box-btn:active,
+.theme-ark .share-action-btn:active,
+.theme-ark .preview-action-btn:active,
+.theme-ark .debug-action-btn:active,
+.theme-ark .jump-btn:active,
+.theme-ark .ufm-btn:active {
+	background-color: #e0b23a !important;
+	color: #131415 !important;
+}
+
+/* ---------- 15.2 次操作：透明底 + 发丝描边 ---------- */
+.theme-ak .secondary-btn,
+.theme-ak .cancel-btn,
+.theme-ak .page-btn,
+.theme-ak .option-btn,
+.theme-ak .modal-btn,
+.theme-ak .tool-btn,
+.theme-ak .quick-btn,
+.theme-ak .arrow-btn,
+.theme-ak .back-btn,
+.theme-ak .empty-btn,
+.theme-ak .history-btn,
+.theme-ak .favorite-btn,
+.theme-ak .edit-btn,
+.theme-ak .image-expand-btn,
+.theme-ak .advanced-filter-btn,
+.theme-ak .more-btn,
+.theme-ak .filter-btn,
+.theme-ak .tab-btn,
+.theme-ak .switch-btn,
+.theme-ak .quantity-btn,
+.theme-ak .retry-btn {
+	background-color: transparent !important;
+	background-image: none !important;
+	color: var(--ak-text-primary) !important;
+	border: 1rpx solid var(--ak-hairline) !important;
+	border-radius: var(--ak-radius) !important;
+	box-shadow: none !important;
+}
+.theme-ark .secondary-btn,
+.theme-ark .cancel-btn,
+.theme-ark .page-btn,
+.theme-ark .option-btn,
+.theme-ark .modal-btn,
+.theme-ark .tool-btn,
+.theme-ark .quick-btn,
+.theme-ark .arrow-btn,
+.theme-ark .back-btn,
+.theme-ark .empty-btn,
+.theme-ark .history-btn,
+.theme-ark .favorite-btn,
+.theme-ark .edit-btn,
+.theme-ark .image-expand-btn,
+.theme-ark .advanced-filter-btn,
+.theme-ark .more-btn,
+.theme-ark .filter-btn,
+.theme-ark .tab-btn,
+.theme-ark .switch-btn,
+.theme-ark .quantity-btn,
+.theme-ark .retry-btn {
+	background-color: transparent !important;
+	background-image: none !important;
+	color: var(--ak-text-primary) !important;
+	border: 1rpx solid var(--ak-hairline) !important;
+	border-radius: var(--ak-radius) !important;
+	box-shadow: none !important;
+}
+
+/* ---------- 15.3 危险 / 重置：红色信号 ---------- */
+.theme-ak .danger-btn,
+.theme-ak .reset-btn,
+.theme-ak .clear-btn,
+.theme-ak .clear-all-btn,
+.theme-ak .pnl-clear-btn {
+	background-color: transparent !important;
+	background-image: none !important;
+	color: var(--ak-signal-danger) !important;
+	border: 1rpx solid var(--ak-signal-danger) !important;
+	border-radius: var(--ak-radius) !important;
+}
+.theme-ark .danger-btn,
+.theme-ark .reset-btn,
+.theme-ark .clear-btn,
+.theme-ark .clear-all-btn,
+.theme-ark .pnl-clear-btn {
+	background-color: transparent !important;
+	background-image: none !important;
+	color: var(--ak-signal-danger) !important;
+	border: 1rpx solid var(--ak-signal-danger) !important;
+	border-radius: var(--ak-radius) !important;
+}
+
+/* ---------- 15.4 链接与信息：蓝信号 ---------- */
+.theme-ak .app-version-link,
+.theme-ak .link-text,
+.theme-ak .github-link,
+.theme-ak .more-link,
+.theme-ak .detail-link,
+.theme-ak .notice-link,
+.theme-ak .repo-link {
+	color: var(--ak-signal-info) !important;
+	background-image: none !important;
+}
+.theme-ark .app-version-link,
+.theme-ark .link-text,
+.theme-ark .github-link,
+.theme-ark .more-link,
+.theme-ark .detail-link,
+.theme-ark .notice-link,
+.theme-ark .repo-link {
+	color: var(--ak-signal-info) !important;
+	background-image: none !important;
+}
+
+/* ==========================================================================
+   16 · 纸面发丝线（用内衬 box-shadow 实现，不改变盒模型与布局）
+        让「面板类」表面在画布上获得 ak-ui 的细线边界感。
+   ========================================================================== */
+.theme-ak .action-btn
+.theme-ak .add-word-input
+.theme-ak .battle-setup-area
+.theme-ak .bottom-link
+.theme-ak .box-card
+.theme-ak .box-card-item
+.theme-ak .box-character-item
+.theme-ak .box-detail-content
+.theme-ak .box-filter-picker
+.theme-ak .box-image
+.theme-ak .box-image-section
+.theme-ak .box-image-wrapper.expanded + .image-expand-btn
+.theme-ak .box-info-grid
+.theme-ak .box-item
+.theme-ak .box-ranking-section
+.theme-ak .box-selection-item
+.theme-ak .boxes-list
+.theme-ak .bubble.assistant
+.theme-ak .calendar-container
+.theme-ak .calendar-stats
+.theme-ak .character-card
+.theme-ak .character-chip
+.theme-ak .character-item
+.theme-ak .character-item-compact
+.theme-ak .clear-btn
+.theme-ak .custom-data-info
+.theme-ak .data-source-item
+.theme-ak .data-source-item.loading
+.theme-ak .data-source-tips
+.theme-ak .data-status
+.theme-ak .date-picker
+.theme-ak .debug-modal-content
+.theme-ak .disclaimer-content
+.theme-ak .disclaimer-header
+.theme-ak .distribution-section
+.theme-ak .download-progress .progress-content
+.theme-ak .ef-btn
+.theme-ak .ef-card
+.theme-ak .ef-page
+.theme-ak .empty-placeholder
+.theme-ak .empty-state
+.theme-ak .error-log-modal
+.theme-ak .example-card
+.theme-ak .favorite-btn
+.theme-ak .favorites-section
+.theme-ak .field-input
+.theme-ak .field-picker
+.theme-ak .field-textarea
+.theme-ak .filter-btn
+.theme-ak .filter-picker
+.theme-ak .form-input
+.theme-ak .form-picker
+.theme-ak .form-section
+.theme-ak .form-textarea
+.theme-ak .gacha-section
+.theme-ak .header
+.theme-ak .history-btn
+.theme-ak .history-list
+.theme-ak .image-expand-btn
+.theme-ak .image-modal-content
+.theme-ak .image-section
+.theme-ak .info-section
+.theme-ak .jump-input
+.theme-ak .label-cell
+.theme-ak .legend
+.theme-ak .link-card
+.theme-ak .load-more
+.theme-ak .loading-state
+.theme-ak .mix-filter-options
+.theme-ak .modal-content
+.theme-ak .modal-tips
+.theme-ak .mode-seg
+.theme-ak .mode-tab
+.theme-ak .modify-section
+.theme-ak .month-picker-sheet
+.theme-ak .month-selector
+.theme-ak .notice-section
+.theme-ak .overview-card-item
+.theme-ak .overview-footer
+.theme-ak .overview-header
+.theme-ak .owned-item
+.theme-ak .owned-list-item
+.theme-ak .page-btn
+.theme-ak .pagination-section
+.theme-ak .panel-header
+.theme-ak .picker-display
+.theme-ak .player-area
+.theme-ak .privacy-content
+.theme-ak .progress-ring-text
+.theme-ak .quantity-item
+.theme-ak .questionnaire-modal
+.theme-ak .quick-btn
+.theme-ak .reference-item
+.theme-ak .reference-section
+.theme-ak .reload-btn
+.theme-ak .result-card
+.theme-ak .result-item
+.theme-ak .result-section
+.theme-ak .scan-card
+.theme-ak .search-input-container
+.theme-ak .search-input-container.focus
+.theme-ak .search-input-wrapper
+.theme-ak .search-result-item
+.theme-ak .search-section
+.theme-ak .section-header
+.theme-ak .share-character-item
+.theme-ak .share-image-preview-content
+.theme-ak .share-preview-actions
+.theme-ak .share-preview-content
+.theme-ak .share-stats
+.theme-ak .sidebar
+.theme-ak .sort-order-btn
+.theme-ak .sort-picker
+.theme-ak .stat-item
+.theme-ak .stats-panel
+.theme-ak .stats-section
+.theme-ak .success-content
+.theme-ak .suggestions-dropdown
+.theme-ak .support-item
+.theme-ak .ten-modal-content
+.theme-ak .test-result
+.theme-ak .timeline-card
+.theme-ak .timeline-section
+.theme-ak .title-item
+.theme-ak .tool-card
+.theme-ak .top-bar
+.theme-ak .ufm-versions
+.theme-ak .update-found-modal
+.theme-ak .upload-progress .progress-content
+.theme-ak .validation-content
+.theme-ak .view-info-btn
+.theme-ak /* ===== endspace-theme 对齐 ===== */ .container.ef-page
+.theme-ak /* ===== 对战模式样式（最终简化版，无通配符） ===== */ .battle-mode
+.theme-ak /* ========== 公告栏样式 ========== /* 简约风格 */ .notice-section
+.theme-ak /* ========== 卡片样式（同步 list.vue）========== */ /* 结果项卡片 */ .result-item.box-card
+.theme-ak /* ========== 工具卡片样式 ========== */ /* 简约风格 */ .tool-card
+.theme-ak /* ========== 工具箱区域样式 ========== */ /* 简约风格 */ .tools-section
+.theme-ak /* ========== 编辑模式下的工具卡片 ========== */ .tool-card.editing-card
+.theme-ak /* ========== 编辑模式控制栏样式 ========== */ .edit-controls-bar
+.theme-ak /* ========== 轮播图样式 ========== */ /* 简约风格 */ .carousel-section
+.theme-ak /* endspace: #fafafa / #fff / #e4e4e7 / #18181b / #FBFB45 */ .calendar-page
+.theme-ak /* 公告栏样式 - 修改顶部间距 */ .notice-section
+.theme-ak /* 出物列表 */ .overview-list
+.theme-ak /* 分享内容预览区域样式 */ .share-content-preview
+.theme-ak /* 分享内容预览样式 */ .share-content-preview
+.theme-ak /* 分享图预览区域 */ .share-pagination
+.theme-ak /* 分享选项区域 */ .share-options-section
+.theme-ak /* 分区样式 */ .section
+.theme-ak /* 分页控件 */ .pagination
+.theme-ak /* 卡片 */ .tool-card
+.theme-ak /* 右侧面板样式 - 自适应宽度 */ .right-panel
+.theme-ak /* 基本信息网格 */ .box-info-grid
+.theme-ak /* 官方图片区域 */ .box-image-section
+.theme-ak /* 导航 */ .custom-nav-bar
+.theme-ak /* 导航栏 */ .nav-bar
+.theme-ak /* 展开/收起按钮 */ .image-expand-btn
+.theme-ak /* 工具箱区域样式 - 修改为两列布局 */ .tools-section
+.theme-ak /* 左侧面板样式 - 固定宽度 */ .left-panel
+.theme-ak /* 干员列表区块 */ .market-char-section
+.theme-ak /* 干员跨盒查询弹窗 */ .char-boxes-modal
+.theme-ak /* 底部按钮 */ .overview-footer
+.theme-ak /* 底部操作栏 */ .bottom-action-bar
+.theme-ak /* 底部操作栏*/ .bottom-action-bar
+.theme-ak /* 开源贡献 */ .repo-card
+.theme-ak /* 手动新增干员 */ .custom-char-row
+.theme-ak /* 报错日志功能区 */ .error-log-section
+.theme-ak /* 控制区域样式 */ .control-section
+.theme-ak /* 提示区域 */ .tip-section
+.theme-ak /* 搜索区域 */ .search-section
+.theme-ak /* 搜索头部 */ .search-header
+.theme-ak /* 搜索数据状态 */ .search-data-status
+.theme-ak /* 搜索框样式*/ .search-section
+.theme-ak /* 收集时间线 */ .timeline-section
+.theme-ak /* 收集概览样式 - 全新设计 */ .overview-page
+.theme-ak /* 收集进度 */ .progress-ring-section
+.theme-ak /* 收集进度区 */ .progress-ring-section
+.theme-ak /* 数据状态区域 */ .data-status-section
+.theme-ak /* 数据状态区域 — 白底细边 */ .data-status
+.theme-ak /* 普通模式样式（保留原样） */ .gacha-section
+.theme-ak /* 本盒卡面 chips */ .box-card-panel
+.theme-ak /* 本盒卡面面板 */ .box-card-panel
+.theme-ak /* 概览统计分$墖 */ .overview-cards
+.theme-ak /* 概览统计卡片 */ .overview-cards
+.theme-ak /* 模式切换 */ .mode-switch
+.theme-ak /* 模式选择区域 */ .mode-section
+.theme-ak /* 次要按钮 */ .option-btn
+.theme-ak /* 盈亏展示信息区（紧凑版） */ .pnl-panel
+.theme-ak /* 盒号控制区域 */ .box-controls
+.theme-ak /* 盒子到嗙被按钮挳 */ .box-filter-buttons
+.theme-ak /* 盒子完成度排行 */ .box-ranking-section
+.theme-ak /* 盒子部分 */ .box-section
+.theme-ak /* 空状态 */ .empty-state
+.theme-ak /* 筛选和统计区域 */ .filter-stats-section
+.theme-ak /* 筛选输入 */ .picker-text
+.theme-ak /* 精英分布 */ .distribution-section
+.theme-ak /* 统计 */ .summary-bar
+.theme-ak /* 编辑模式下的工具卡片 */ .tool-card.editing-card
+.theme-ak /* 编辑模式控制栏 */ .edit-controls-bar
+.theme-ak /* 置顶项的特殊样式 */ .title-item.top-item
+.theme-ak /* 自定义导航栏 */ .custom-nav-bar
+.theme-ak /* 自定义导航栏 - 简约白 */ .custom-nav-bar
+.theme-ak /* 表格 */ .table-wrap
+.theme-ak /* 角色卡片区域 */ .characters-section
+.theme-ak /* 设置项（带开关）- 与 Setting.vue 保持一致 */ .setting-item
+.theme-ak /* 超级大混池选项 */ .super-mix-option
+.theme-ak /* 轮播图样式 */ .carousel-section
+.theme-ak /* 输入栏 */ .input-bar
+.theme-ak /* 页面跳转项 - 与 Setting.vue 保持一致 */ .result-item
+.theme-ak /* 顶栏 */ .chat-header
+.theme-ak /* 顶部区域 */ .header-section
+.theme-ak /* 预测数据状态 */ .guess-data-status {
+	box-shadow: inset 0 0 0 1rpx var(--ak-hairline-soft) !important;
+}
+
+/* ---------- 14.3 衬线补充：各类「标题」元素（已排除包裹容器） ---------- */
+.theme-ak .battle-result-banner,
+.theme-ak .beta-banner,
+.theme-ak .char-boxes-title,
+.theme-ak .content-title,
+.theme-ak .debug-modal-title,
+.theme-ak .empty-title,
+.theme-ak .error-log-modal-title,
+.theme-ak .filter-title,
+.theme-ak .info-title,
+.theme-ak .legend-title,
+.theme-ak .link-title,
+.theme-ak .mix-pool-title,
+.theme-ak .modal-title,
+.theme-ak .nav-title,
+.theme-ak .nav-title-text,
+.theme-ak .notice-title,
+.theme-ak .overview-title,
+.theme-ak .picker-title,
+.theme-ak .player-title,
+.theme-ak .progress-title,
+.theme-ak .questionnaire-title,
+.theme-ak .result-eyebrow,
+.theme-ak .result-title,
+.theme-ak .scan-title,
+.theme-ak .session-title,
+.theme-ak .setup-title,
+.theme-ak .share-option-title,
+.theme-ak .share-preview-title,
+.theme-ak .share-title,
+.theme-ak .sidebar-title,
+.theme-ak .stats-collapse-title,
+.theme-ak .stats-title,
+.theme-ak .status-title,
+.theme-ak .subsection-title,
+.theme-ak .success-title,
+.theme-ak .ten-modal-title,
+.theme-ak .title,
+.theme-ak .title-content,
+.theme-ak .title-item,
+.theme-ak .title-tags,
+.theme-ak .title-text,
+.theme-ak .tools-title,
+.theme-ak .ufm-title,
+.theme-ak .validation-title,
+.theme-ak .warning-title {
+	font-family: var(--ak-font-serif) !important;
+	font-weight: 900 !important;
+	letter-spacing: 0.02em !important;
+}
+
+.theme-ark .battle-result-banner,
+.theme-ark .beta-banner,
+.theme-ark .char-boxes-title,
+.theme-ark .content-title,
+.theme-ark .debug-modal-title,
+.theme-ark .empty-title,
+.theme-ark .error-log-modal-title,
+.theme-ark .filter-title,
+.theme-ark .info-title,
+.theme-ark .legend-title,
+.theme-ark .link-title,
+.theme-ark .mix-pool-title,
+.theme-ark .modal-title,
+.theme-ark .nav-title,
+.theme-ark .nav-title-text,
+.theme-ark .notice-title,
+.theme-ark .overview-title,
+.theme-ark .picker-title,
+.theme-ark .player-title,
+.theme-ark .progress-title,
+.theme-ark .questionnaire-title,
+.theme-ark .result-eyebrow,
+.theme-ark .result-title,
+.theme-ark .scan-title,
+.theme-ark .session-title,
+.theme-ark .setup-title,
+.theme-ark .share-option-title,
+.theme-ark .share-preview-title,
+.theme-ark .share-title,
+.theme-ark .sidebar-title,
+.theme-ark .stats-collapse-title,
+.theme-ark .stats-title,
+.theme-ark .status-title,
+.theme-ark .subsection-title,
+.theme-ark .success-title,
+.theme-ark .ten-modal-title,
+.theme-ark .title,
+.theme-ark .title-content,
+.theme-ark .title-item,
+.theme-ark .title-tags,
+.theme-ark .title-text,
+.theme-ark .tools-title,
+.theme-ark .ufm-title,
+.theme-ark .validation-title,
+.theme-ark .warning-title {
+	font-family: var(--ak-font-serif) !important;
+	font-weight: 900 !important;
+	letter-spacing: 0.02em !important;
+}
+
+/* ==========================================================================
+   18 · 数据不全盒号列表（incomplete_list）
+   该页根节点是 .list-page.theme-*，自身即主题作用域，且没有 .container 祖先，
+   因此令牌与自匹配规则都要用 .list-page.theme-* 前缀写，避免影响其他页面
+   （.notice-bar 在首页 / PRTS 搜索 / ae 首页也在用，必须限定作用域）
+   ========================================================================== */
+.list-page.theme-ak,
+.list-page.theme-ark {
+	background-color: var(--ak-surface-canvas) !important;
+	background-image: none !important;
+}
+
+/* 界园风格：本页根节点不含 .container，需单独补底色 */
+.list-page.theme-jieyuan {
+	background-color: #FAF3E0 !important;
+}
+
+/* 说明条：浅黄告警底改为纸面 / 石墨底，只作用于本页 */
+.list-page.theme-ak .notice-bar,
+.list-page.theme-ark .notice-bar {
+	background-color: var(--ak-surface-muted) !important;
+	border-bottom-color: var(--ak-hairline-soft) !important;
+}
+.list-page.theme-ak .notice-text,
+.list-page.theme-ark .notice-text {
+	color: var(--ak-text-secondary) !important;
+}
+
+/* 表头：浅色=石墨底纸白字，深色=纸白底石墨字（靠令牌自动反转） */
+.list-page.theme-ak .table-row.header,
+.list-page.theme-ark .table-row.header {
+	background-color: var(--ak-surface-dark) !important;
+}
+.list-page.theme-ak .header-text,
+.list-page.theme-ark .header-text {
+	color: var(--ak-text-inverse) !important;
+	font-family: var(--ak-font-serif) !important;
+	letter-spacing: 0.02em !important;
+}
+
+/* 表格发丝线 */
+.list-page.theme-ak .table-row,
+.list-page.theme-ark .table-row,
+.list-page.theme-ak .table-cell,
+.list-page.theme-ark .table-cell,
+.list-page.theme-ak .label-cell,
+.list-page.theme-ark .label-cell {
+	border-color: var(--ak-hairline-soft) !important;
+}
+
+/* 标签列副文案 */
+.list-page.theme-ak .label-sub,
+.list-page.theme-ark .label-sub {
+	color: var(--ak-text-muted) !important;
+}
+
+/* 条码：等宽字体 + 弱化色 */
+.list-page.theme-ak .box-bc,
+.list-page.theme-ark .box-bc {
+	color: var(--ak-text-muted) !important;
+	font-family: var(--ak-font-mono) !important;
+}
+
+/* 盒号卡片：直角 + 信号色左描边，保持工业语言 */
+.list-page.theme-ak .box-item,
+.list-page.theme-ark .box-item {
+	border-radius: var(--ak-radius, 4rpx) !important;
+	border-left-color: var(--ak-signal-info) !important;
+}
+.list-page.theme-ak .box-item.missing,
+.list-page.theme-ark .box-item.missing {
+	border-left-color: var(--ak-signal-danger) !important;
+}
+
+/* 统计条 / 提示条 / 空态块 */
+.list-page.theme-ak .summary-bar,
+.list-page.theme-ark .summary-bar,
+.list-page.theme-ak .il-state,
+.list-page.theme-ark .il-state {
+	background-color: var(--ak-surface-panel) !important;
+}
+.list-page.theme-ak .summary-text,
+.list-page.theme-ark .summary-text {
+	color: var(--ak-text-secondary) !important;
+}
+.list-page.theme-ak .tip-section,
+.list-page.theme-ark .tip-section {
+	background-color: var(--ak-surface-muted) !important;
+}
+.list-page.theme-ak .tip-text,
+.list-page.theme-ark .tip-text {
+	color: var(--ak-signal-info) !important;
+}
+.list-page.theme-ak .il-text,
+.list-page.theme-ark .il-text {
+	color: var(--ak-text-muted) !important;
+}
+.list-page.theme-ak .il-ring,
+.list-page.theme-ark .il-ring {
+	border-color: var(--ak-hairline-soft) !important;
+	border-top-color: var(--ak-signal-info) !important;
+}
+.list-page.theme-ak .il-glyph,
+.list-page.theme-ark .il-glyph {
+	border-color: var(--ak-hairline) !important;
+}
+.list-page.theme-ak .il-btn,
+.list-page.theme-ark .il-btn {
+	background-color: var(--ak-signal-action) !important;
+}
+.list-page.theme-ak .il-btn-text,
+.list-page.theme-ark .il-btn-text {
+	color: var(--ak-text-on-action) !important;
+}
+
+
+/* =====================================================================
+   搜索框聚焦统一令牌（2026-10-26）
+   口径：外阴影（4rpx 光环 + 下坠投影） + inset 内环 + 描边加深
+   页面用法：
+     border-color: var(--ak-focus-border, <本主题兜底色>);
+     box-shadow: var(--ak-focus-shadow, <本主题兜底阴影>);
+   ===================================================================== */
+page,
+.container {
+	--ak-focus-border: #2f7ed8;
+	--ak-focus-shadow: 0 0 0 4rpx rgba(64, 158, 255, 0.18), 0 10rpx 24rpx -6rpx rgba(31, 94, 168, 0.28), inset 0 0 0 2rpx rgba(64, 158, 255, 0.45), inset 0 2rpx 8rpx rgba(31, 94, 168, 0.10);
+}
+
+.container.theme-liquid {
+	--ak-focus-border: #0060cc;
+	--ak-focus-shadow: 0 0 0 4rpx rgba(10, 132, 255, 0.18), 0 10rpx 24rpx -6rpx rgba(0, 80, 180, 0.28), inset 0 0 0 2rpx rgba(10, 132, 255, 0.45), inset 0 2rpx 8rpx rgba(0, 80, 180, 0.10);
+}
+
+.container.theme-ark,
+.container.theme-liquidDark {
+	--ak-focus-border: #3f97ee;
+	--ak-focus-shadow: 0 0 0 4rpx rgba(77, 163, 255, 0.22), 0 8rpx 22rpx -6rpx rgba(77, 163, 255, 0.30), inset 0 0 0 2rpx rgba(77, 163, 255, 0.50), inset 0 2rpx 8rpx rgba(0, 0, 0, 0.35);
+}
+
+.container.theme-ak {
+	--ak-focus-border: #2d8bc4;
+	--ak-focus-shadow: 0 0 0 4rpx rgba(74, 171, 234, 0.20), 0 10rpx 24rpx -6rpx rgba(30, 90, 140, 0.30), inset 0 0 0 2rpx rgba(74, 171, 234, 0.48), inset 0 2rpx 8rpx rgba(30, 90, 140, 0.12);
+}
+
+.container.theme-jieyuan {
+	--ak-focus-border: #c2385f;
+	--ak-focus-shadow: 0 0 0 4rpx rgba(226, 88, 132, 0.18), 0 10rpx 24rpx -6rpx rgba(150, 40, 75, 0.28), inset 0 0 0 2rpx rgba(226, 88, 132, 0.45), inset 0 2rpx 8rpx rgba(150, 40, 75, 0.10);
+}
+
+/* ak / ark 主题的「7 · 表单控件」给搜索框下了 border + box-shadow:none 的 !important，
+   会把聚焦外阴影整个抹掉；这里用更高优先级（多一个 :focus-within）抢回来。 */
+.theme-ak .search-input-container:focus-within,
+.theme-ak .search-input-container.focus,
+.theme-ark .search-input-container:focus-within,
+.theme-ark .search-input-container.focus {
+	border-color: var(--ak-focus-border, #2f7ed8) !important;
+	box-shadow: var(--ak-focus-shadow, 0 0 0 4rpx rgba(64, 158, 255, 0.18)) !important;
+}
+
+/* ak / ark 主题给 .search-input-wrapper 下了 border 的 !important，聚焦时单独提权 */
+.theme-ak .search-input-wrapper:focus-within,
+.theme-ark .search-input-wrapper:focus-within {
+	border-color: var(--ak-focus-border, #2f7ed8) !important;
+}

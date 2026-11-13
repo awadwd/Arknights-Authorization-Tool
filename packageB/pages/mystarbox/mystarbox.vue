@@ -108,7 +108,7 @@
 							<view class="character-avatar-container">
 								<image 
 									class="character-avatar" 
-									:src="character.avatar" 
+									:src="pAvatar(character)" 
 									mode="aspectFit"
 									@error="onAvatarError(box.Box_id, charIndex)"
 								></image>
@@ -170,7 +170,7 @@
 							<view class="character-avatar-container">
 								<image 
 									class="character-avatar" 
-									:src="character.avatar" 
+									:src="pAvatar(character)" 
 									mode="aspectFit"
 									@error="onCharacterAvatarError(index)"
 								></image>
@@ -293,7 +293,12 @@
 
 <script>
 	import errorLog from "@/utils/errorLog.js";
+	import avatarMixin from "@/utils/avatarMixin.js";
+	import { boxCtx } from "@/utils/avatarPref.js";
 	export default {
+
+		mixins: [avatarMixin],
+
 		data() {
 			return {
 				activeCategory: 'box', // 'box' 或 'character'
@@ -329,6 +334,7 @@
 			this.loadFavorites();
 		},
 		onShow() {
+			this.refreshAvatarPref();
 			this.loadFavorites();
 			this.loadMarketPriceSetting(); // 确保每次显示都重新加载市价设置
 		},
@@ -358,7 +364,7 @@
 				loadThemeSetting() {
 					try {
 						const themeMode = uni.getStorageSync('themeMode');
-						if (themeMode && (themeMode === 'simple' || themeMode === 'ark' || themeMode === 'jieyuan')) {
+						if (themeMode && (themeMode === 'simple' || themeMode === 'ak' || themeMode === 'ark' || themeMode === 'jieyuan' || themeMode === 'liquid' || themeMode === 'liquidDark')) {
 							this.themeMode = themeMode;
 						} else {
 							this.themeMode = 'simple';
@@ -511,7 +517,8 @@
 								nolyELITE1: nolyELITE1,
 								hotcharacter: hotcharacter,
 								market_price: market_price,
-								hasMarketPrice: hasMarketPrice
+								hasMarketPrice: hasMarketPrice,
+								_avatarCtx: boxCtx(box)
 							});
 						}
 					}
@@ -606,7 +613,8 @@
 										nolyELITE1: nolyELITE1,
 										hotcharacter: hotcharacter,
 										market_price: market_price,
-										hasMarketPrice: hasMarketPrice
+										hasMarketPrice: hasMarketPrice,
+										_avatarCtx: boxCtx(box)
 									};
 								}
 								
@@ -672,7 +680,7 @@
 			// 跳转到盒详情页面
 			goToBoxInfo(boxId) {
 				uni.navigateTo({
-					url: `/pages/box_info/box_info?boxId=${boxId}`
+					url: `/pages/box_info/box_info?boxId=${encodeURIComponent(boxId)}`
 				});
 			},
 			
@@ -1579,43 +1587,7 @@
 		.image-modal-content {
 			max-width: 100%;
 		}
-	}
-
-	/* ========== 科技风格 ========== */
-	.container.theme-ark {
-		background: linear-gradient(180deg, #0D0D15 0%, #1A1A2E 100%);
-	}
-	.container.theme-ark .market-price-status-section,
-	.container.theme-ark .favorite-section,
-	.container.theme-ark .category-tabs,
-	.container.theme-ark .tab-item.active,
-	.container.theme-ark .empty-state,
-	.container.theme-ark .market-price-hint {
-		background: linear-gradient(135deg, #16162A 0%, #1E1E3A 100%);
-		border: 1rpx solid #2A2A4A;
-	}
-	.container.theme-ark .status-text { color: #FF6B35; }
-	.container.theme-ark .tab-item { color: #888; }
-	.container.theme-ark .box-card,
-	.container.theme-ark .character-card { background: rgba(22,22,42,0.6); border-color: #2A2A4A; }
-	.container.theme-ark .box-name,
-	.container.theme-ark .character-name { color: #e0e0e0; }
-	.container.theme-ark .character-meta { color: #888; }
-	.container.theme-ark .box-id { color: #FF6B35; }
-	.container.theme-ark .favorite-btn { background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%); color: #fff; border: none; }
-	.container.theme-ark .favorite-btn.favorited { background: rgba(255,107,53,0.15); color: #FF6B35; }
-	.container.theme-ark .hint-text { color: #FF6B35; }
-	.container.theme-ark .modal-content { background: linear-gradient(135deg, #16162A 0%, #1E1E3A 100%); border: 1rpx solid #2A2A4A; }
-	.container.theme-ark .modal-title { color: #FF6B35; }
-	.container.theme-ark .close-btn { background: rgba(255,107,53,0.1); color: #FF6B35; }
-	.container.theme-ark .view-info-btn { background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%); color: #fff; border: none; }
-	.container.theme-ark .character-avatar { border-color: #2A2A4A; }
-	.container.theme-ark .mp-settings-btn { color: #FF6B35; }
-	.container.theme-ark .box-list-item { border-bottom-color: #2A2A4A; }
-	.container.theme-ark .box-list-title { color: #FF6B35; }
-	.container.theme-ark .empty-icon { filter: brightness(0) invert(1); opacity: 0.4; }
-
-	/* ========== 界园风格 ========== */
+	}/* ========== 界园风格 ========== */
 	.container.theme-jieyuan {
 		background-color: #FAF3E0;
 	}

@@ -1,9 +1,13 @@
 <template>
-	<view class="custom-nav-bar" :style="'padding-top: ' + statusBarHeight + 'px'">
+	<view class="custom-nav-bar" :class="'theme-' + themeMode" :style="'padding-top: ' + statusBarHeight + 'px'">
 		<view class="nav-content">
-			<view class="nav-left"></view>
+			<view class="nav-left">
+				<view class="nav-switch-btn" @click="goToArknightsEnds">
+					<text class="nav-switch-text">终末地</text>
+				</view>
+			</view>
 			<view class="nav-search-box" @click="goToFuncSearch">
-				<image class="nav-search-icon" src="/static/search-icon.png"></image>
+				<image class="nav-search-icon" src="/static/search-icon.png" mode="aspectFit"></image>
 				<text class="nav-search-text">搜索功能...</text>
 			</view>
 			<view class="nav-right"></view>
@@ -17,12 +21,12 @@
 				<view class="notice-close" @click.stop="closeNotice">
 					<text class="close-btn">×</text>
 				</view>
-				<image class="notice-icon" src="/static/notice-icon.png"></image>
+				<image class="notice-icon" src="/static/notice-icon.png" mode="aspectFit"></image>
 				<text class="notice-title">公告</text>
 				<!-- 展开/收起按钮 -->
 				<view class="notice-toggle" @click.stop="toggleNoticeSection">
 					<text class="toggle-text">{{ noticeSectionExpanded ? '收起' : '展开' }}</text>
-					<image class="toggle-icon" :class="{ 'rotate': !noticeSectionExpanded }" src="/static/arrow-down.png"></image>
+					<image class="toggle-icon" :class="{ 'rotate': !noticeSectionExpanded }" src="/static/arrow-down.png" mode="aspectFit"></image>
 				</view>
 			</view>
 
@@ -33,11 +37,11 @@
 					<uni-notice-bar
 						show-icon
 						scrollable
-						show-get-more @getmore="gotoMoreNotice()" more-text="查看更多>" more-color="#409EFF"
+						show-get-more @getmore="gotoMoreNotice()" more-text="查看更多>" :more-color="noticeBarTheme.more"
 						:text="moreNoticeContent"
-						speed="75"
-						background-color='#e8f4ff'
-						color="#409EFF"
+						:speed="75"
+						:background-color="noticeBarTheme.bg"
+						:color="noticeBarTheme.color"
 						show-close
 					></uni-notice-bar>
 				</view>
@@ -71,24 +75,35 @@
 		<view class="carousel-section" v-if="carouselImages.length > 0">
 			<swiper class="carousel" indicator-dots="true" autoplay="true" interval="3000" duration="500" circular="true">
 				<swiper-item v-for="(image, index) in carouselImages" :key="index">
-					<image class="carousel-image" :src="image.imageUrl" mode="aspectFill" @click="onCarouselItemClick(image)"></image>
+					<image class="carousel-image" :src="image.localSrc || image.imageUrl" mode="aspectFill" @click="onCarouselItemClick(image)"></image>
 				</swiper-item>
 			</swiper>
 		</view>
 
+		<!-- 活动横幅（数据来自知晓云 tableID 224660；enable 为真才渲染，默认隐藏）-->
+		<view class="activity-banner" v-if="activityBanner" @click="onActivityBannerClick">
+			<view class="ab-flag">
+				<text class="ab-flag-text">活动</text>
+			</view>
+			<text class="ab-text">{{ activityBanner.text }}</text>
+			<view class="ab-chevron"></view>
+		</view>
+
 		<!-- 工具箱功能区域 -->
-		<view class="tools-section">
+		<view :class="['tools-section', 'layout-' + homeLayout]">
 			<view class="tools-header">
-				<text class="tools-title">明日方舟通行证-工具箱</text>
+				<text class="tools-title">{{ homeLayout === 'minimal' ? '核心功能' : '明日方舟通行证-工具箱' }}</text>
 				<view class="tools-manage-btn" @click="toggleToolManagement">
 					<text class="manage-text">{{ isEditingTools ? '完成' : '管理' }}</text>
 					<image class="manage-icon" src="/static/Setting-tool.png"></image>
 				</view>
 			</view>
 
-			<!-- 普通模式下的工具箱 -->
-			<view class="tools-grid" v-if="!isEditingTools">
-				<!-- 动态渲染工具卡片 -->
+			<!-- 浏览模式：宫格 / 列表（同一份卡片，外层 class 决定布局）-->
+			<view
+				v-if="!isEditingTools && homeLayout !== 'minimal'"
+				:class="['tools-wrap', homeLayout === 'list' ? 'tools-list' : 'tools-grid']"
+			>
 				<view
 					class="tool-card"
 					v-for="tool in getVisibleTools()"
@@ -105,10 +120,66 @@
 						<text class="tool-name">{{ tool.name }}</text>
 						<text class="tool-desc">{{ tool.desc }}</text>
 					</view>
+					<!-- 列表模式右侧箭头（CSS 绘制，不使用字符以免 iOS 渲染成 emoji）-->
+					<view class="tool-chevron"></view>
 
 					<!-- 长按提示 -->
-					<view class="longpress-hint" v-if="!isEditingTools && showLongPressHint">
+					<view class="longpress-hint" v-if="showLongPressHint">
 						<text class="hint-text">长按进入编辑</text>
+					</view>
+				</view>
+			</view>
+
+			<!-- 浏览模式：极简（一级核心功能 + 二级收纳组）-->
+			<view v-else-if="!isEditingTools" class="tools-wrap tools-minimal">
+				<view class="tools-core-grid">
+					<view
+						class="tool-card core-card"
+						v-for="tool in pinnedTools"
+						:key="tool.id"
+						@click="handleToolClick(tool)"
+						@longpress="startToolEditing(tool)"
+					>
+						<view class="tool-icon-container core">
+							<image class="tool-icon core" :src="tool.icon"></image>
+							<image class="new-badge core" v-if="tool.showNew" src="/static/new.png"></image>
+						</view>
+						<view class="tool-info core">
+							<text class="tool-name core">{{ tool.name }}</text>
+							<text class="tool-desc core">{{ tool.desc }}</text>
+						</view>
+					</view>
+				</view>
+
+				<view class="pinned-empty" v-if="pinnedEmpty">
+					<text class="pinned-empty-text">还没有核心功能，进入「管理」把常用功能设为核心</text>
+				</view>
+
+				<!-- 二级收纳组（类似手机文件夹）-->
+				<view class="nested-folder" v-if="nestedTools.length > 0">
+					<view class="nested-head" @click="toggleMinimalExpand">
+						<view class="nested-folder-ic"></view>
+						<view class="nested-head-info">
+							<text class="nested-head-title">更多功能</text>
+							<text class="nested-head-sub">{{ nestedTools.length }} 个功能已收纳</text>
+						</view>
+						<view :class="['nested-chev', minimalExpanded ? 'is-up' : 'is-down']"></view>
+					</view>
+
+					<view class="nested-body" v-if="minimalExpanded">
+						<view
+							class="nested-item"
+							v-for="tool in nestedTools"
+							:key="tool.id"
+							@click="handleToolClick(tool)"
+						>
+							<image class="nested-item-icon" :src="tool.icon"></image>
+							<view class="nested-item-info">
+								<text class="nested-item-name">{{ tool.name }}</text>
+								<text class="nested-item-desc">{{ tool.desc }}</text>
+							</view>
+							<view class="tool-chevron"></view>
+						</view>
 					</view>
 				</view>
 			</view>
@@ -136,9 +207,18 @@
 							<switch
 								:checked="tool.visible"
 								@change="toggleToolVisibility(index)"
-								color="#409EFF"
+								color="#4aabea"
 								class="visibility-switch"
 							/>
+						</view>
+
+						<!-- 极简模式：核心 / 收纳 切换 -->
+						<view
+							class="pin-btn"
+							:class="{ 'is-pinned': tool.pinned === true }"
+							@click.stop="toggleToolPinned(index)"
+						>
+							<text class="pin-text">{{ tool.pinned === true ? '核心' : '收纳' }}</text>
 						</view>
 					</view>
 
@@ -195,7 +275,7 @@
 			<!-- 编辑模式控制栏 -->
 			<view class="edit-controls-bar" v-if="isEditingTools">
 				<view class="edit-info">
-					<text class="info-text">点击箭头调整顺序，开关控制显示/隐藏</text>
+					<text class="info-text">点击箭头调整顺序，开关控制显示/隐藏，「核心 / 收纳」决定极简模式下的位置</text>
 					<text class="info-text">当前显示 {{ getVisibleCount() }}/{{ editingTools.length }} 个功能</text>
 				</view>
 
@@ -221,11 +301,6 @@
 
 		<!-- 数据状态 - 整合所有信息 -->
 		<view class="data-status" v-if="dataStatusMessage || characterData.length > 0 || localUpdateTime || cloudUpdateTime || currentVersion">
-			<!-- 更新提示区域（当有更新且自动更新关闭时显示） -->
-			<view class="update-hint" v-if="hasUpdate && !autoUpdateEnabled">
-				<text class="hint-text">当前数据版本有更新，您可以点击上方的更新干员数据按钮来手动更新</text>
-			</view>
-
 			<view class="data-status-main" v-if="dataStatusMessage">
 				<view class="status-text" style="color: #333;">{{ dataStatusMessage }}</view>
 				<view class="data-status-actions">
@@ -256,6 +331,30 @@
 			    >{{ originalCopyrightTexts[1] }}</text>
 			</view>
 		</view>
+		<!-- 数据更新提示弹窗（居中，支持永久关闭） -->
+		<view class="modal-mask update-modal-mask" v-if="showUpdateFoundModalFlag">
+			<view class="update-found-modal" @click.stop>
+				<view class="ufm-badge">NEW</view>
+				<text class="ufm-title">发现数据更新</text>
+				<text class="ufm-desc">检测到新版本干员数据，建议及时更新以获得完整查询体验</text>
+				<view class="ufm-versions">
+					<view class="ufm-ver-row">
+						<text class="ufm-ver-label">本地版本</text>
+						<text class="ufm-ver-value">{{ currentVersion || '未下载' }}</text>
+					</view>
+					<view class="ufm-ver-row">
+						<text class="ufm-ver-label">最新版本</text>
+						<text class="ufm-ver-value highlight">{{ latestVersion || '未知' }}</text>
+					</view>
+				</view>
+				<button class="ufm-btn primary" @click="onUpdateModalConfirm">立即更新</button>
+				<view class="ufm-btn-row">
+					<button class="ufm-btn ghost" @click="onUpdateModalLater">稍后再说</button>
+					<button class="ufm-btn mute" @click="onUpdateModalNever">不再提醒</button>
+				</view>
+			</view>
+		</view>
+
 		<!-- 调研问卷模态框 -->
 		<view class="modal-mask" v-if="showQuestionnaireModal" @click="closeQuestionnaireModal">
 			<view class="modal-content questionnaire-modal" @click.stop>
@@ -301,10 +400,16 @@
 
 <script>
 import errorLog from "@/utils/errorLog.js";
+import { fetchSelfHosted } from "@/utils/knowCloudProxy.js";
+import * as boxDataSync from "@/utils/boxDataSync.js";
+import { haptic } from "@/utils/haptic.js";
+import { openLink } from "@/utils/openLink.js";
+import { mergeGuessData, pruneStoredGuessData } from "@/utils/guessData.js";
+import { onUpdateReady, applyUpdate, consumePrompt } from "@/utils/mpUpdate.js";
 
 const getBaseUrl = () => {
   console.log( "当前是非 H5 环境，使用完整 URL");
-  return "https://YOUR_KNOW_CLOUD_CLIENT_ID.myminapp.com/hserve/v2.2";
+  return "https://21680db9b1362913357c.myminapp.com/hserve/v2.2";
 };
 const getClientId = () => {
   const part1 = "21680db9";
@@ -319,9 +424,16 @@ const KNOW_CLOUD_CONFIG = {
     more_notice: "more_notice",
     Version: "Version",
     AiToolsConfig: "AiToolsConfig",
-    questionnaire: "questionnaire"
+    questionnaire: "questionnaire",
+    // 活动横幅（知晓云 tableID，跨小程序活动位）
+    // 直接用数字 tableID 作键：自建 API 与知晓云都认这个表名。
+    // 用中文别名会导致自建 API 对未收录的表名返回 {"objects":[]}，
+    // 而空数组会被回落层误判为「已命中」，从而不再向知晓云回落、拿到空数据。
+    "224660": "224660"
   }
 };
+// 活动横幅归属的小程序（点击横幅的跳转目标，需在微信公众平台「可跳转小程序名单」中登记）
+const ACTIVITY_BANNER_APPID = "wx01bb1ef166cd3f4e";
 
 
 export default {
@@ -370,6 +482,12 @@ export default {
       // 编辑模式下的工具箱配置
       isEditingTools: false,
       // 是否处于编辑模式
+      // 首页功能展示样式：grid 宫格 / list 列表 / minimal 极简（收纳）
+      homeLayout: "grid",
+      // 极简模式下二级收纳组是否展开
+      minimalExpanded: false,
+      // 活动横幅（知晓云 tableID 224660）
+      activityBanner: null,
       showLongPressHint: false,
       // 是否显示长按提示
       // 长按计时器
@@ -379,6 +497,9 @@ export default {
       retryCount: 0,
       // 新增：是否有更新标志
       hasUpdate: false,
+      updateNotifyEnabled: true,
+      updateHintDismissed: false,
+      showUpdateFoundModalFlag: false,
       // 新增：自动更新设置
       autoUpdateEnabled: false,
       // 新增：自动更新配置
@@ -422,6 +543,8 @@ export default {
     this.handleRefresh();
   },
   onShow() {
+      // 从设置页返回时同步首页展示样式
+      this.loadHomeLayout();
       // 因为 navigateBack 无法使用 emit, 改用 storage 标志位方案
       if (uni.getStorageSync('needHighlight')) {
         uni.removeStorageSync('needHighlight');
@@ -448,6 +571,7 @@ export default {
     this.fetchMoreNotice();
     this.fetchCarouselImages();
     this.loadAutoUpdateSetting();
+    this.initMpUpdate();
     this.loadThemeSetting();
     uni.$on("themeChanged", (theme) => {
       this.themeMode = theme;
@@ -455,6 +579,8 @@ export default {
     this.initEasterEggs();
     this.initDefaultToolsConfig();
     this.loadPrtsToolsConfig();
+    this.loadHomeLayout();
+    this.fetchActivityBanner();
     const savedCount = uni.getStorageSync("copyrightClickCount");
     if (savedCount) {
       this.copyrightClickCount = savedCount;
@@ -478,7 +604,7 @@ export default {
         });
       }
     }
-    uni.showShareMenu({
+    uni.showShareMenu && uni.showShareMenu({
       withShareTicket: true,
       menus: ["shareAppMessage", "shareTimeline"]
     });
@@ -515,7 +641,47 @@ export default {
       }, 500);
     });
   },
+  computed: {
+    // 滚动公告条配色随主题切换（简约/界园=信息蓝，工业浅色=纸面，工业深色=石墨）
+    noticeBarTheme() {
+      if (this.themeMode === 'ark') {
+        return { bg: '#232628', color: '#ecebe6', more: '#5fb6ef' };
+      }
+      if (this.themeMode === 'ak') {
+        return { bg: '#f1f1ef', color: '#3f4245', more: '#4aabea' };
+      }
+      return { bg: '#e8f4ff', color: '#409EFF', more: '#409EFF' };
+    },
+    // 极简模式一级菜单：被设为核心（钉住）的可见工具
+    pinnedTools() {
+      return this.getVisibleTools().filter((t) => t.pinned === true);
+    },
+    // 极简模式二级收纳：未设为核心的可见工具
+    nestedTools() {
+      return this.getVisibleTools().filter((t) => t.pinned !== true);
+    },
+    // 极简模式下一级菜单是否为空（全部被收纳）
+    pinnedEmpty() {
+      return this.pinnedTools.length === 0;
+    }
+  },
   methods: {
+    /** 小程序：监听新版本，下载完成后提示重启（其它平台空操作） */
+    initMpUpdate() {
+      onUpdateReady(() => {
+        if (!consumePrompt()) return;
+        uni.showModal({
+          title: "发现新版本",
+          content: "新版本已下载完成，重启小程序后生效。现在就重启吗？",
+          confirmText: "立即重启",
+          cancelText: "稍后",
+          success: (res) => {
+            if (res.confirm) applyUpdate();
+          }
+        });
+      });
+    },
+
     logError(e, ctx) {
 				try {
 					errorLog.logError(e, ctx);
@@ -529,6 +695,12 @@ export default {
         url: "/pages/func_search/func_search"
       });
     },
+    // 跳转到终末地（AE 分包首页）
+    goToArknightsEnds() {
+      uni.reLaunch({
+        url: "/package_ArknightEnds/index/index"
+      });
+    },
     // 跳转到搜索页面
     goToSearch() {
       uni.navigateTo({
@@ -539,7 +711,7 @@ export default {
     loadThemeSetting() {
       try {
         const themeMode = uni.getStorageSync("themeMode");
-        if (themeMode && (themeMode === "simple" || themeMode === "ark" || themeMode === "jieyuan")) {
+        if (themeMode && (themeMode === "simple" || themeMode === "ak" || themeMode === "ark" || themeMode === "jieyuan" || themeMode === "liquid" || themeMode === "liquidDark")) {
           this.themeMode = themeMode;
         } else {
           this.themeMode = "simple";
@@ -570,6 +742,13 @@ export default {
     },
     // 知晓云 API 请求封装 - 使用ClientID认证
     async knowCloudRequest(tableName, options = {}, retryCount = 0) {
+      // 优先走自建 API，失败则回落知晓云
+      try {
+        const sh = await fetchSelfHosted(tableName, options);
+        if (sh) return sh;
+      } catch (e) {
+        // 忽略，继续走知晓云
+      }
       if (retryCount > 3) {
         console.error( "知晓云请求重试次数过多");
         throw new Error("知晓云请求重试次数过多");
@@ -625,9 +804,16 @@ export default {
       }
     },
     // 从知晓云获取 PRTS 工具配置（Enabled 字段）
+    // ★ 仅微信小程序使用：Android / Windows（H5 壳）不走云控
     async fetchPrtsToolsConfig() {
+      // #ifdef MP-WEIXIN
       try {
-        const res = await uni.request({
+        let res;
+        const sh_AiToolsConfig = await fetchSelfHosted("AiToolsConfig", { data: { limit: 1 } });
+        if (sh_AiToolsConfig) {
+          res = { statusCode: 200, data: sh_AiToolsConfig };
+        } else {
+        res = await uni.request({
           url: `${getBaseUrl()}/table/AiToolsConfig/record/?limit=1`,
           method: "GET",
           header: {
@@ -636,6 +822,7 @@ export default {
           },
           timeout: 1e4
         });
+        }
         if (res.statusCode === 200 && res.data && res.data.objects && res.data.objects.length > 0) {
           const config = res.data.objects[0];
           return config.Enabled === true;
@@ -646,10 +833,25 @@ export default {
         console.error( "获取 PRTS 工具配置失败", error);
         return false;
       }
+      // #endif
+      // #ifndef MP-WEIXIN
+      // App / Windows（H5 壳）不云控，入口常开
+      return true;
+      // #endif
     },
     // 根据云端配置更新工具箱中对应的卡片
+    // ★ 平台差异（2026-10-27）：
+    //   微信小程序：保留云控，AiToolsConfig.Enabled 决定「PRTS帮查」还是元宝降级入口
+    //   Android / Windows（H5 壳）：不云控，入口常开
     async loadPrtsToolsConfig() {
-      const enabled = await this.fetchPrtsToolsConfig();
+      let enabled = true;
+      // #ifdef MP-WEIXIN
+      enabled = await this.fetchPrtsToolsConfig();
+      // #endif
+      this.applyPrtsToolEntry(enabled);
+    },
+    // 把开关结果落成工具箱卡片（纯本地渲染，无网络）
+    applyPrtsToolEntry(enabled) {
       const index = this.toolsConfig.findIndex((item) => item.id === "questionnaire");
       if (index !== -1) {
         const tool = this.toolsConfig[index];
@@ -673,7 +875,12 @@ export default {
     async fetchQuestionnaireList() {
       try {
         const tableName = KNOW_CLOUD_CONFIG.tableNames.questionnaire;
-        const res = await uni.request({
+        let res;
+        const sh_questionnaire = await fetchSelfHosted(tableName, { data: { limit: 50 } });
+        if (sh_questionnaire) {
+          res = { statusCode: 200, data: sh_questionnaire };
+        } else {
+        res = await uni.request({
           url: `${getBaseUrl()}/table/${tableName}/record/?limit=50`,
           method: "GET",
           header: {
@@ -681,6 +888,7 @@ export default {
             "Content-Type": "application/json"
           }
         });
+        }
         if (res.data.objects && res.data.objects.length > 0) {
           const sorted = res.data.objects.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
           return sorted;
@@ -822,10 +1030,12 @@ export default {
             imageUrl: item.imageurl || "",
             linkUrl: item.linkUrl || "",
             title: item.title || "",
-            id: item.id || ""
+            id: item.id || "",
+            localSrc: ""
           }));
           console.log( "轮播图数据:", images);
           this.carouselImages = [...images];
+          this.localizeCarouselImages();
         } else {
           console.log( "未找到轮播图数据");
         }
@@ -835,29 +1045,100 @@ export default {
         this.carouselImages = [];
       }
     },
-    // 轮播图点击事件
-    onCarouselItemClick(item) {
-      const linkUrl = item.linkUrl || "";
-      if (!linkUrl) {
-        uni.showToast({ title: "暂无链接", icon: "none" });
+    // 轮播图本地化（App 端）
+    // 背景：新浪图床（wx*.sinaimg.cn）按 Referer 防盗链 ——
+    //       小程序里 Referer 是 servicewechat.com，能过；
+    //       安卓 App 的页面跑在 file:// 下，Referer 变成 file://，被判为盗链直接 403，
+    //       图片就一直是白的（小程序与 H5 不受影响）。
+    //       iOS 的 WKWebView 同样从 file:// 加载页面，所以这里不区分平台，App 端一律处理。
+    // 做法：交给 uni.getImageInfo 让原生层去下载（原生请求不带 Referer），
+    //       拿到本地路径后用它渲染；失败则保持原地址，与改动前行为一致。
+    localizeCarouselImages() {
+      // #ifdef APP-PLUS
+      this.carouselImages.forEach((item, index) => {
+        if (!item || !item.imageUrl || item.localSrc) return;
+        uni.getImageInfo({
+          src: item.imageUrl,
+          success: (res) => {
+            const path = res && res.path;
+            if (!path) return;
+            const next = this.carouselImages.slice();
+            next[index] = Object.assign({}, next[index], { localSrc: path });
+            this.carouselImages = next;
+          },
+          fail: (err) => {
+            console.warn("[轮播图] 本地化失败，回退原始地址", err);
+          }
+        });
+      });
+      // #endif
+    },
+    // ========== 活动横幅（知晓云 tableID 224660）==========
+    // 字段：enable 开关（false = 彻底隐藏，默认隐藏）、text 文案、page 跳转路径
+    // 该记录归属另一小程序（wx01bb1ef166cd3f4e），点击走跨小程序跳转
+    async fetchActivityBanner() {
+      try {
+        const res = await this.knowCloudRequest("224660", {
+          data: { limit: 10, offset: 0 }
+        });
+        const list = res && Array.isArray(res.objects) ? res.objects : [];
+        const hit = list.filter((o) => o && o.enable === true && o.text)[0];
+        if (!hit) {
+          this.activityBanner = null;
+          console.log("[活动横幅] 当前无启用中的横幅");
+          return;
+        }
+        this.activityBanner = {
+          id: hit.id || hit._id || "",
+          text: String(hit.text || ""),
+          page: String(hit.page || ""),
+          appid: ACTIVITY_BANNER_APPID,
+          updatedAt: hit.updated_at || 0
+        };
+        console.log("[活动横幅] 命中:", this.activityBanner.text);
+      } catch (error) {
+        this.logError(error);
+        console.error("[活动横幅] 获取失败:", error);
+        this.activityBanner = null;
+      }
+    },
+    // 点击活动横幅：优先跨小程序跳转，未登记可跳转名单时降级为复制文案
+    onActivityBannerClick() {
+      const banner = this.activityBanner;
+      if (!banner) return;
+      if (!banner.page) {
+        uni.showToast({ title: "活动详情即将开放", icon: "none" });
         return;
       }
-      uni.setClipboardData({
-        data: linkUrl,
-        success: () => {
-          uni.showToast({
-            title: "链接复制成功",
-            icon: "success"
-          });
-        },
+      // #ifdef MP-WEIXIN
+      uni.navigateToMiniProgram({
+        appId: banner.appid,
+        path: banner.page,
         fail: (err) => {
-          console.error( "复制链接失败:", err);
-          uni.showToast({
-            title: "复制失败，请手动复制链接",
-            icon: "none"
-          });
+          console.warn("[活动横幅] 跨小程序跳转失败:", err);
+          this.copyActivityBannerText(banner);
         }
       });
+      // #endif
+      // #ifndef MP-WEIXIN
+      this.copyActivityBannerText(banner);
+      // #endif
+    },
+    // 跳转不可用时的降级：复制活动文案
+    copyActivityBannerText(banner) {
+      uni.setClipboardData({
+        data: banner.text,
+        success: () => {
+          uni.showToast({ title: "活动文案已复制", icon: "none", duration: 2200 });
+        },
+        fail: () => {
+          uni.showToast({ title: "暂时无法打开活动，请稍后再试", icon: "none", duration: 2200 });
+        }
+      });
+    },
+    // 轮播图点击事件（App / H5 直接打开，小程序复制）
+    onCarouselItemClick(item) {
+      openLink(item && item.linkUrl);
     },
     gotoWebPrtsTools() {
     },
@@ -872,15 +1153,21 @@ export default {
     async fetchMoreNotice() {
       try {
         console.log( "开始获取更多公告...");
-        const res = await uni.request({
-          url: "https://YOUR_KNOW_CLOUD_CLIENT_ID.myminapp.com/hserve/v2.2/table/more_notice/record/?limit=1&offset=0&order_by=-created_at",
+        let res;
+        const sh_more_notice = await fetchSelfHosted("more_notice", { data: { limit: 1, offset: 0, order_by: "-created_at" } });
+        if (sh_more_notice) {
+          res = { statusCode: 200, data: sh_more_notice };
+        } else {
+        res = await uni.request({
+          url: "https://21680db9b1362913357c.myminapp.com/hserve/v2.2/table/more_notice/record/?limit=1&offset=0&order_by=-created_at",
           method: "GET",
           header: {
-            "X-Hydrogen-Client-ID": "YOUR_KNOW_CLOUD_CLIENT_ID",
+            "X-Hydrogen-Client-ID": "21680db9b1362913357c",
             "Content-Type": "application/json"
           },
           timeout: 1e4
         });
+        }
         console.log( "获取更多公告响应:", res);
         if (res.statusCode === 200 && res.data && res.data.objects && res.data.objects.length > 0) {
           const noticeData = res.data.objects[0];
@@ -916,15 +1203,21 @@ export default {
     async fetchNotice() {
       try {
         console.log( "开始获取公告内容...");
-        const res = await uni.request({
-          url: "https://YOUR_KNOW_CLOUD_CLIENT_ID.myminapp.com/hserve/v2.2/table/Version/record/?limit=1&offset=0",
+        let res;
+        const sh_Version = await fetchSelfHosted("Version", { data: { limit: 1, offset: 0 } });
+        if (sh_Version) {
+          res = { statusCode: 200, data: sh_Version };
+        } else {
+        res = await uni.request({
+          url: "https://21680db9b1362913357c.myminapp.com/hserve/v2.2/table/Version/record/?limit=1&offset=0",
           method: "GET",
           header: {
-            "X-Hydrogen-Client-ID": "YOUR_KNOW_CLOUD_CLIENT_ID",
+            "X-Hydrogen-Client-ID": "21680db9b1362913357c",
             "Content-Type": "application/json"
           },
           timeout: 1e4
         });
+        }
         console.log( "公告API响应:", res);
         if (res.statusCode === 200 && res.data && res.data.objects && res.data.objects.length > 0) {
           const versionData = res.data.objects[0];
@@ -996,6 +1289,8 @@ export default {
         const currentVersion = uni.getStorageSync("currentDataVersion");
         const url = uni.getStorageSync("dataUrl");
         const enableGuessData = uni.getStorageSync("enableGuessData");
+        // 正式数据上线后，清掉本地重复的预测盒号，避免同号盒被合并两次
+        pruneStoredGuessData();
         const guessData = uni.getStorageSync("guessData");
         let allData = [];
         if (data && Array.isArray(data) && data.length > 0) {
@@ -1006,7 +1301,8 @@ export default {
           allData = [...githubData];
         }
         if (enableGuessData === "true" && guessData && Array.isArray(guessData) && guessData.length > 0) {
-          allData = [...allData, ...guessData];
+          const mergedGuess = mergeGuessData(allData, guessData);
+          allData = mergedGuess.data;
         }
         if (allData.length > 0) {
           this.characterData = allData;
@@ -1067,8 +1363,13 @@ export default {
     // 加载自动更新设置
     loadAutoUpdateSetting() {
       try {
+        // 数据更新提示开关：默认开启；老用户无记录时也视为开启
+        const notifyRaw = uni.getStorageSync("updateNotifyEnabled");
+        this.updateNotifyEnabled = notifyRaw === "" || notifyRaw === null || notifyRaw === undefined
+          ? true
+          : !!notifyRaw;
         const autoUpdateSetting = uni.getStorageSync("autoUpdateSetting");
-        console.log( "Index页面加载自动更新设置:", autoUpdateSetting);
+        console.log( "Index页面加载自动更新设置:", autoUpdateSetting, "更新提示:", this.updateNotifyEnabled);
         if (autoUpdateSetting) {
           this.autoUpdateEnabled = autoUpdateSetting.enabled || false;
           this.autoUpdateConfig = autoUpdateSetting;
@@ -1129,6 +1430,11 @@ export default {
     // 检查并执行自动更新
     async checkAndPerformAutoUpdate() {
       try {
+        const order = this.getDataSourceOrder();
+        if (order[0] === 'local' || order[0] === 'custom') {
+          console.log( '首选数据源为本地/自定义，跳过自动更新检查');
+          return;
+        }
         const autoUpdateSetting = uni.getStorageSync("autoUpdateSetting");
         const enabled = (autoUpdateSetting == null ? void 0 : autoUpdateSetting.enabled) || false;
         if (!enabled) {
@@ -1186,6 +1492,16 @@ export default {
     // 检查数据更新（修复版）
     async checkForDataUpdates(forceCheck = false, isAutoUpdate = false) {
       console.log( "检查数据更新，强制检查:", forceCheck, "自动更新:", isAutoUpdate);
+      const order = this.getDataSourceOrder();
+      if (order[0] === 'local' || order[0] === 'custom') {
+        console.log( '首选数据源为本地/自定义，跳过版本检查更新');
+        this.hasUpdate = false;
+        if (isAutoUpdate) {
+          this.autoUpdateStatusMessage = '首选数据源为本地/自定义，已跳过检查更新';
+          this.autoUpdateStatusClass = 'status-info';
+        }
+        return;
+      }
       if (isAutoUpdate) {
         this.isCheckingUpdate = true;
         this.autoUpdateStatusMessage = "正在检查更新...";
@@ -1224,23 +1540,11 @@ export default {
             }
           } else {
             if (hasUpdate) {
-              const hasLocalData = uni.getStorageSync("dataVersion");
-              if (forceCheck || !hasLocalData) {
-                uni.showModal({
-                  title: "发现更新",
-                  content: `发现新版本数据 (${versionInfo.version})，是否立即更新？`,
-                  confirmText: "立即更新",
-                  cancelText: "稍后",
-                  success: (res) => {
-                    if (res.confirm) {
-                      this.downloadData();
-                    } else {
-                      this.dataStatusMessage = '已跳过更新，可手动点击"更新干员数据"按钮获取最新数据';
-                    }
-                  }
-                });
-              } else {
-                this.dataStatusMessage = `发现新版本 ${versionInfo.version}，请点击"更新干员数据"按钮获取`;
+              this.updateHintDismissed = false;
+              this.dataStatusMessage = `发现新版本 ${versionInfo.version}，请点击"更新干员数据"按钮获取`;
+              // 居中弹窗提示（可在设置关闭，或弹窗内「不再提醒」永久关闭）
+              if (this.updateNotifyEnabled) {
+                this.showUpdateFoundModal(versionInfo.version, forceCheck);
               }
             } else {
               this.dataStatusMessage = "当前已是最新版本";
@@ -1276,6 +1580,43 @@ export default {
           }
         }
       }
+    },
+    // 发现更新弹窗：同一版本每天最多弹一次；强制检查时总是弹
+    showUpdateFoundModal(version, forceCheck = false) {
+      try {
+        const key = `updatePromptDate_${version || "unknown"}`;
+        const today = new Date().toDateString();
+        const lastShown = uni.getStorageSync(key);
+        if (!forceCheck && lastShown === today) return;
+        uni.setStorageSync(key, today);
+        this.showUpdateFoundModalFlag = true;
+      } catch (e) {
+        this.logError(e);
+      }
+    },
+    onUpdateModalConfirm() {
+      this.showUpdateFoundModalFlag = false;
+      this.downloadData();
+    },
+    onUpdateModalLater() {
+      this.showUpdateFoundModalFlag = false;
+      this.dataStatusMessage = '已跳过更新，可点击"更新干员数据"获取最新数据';
+    },
+    // 永久关闭更新提示（可在设置中重新打开）
+    onUpdateModalNever() {
+      this.showUpdateFoundModalFlag = false;
+      this.updateNotifyEnabled = false;
+      try {
+        uni.setStorageSync('updateNotifyEnabled', false);
+      } catch (e) {
+        this.logError(e);
+      }
+      uni.showToast({ title: '已关闭更新提示，可在设置中重新开启', icon: 'none', duration: 2500 });
+    },
+    dismissUpdateHint() {
+      this.updateHintDismissed = true;
+      this.hasUpdate = false;
+      this.showUpdateFoundModalFlag = false;
     },
     // 检查版本更新
     async checkVersionUpdate(cloudVersion) {
@@ -1370,6 +1711,20 @@ export default {
     },
     // 下载数据 - 多源降级策略
     async downloadData() {
+      const order = this.getDataSourceOrder();
+      const firstSource = order[0];
+      // 当前激活数据源为本地/自定义时，不允许任何远程源下载 box_id.json
+      let activeDs = '';
+      try { activeDs = uni.getStorageSync('dataSource'); } catch (e) {}
+      const offlineSource = (activeDs === 'local' || activeDs === 'custom')
+        ? activeDs
+        : ((firstSource === 'local' || firstSource === 'custom') ? firstSource : '');
+      if (offlineSource) {
+        console.log( '[下载数据] 当前数据源为本地/自定义，跳过联网下载');
+        this.dataStatusMessage = '当前使用' + (offlineSource === 'custom' ? '自定义' : '本地') + '数据，已跳过联网下载';
+        this.loadLocalData();
+        return;
+      }
       if (!this.latestVersion) {
         try {
           const versionInfo = await this.getDataUrlFromMinapp();
@@ -1383,8 +1738,22 @@ export default {
           this.latestVersion = this.latestVersion || "未知版本";
         }
       }
+      // 增量更新快路径：先探服务端版本 —— 没变直接用本地缓存，变了只拉差异记录
+      // 任何一步不满足（无缓存 / 接口不可用 / 拉取失败）都会返回 null，自然落回下面的完整包下载
+      try {
+      	const _inc = await boxDataSync.ensure();
+      	if (_inc && _inc.data && _inc.data.length) {
+      		console.log('[增量更新] ' + _inc.source + '，' + _inc.data.length + ' 个盒号');
+      		this.dataStatusMessage = '数据已是最新';
+      		await this.handleDownloadSuccess(_inc.data, _inc.source);
+      		return;
+      	}
+      } catch (_incErr) {
+      	this.logError(_incErr);
+      	console.warn('[增量更新] 降级为完整包下载:', _incErr);
+      }
       const primaryUrl = this.dataUrl || "https://raw.gitcode.com/huangjinzhou1/ArknightsAuthorization_Series/raw/main/Box_Id.json";
-      const sourceList = this.buildSourceList(primaryUrl);
+      const sourceList = this.buildSourceList(order, primaryUrl);
       this.dataStatusMessage = "正在下载干员数据...";
       for (let i = 0; i < sourceList.length; i++) {
         const source = sourceList[i];
@@ -1402,34 +1771,42 @@ export default {
       }
       this.handleDownloadFail();
     },
-    // 构建数据源列表（含降级策略）
-    // 优先级：知晓云 → GitCode Raw → jsDelivr CDN → GitHub Raw → 固定死链接
-    buildSourceList(primaryUrl) {
+    // 构建数据源列表：按用户调整的顺序（dataSourceOrder）依次尝试
+    // local / custom 不参与网络下载，自动跳过
+    buildSourceList(order, primaryUrl) {
       const sources = [];
       const githubRepo = "awadwd/ArknightsAuthorization_Series-mirror";
       const boxFile = "Box_Id.json";
-      if (primaryUrl.includes("gitcode.com")) {
-        sources.push({ name: "GitCode", url: primaryUrl });
-      }
-      sources.push({
-        name: "jsDelivr(CDN)",
-        url: `https://cdn.jsdelivr.net/gh/${githubRepo}@main/${boxFile}`
-      });
-      sources.push({
-        name: "GitHub Raw",
-        url: `https://raw.githubusercontent.com/${githubRepo}/main/${boxFile}`
-      });
-      sources.push({
-        name: "GitCode(固定)",
-        url: "https://raw.gitcode.com/huangjinzhou1/ArknightsAuthorization_Series/blobs/305677c26b71ba53f916c48112b2b17afb23d32e/Box_Id.json"
-      });
-      if (primaryUrl && !primaryUrl.includes("gitcode.com")) {
-        sources.push({
-          name: "GitCode(备用)",
-          url: "https://raw.gitcode.com/huangjinzhou1/ArknightsAuthorization_Series/raw/main/Box_Id.json"
-        });
+      const gitcodeUrl = "https://raw.gitcode.com/huangjinzhou1/ArknightsAuthorization_Series/raw/main/" + boxFile;
+      const githubUrl = "https://raw.githubusercontent.com/" + githubRepo + "/main/" + boxFile;
+      const cdnUrl = "https://cdn.jsdelivr.net/gh/" + githubRepo + "@main/" + boxFile;
+      const map = {
+        knowCloud: primaryUrl,
+        domestic: gitcodeUrl,
+        github: githubUrl,
+        cdn: cdnUrl
+      };
+      const nameMap = {
+        knowCloud: "知晓云源",
+        domestic: "国内源(GitCode)",
+        github: "GitHub源",
+        cdn: "CDN源(jsDelivr)"
+      };
+      for (const key of order) {
+        const url = map[key];
+        if (!url) continue;
+        sources.push({ name: nameMap[key] || key, url: url });
       }
       return sources;
+    },
+    // 读取用户调整的数据源顺序（自动合并新增源，如 cdn）
+    getDataSourceOrder() {
+      const defaultOrder = ['knowCloud', 'domestic', 'cdn', 'github', 'local', 'custom'];
+      let saved = uni.getStorageSync('dataSourceOrder');
+      if (!Array.isArray(saved) || saved.length === 0) return defaultOrder;
+      const valid = saved.filter(function (v) { return defaultOrder.indexOf(v) >= 0; });
+      const added = defaultOrder.filter(function (v) { return saved.indexOf(v) < 0; });
+      return valid.concat(added);
     },
     // 尝试从单个源下载
     tryDownloadFromSource(url) {
@@ -1475,6 +1852,7 @@ export default {
         return;
       }
       const cleanedData = data.map((box) => {
+      	boxDataSync.adopt(data, this.latestVersion);
         const cleanedBox = {};
         for (const key in box) {
           if (key === "Box_id") {
@@ -1514,7 +1892,7 @@ export default {
           const searchSettings = uni.getStorageSync("searchSettings") || {};
           const existingSearchWords = uni.getStorageSync("searchWords");
           const hasEnglishSearchData = Array.isArray(existingSearchWords) && existingSearchWords.some((w) => w && w.englishname);
-          if (!searchSettings.english && !hasEnglishSearchData) {
+          if (!searchSettings.english && !hasEnglishSearchData && uni.getStorageSync('englishSearchHintDismissed') !== 'true') {
             setTimeout(() => {
               uni.showModal({
                 title: "建议开启英文名搜索",
@@ -1523,6 +1901,7 @@ export default {
                 cancelText: "暂不需要",
                 confirmText: "去设置",
                 success: (res) => {
+                  uni.setStorageSync('englishSearchHintDismissed', 'true');
                   if (res.confirm) {
                     uni.navigateTo({ url: "/packageA/Setting/Setting" });
                   }
@@ -1566,9 +1945,7 @@ export default {
       this.initDefaultToolsConfig();
       this.editingTools = JSON.parse(JSON.stringify(this.toolsConfig));
       this.isEditingTools = true;
-      if (uni.vibrateShort) {
-        uni.vibrateShort();
-      }
+      haptic('medium');
     },
     // 取消编辑
     cancelEditing() {
@@ -1580,7 +1957,8 @@ export default {
       const orderMap = this.editingTools.map((tool, i) => ({
         id: tool.id,
         order: i + 1,
-        visible: tool.visible !== false
+        visible: tool.visible !== false,
+        pinned: tool.pinned === true
       }));
       uni.setStorageSync("toolsConfig", orderMap);
       console.log( "【保存工具配置】保存了", orderMap.length, "个工具的顺序/可见性");
@@ -1627,6 +2005,16 @@ export default {
           order: 3,
           showNew: false
         },
+		{
+		  id: "gacha_next",
+		  name: "模拟抽卡Next",
+		  desc: "全新模拟抽卡测试中...",
+		  icon: "/static/gacha_simulated-tool-next.png",
+		  url: "/packageB/pages/gacha_next/gacha_next",
+		  visible: true,
+		  order: 4,
+		  showNew: true
+		},
         {
           id: "mystarbox",
           name: "我的收藏",
@@ -1634,7 +2022,7 @@ export default {
           icon: "/static/mystarbox-tool.png",
           url: "/packageB/pages/mystarbox/mystarbox",
           visible: true,
-          order: 4,
+          order: 5,
           showNew: false
         },
         {
@@ -1644,7 +2032,7 @@ export default {
           icon: "",
           url: "",
           visible: true,
-          order: 5,
+          order: 6,
           showNew: false,
           specialAction: "gotoaitools"
         },
@@ -1655,7 +2043,7 @@ export default {
           icon: "/static/share.png",
           url: "/pages/card_share/card_share",
           visible: true,
-          order: 6,
+          order: 7,
           showNew: false
         },
         {
@@ -1665,7 +2053,7 @@ export default {
           icon: "/static/scan-barcode.png",
           url: "/pages/scan_barcode/scan_barcode",
           visible: true,
-          order: 6.5,
+          order: 8.5,
           showNew: true
         },
         {
@@ -1675,7 +2063,17 @@ export default {
           icon: "/static/daily-recommend-icon.png",
           url: "/pages/daily_recommend/daily_recommend",
           visible: true,
-          order: 6.7,
+          order: 8.7,
+          showNew: true
+        },
+        {
+          id: "passportGame",
+          name: "通行证游乐场",
+          desc: "竞猜 / 速配 / 接龙，看看你对通行证有多熟",
+          icon: "/static/passport-game.png",
+          url: "/packageB/pages/passport_game/passport_game",
+          visible: true,
+          order: 8.8,
           showNew: true
         },
         {
@@ -1685,7 +2083,7 @@ export default {
           icon: "/static/questionnaire-tool.png",
           url: "",
           visible: true,
-          order: 7,
+          order: 9,
           showNew: false,
           specialAction: "gotoquestionnaire"
         },
@@ -1696,7 +2094,7 @@ export default {
           icon: "/static/Setting-tool.png",
           url: "/packageA/Setting/Setting",
           visible: true,
-          order: 8,
+          order: 10,
           showNew: false
         },
         {
@@ -1706,7 +2104,7 @@ export default {
           icon: "/static/aboutus-tool.png",
           url: "/packageA/aboutus/aboutus",
           visible: true,
-          order: 9,
+          order: 11,
           showNew: false
         },
         {
@@ -1717,7 +2115,7 @@ export default {
           url: "/packageA/calendar/calendar",
           // specialAction: 'comingsoon',
           visible: true,
-          order: 10,
+          order: 12,
           showNew: true
         },
         {
@@ -1727,7 +2125,7 @@ export default {
           icon: "/static/link-tool.png",
           url: "/pages/friend_links/friend_links",
           visible: true,
-          order: 10.5,
+          order: 12.5,
           showNew: true
         },
         // {
@@ -1740,6 +2138,7 @@ export default {
         //     order: 11,
         //     showNew: true
         // },
+		
         {
           id: "comingsoon",
           name: "敬请期待",
@@ -1747,11 +2146,18 @@ export default {
           icon: "/static/threepoint.png",
           url: "",
           visible: true,
-          order: 12,
+          order: 13,
           showNew: false,
           specialAction: "update"
         }
       ];
+      // 极简模式下默认留在一级菜单的核心功能
+      const DEFAULT_PINNED_IDS = ["search", "list", "setting"];
+      defaultTools.forEach((tool) => {
+        if (typeof tool.pinned !== "boolean") {
+          tool.pinned = DEFAULT_PINNED_IDS.indexOf(tool.id) >= 0;
+        }
+      });
       if (!forceReset) {
         const savedOrder = uni.getStorageSync("toolsConfig");
         console.log( "【初始化工具配置】读取本地缓存, forceReset=false, savedOrder存在:", !!savedOrder);
@@ -1764,6 +2170,9 @@ export default {
             if (savedMap[tool.id]) {
               tool.order = savedMap[tool.id].order || tool.order;
               tool.visible = savedMap[tool.id].visible !== false ? true : false;
+              if (typeof savedMap[tool.id].pinned === "boolean") {
+                tool.pinned = savedMap[tool.id].pinned;
+              }
             }
           });
           defaultTools.sort((a, b) => a.order - b.order);
@@ -1773,7 +2182,7 @@ export default {
         }
       }
       this.toolsConfig = defaultTools;
-      uni.setStorageSync("toolsConfig", defaultTools.map((t) => ({ id: t.id, order: t.order, visible: t.visible })));
+      uni.setStorageSync("toolsConfig", defaultTools.map((t) => ({ id: t.id, order: t.order, visible: t.visible, pinned: t.pinned })));
       console.log( "使用默认工具箱配置");
     },
     // 长按开始编辑
@@ -1857,9 +2266,7 @@ export default {
         const temp = this.editingTools[index];
         this.editingTools[index] = this.editingTools[targetIndex];
         this.editingTools[targetIndex] = temp;
-        if (uni.vibrateShort) {
-          uni.vibrateShort();
-        }
+        haptic('light');
       }
     },
     // 下移工具
@@ -1869,9 +2276,7 @@ export default {
         const temp = this.editingTools[index];
         this.editingTools[index] = this.editingTools[targetIndex];
         this.editingTools[targetIndex] = temp;
-        if (uni.vibrateShort) {
-          uni.vibrateShort();
-        }
+        haptic('light');
       }
     },
     // 左移工具（从右侧移到左侧）
@@ -1881,9 +2286,7 @@ export default {
         const temp = this.editingTools[index];
         this.editingTools[index] = this.editingTools[targetIndex];
         this.editingTools[targetIndex] = temp;
-        if (uni.vibrateShort) {
-          uni.vibrateShort();
-        }
+        haptic('light');
       }
     },
     // 右移工具（从左侧移到右侧）
@@ -1893,9 +2296,7 @@ export default {
         const temp = this.editingTools[index];
         this.editingTools[index] = this.editingTools[targetIndex];
         this.editingTools[targetIndex] = temp;
-        if (uni.vibrateShort) {
-          uni.vibrateShort();
-        }
+        haptic('light');
       }
     },
     // 获取可见的工具
@@ -1911,6 +2312,35 @@ export default {
       }
     },
     // 处理工具点击
+    // ========== 首页展示样式（宫格 / 列表 / 极简）==========
+    // 读取展示样式（设置页写入 storage，onShow 时同步）
+    loadHomeLayout() {
+      let layout = "grid";
+      try {
+        const saved = uni.getStorageSync("homeLayout");
+        if (["grid", "list", "minimal"].indexOf(saved) >= 0) layout = saved;
+      } catch (e) {}
+      if (layout !== this.homeLayout) {
+        this.minimalExpanded = false;
+      }
+      this.homeLayout = layout;
+    },
+    // 极简模式：展开/收起二级收纳组
+    toggleMinimalExpand() {
+      this.minimalExpanded = !this.minimalExpanded;
+    },
+    // 编辑模式：切换「设为核心 / 收纳到二级」
+    toggleToolPinned(index) {
+      const tool = this.editingTools[index];
+      if (!tool) return;
+      tool.pinned = !(tool.pinned === true);
+      this.editingTools = [...this.editingTools];
+      haptic('light');
+      const pinnedCount = this.editingTools.filter((t) => t.visible !== false && t.pinned === true).length;
+      if (pinnedCount === 0) {
+        uni.showToast({ title: "建议至少保留 1 个核心功能", icon: "none", duration: 1800 });
+      }
+    },
     handleToolClick(tool) {
       if (this.isEditingTools)
         return;
@@ -1984,31 +2414,7 @@ export default {
 		padding: 0 20rpx 30rpx;
 		background-color: #f5f5f5;
 		min-height: 100vh;
-}
-
-	/* ========== 科技风格（明日方舟主题） ========== */
-.container.theme-ark {
-		background: linear-gradient(180deg, #0D0D15 0%, #1A1A2E 100%);
-		position: relative;
-}
-
-	/* 科技感网格背景 */
-.container.theme-ark::before {
-		content: '';
-		position: fixed;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		background-image:
-			linear-gradient(rgba(255, 107, 53, 0.03) 1px, transparent 1px),
-			linear-gradient(90deg, rgba(255, 107, 53, 0.03) 1px, transparent 1px);
-		background-size: 50rpx 50rpx;
-		pointer-events: none;
-		z-index: 0;
-}
-
-	/* ========== 界园风格（粉绿渐变风格） ========== */
+}/* ========== 界园风格（粉绿渐变风格） ========== */
 .container.theme-jieyuan {
 		background: linear-gradient(180deg, #fdf6f0 0%, #f5ede8 100%);
 		position: relative;
@@ -2041,39 +2447,7 @@ export default {
 		border-left: 8rpx solid #409EFF;
 		margin-top: 20rpx;
 		overflow: hidden;
-}
-
-	/* 科技风格 */
-.container.theme-ark .notice-section {
-		background: linear-gradient(135deg, #16162A 0%, #1E1E3A 100%);
-		border-radius: 8rpx;
-		border: 1rpx solid #2A2A4A;
-		border-left: none;
-		box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.3), inset 0 1rpx 0 rgba(255, 255, 255, 0.05);
-		position: relative;
-}
-.container.theme-ark .notice-section::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: 0;
-		width: 30rpx;
-		height: 30rpx;
-		border-top: 3rpx solid #FF6B35;
-		border-left: 3rpx solid #FF6B35;
-}
-.container.theme-ark .notice-section::after {
-		content: '';
-		position: absolute;
-		bottom: 0;
-		right: 0;
-		width: 30rpx;
-		height: 30rpx;
-		border-bottom: 3rpx solid #FF6B35;
-		border-right: 3rpx solid #FF6B35;
-}
-
-	/* 界园风格 */
+}/* 界园风格 */
 .container.theme-jieyuan .notice-section {
 		background: rgba(255, 255, 255, 0.85);
 		border-radius: 12rpx;
@@ -2121,11 +2495,7 @@ export default {
 }
 .notice-close:active {
 		background-color: #f0f0f0;
-}
-.container.theme-ark .notice-close:active {
-		background-color: rgba(255, 107, 53, 0.2);
-}
-.close-btn {
+}.close-btn {
 		width: 32rpx;
 		height: 32rpx;
 		font-size: 32rpx;
@@ -2134,11 +2504,7 @@ export default {
 		align-items: center;
 		justify-content: center;
 		line-height: 1;
-}
-.container.theme-ark .close-btn {
-		color: #8A8AA0;
-}
-.notice-icon {
+}.notice-icon {
 		width: 36rpx;
 		height: 36rpx;
 		margin-right: 15rpx;
@@ -2148,12 +2514,7 @@ export default {
 		font-weight: bold;
 		color: #409EFF;
 		flex: 1;
-}
-.container.theme-ark .notice-title {
-		color: #FF6B35;
-		text-shadow: 0 0 10rpx rgba(255, 107, 53, 0.5);
-}
-.container.theme-jieyuan .notice-title {
+}.container.theme-jieyuan .notice-title {
 		color: #e25884;
 		text-shadow: 0 0 10rpx rgba(226, 88, 132, 0.4);
 }
@@ -2171,14 +2532,7 @@ export default {
 }
 .notice-toggle:active {
 		background-color: #f0f0f0;
-}
-.container.theme-ark .notice-toggle {
-		color: #00D4AA;
-}
-.container.theme-ark .notice-toggle:active {
-		background-color: rgba(0, 212, 170, 0.1);
-}
-.toggle-text {
+}.toggle-text {
 		margin-right: 10rpx;
 }
 .toggle-icon {
@@ -2223,12 +2577,7 @@ export default {
 		display: block;
 		word-break: break-word;
 		transition: all 0.3s ease-in-out;
-}
-.container.theme-ark .notice-text {
-		color: #E8E8F0;
-}
-
-	/* 文本展开/收起过渡动画 */
+}/* 文本展开/收起过渡动画 */
 .text-collapsed {
 		display: -webkit-box;
 		-webkit-line-clamp: 3;
@@ -2268,20 +2617,7 @@ export default {
 .expand-btn:active {
 		background-color: #e0e0e0;
 		transform: scale(0.95);
-}
-.container.theme-ark .expand-btn {
-		background: linear-gradient(135deg, #2A2A4A 0%, #1A1A2E 100%);
-		color: #E8E8F0;
-		border-radius: 4rpx;
-		border: 1rpx solid #2A2A4A;
-}
-.container.theme-ark .expand-btn:active {
-		background: linear-gradient(135deg, #3A3A5A 0%, #2A2A4A 100%);
-		border-color: #FF6B35;
-		color: #FF6B35;
-}
-
-	/* ========== 轮播图样式 ========== */
+}/* ========== 轮播图样式 ========== */
 
 	/* 简约风格 */
 .carousel-section {
@@ -2300,45 +2636,7 @@ export default {
 		width: 100%;
 		height: 100%;
 		border-radius: 12rpx;
-}
-
-	/* 科技风格 */
-.container.theme-ark .carousel-section {
-		background: linear-gradient(135deg, #16162A 0%, #1E1E3A 100%);
-		border-radius: 8rpx;
-		border: 1rpx solid #2A2A4A;
-		box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.3);
-		position: relative;
-}
-.container.theme-ark .carousel-section::before,
-	.container.theme-ark .carousel-section::after {
-		content: '';
-		position: absolute;
-		width: 20rpx;
-		height: 20rpx;
-		border: 2rpx solid #FF6B35;
-}
-.container.theme-ark .carousel-section::before {
-		top: 10rpx;
-		left: 10rpx;
-		border-right: none;
-		border-bottom: none;
-}
-.container.theme-ark .carousel-section::after {
-		bottom: 10rpx;
-		right: 10rpx;
-		border-left: none;
-		border-top: none;
-}
-.container.theme-ark .carousel {
-		border-radius: 4rpx;
-		border: 1rpx solid #2A2A4A;
-}
-.container.theme-ark .carousel-image {
-		border-radius: 4rpx;
-}
-
-	/* ========== 工具箱区域样式 ========== */
+}/* ========== 工具箱区域样式 ========== */
 
 	/* 简约风格 */
 .tools-section {
@@ -2347,27 +2645,7 @@ export default {
 		padding: 30rpx;
 		box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
 		margin-bottom: 30rpx;
-}
-
-	/* 科技风格 */
-.container.theme-ark .tools-section {
-		background: linear-gradient(135deg, #16162A 0%, #1E1E3A 100%);
-		border-radius: 8rpx;
-		border: 1rpx solid #2A2A4A;
-		box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.3);
-		position: relative;
-}
-.container.theme-ark .tools-section::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: 30rpx;
-		right: 30rpx;
-		height: 2rpx;
-		background: linear-gradient(90deg, transparent, #FF6B35, transparent);
-}
-
-	/* 工具箱标题区域 */
+}/* 工具箱标题区域 */
 .tools-header {
 		display: flex;
 		justify-content: space-between;
@@ -2389,19 +2667,7 @@ export default {
 		font-size: 24rpx;
 		color: #666;
 		margin-right: 10rpx;
-}
-.container.theme-ark .tools-manage-btn {
-		background: linear-gradient(135deg, #2A2A4A 0%, #1A1A2E 100%);
-		border-radius: 4rpx;
-		border: 1rpx solid #FF6B35;
-}
-.container.theme-ark .tools-manage-btn:active {
-		background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%);
-}
-.container.theme-ark .manage-text {
-		color: #E8E8F0;
-}
-.manage-icon {
+}.manage-icon {
 		width: 24rpx;
 		height: 24rpx;
 }
@@ -2409,13 +2675,7 @@ export default {
 		font-size: 32rpx;
 		font-weight: bold;
 		color: #333;
-}
-.container.theme-ark .tools-title {
-		color: #FF6B35;
-		text-shadow: 0 0 10rpx rgba(255, 107, 53, 0.3);
-		letter-spacing: 2rpx;
-}
-.tools-grid {
+}.tools-grid {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
 		gap: 20rpx;
@@ -2433,7 +2693,8 @@ export default {
 		padding: 30rpx 20rpx;
 		transition: all 0.3s;
 		text-align: center;
-		height: 200rpx;
+		min-height: 200rpx;
+		height: auto;
 		justify-content: flex-start;
 		box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.05);
 		position: relative;
@@ -2446,34 +2707,7 @@ export default {
 .tool-card:active {
 		background-color: #e8f4ff;
 		transform: scale(0.98);
-}
-
-	/* 科技风格 */
-.container.theme-ark .tool-card {
-		background: linear-gradient(135deg, #1E1E3A 0%, #2A2A4A 100%);
-		border-radius: 4rpx;
-		border: 1rpx solid #2A2A4A;
-		box-shadow: none;
-		overflow: hidden;
-}
-.container.theme-ark .tool-card::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: -100%;
-		width: 100%;
-		height: 100%;
-		background: linear-gradient(90deg, transparent, rgba(255, 107, 53, 0.1), transparent);
-		transition: left 0.5s;
-}
-.container.theme-ark .tool-card:active {
-		background: linear-gradient(135deg, #2A2A4A 0%, #3A3A5A 100%);
-		border-color: #FF6B35;
-}
-.container.theme-ark .tool-card:active::before {
-		left: 100%;
-}
-.tool-icon-container {
+}.tool-icon-container {
 		position: relative; /* 为New图标提供定位上下文 */
 		width: 80rpx;
 		height: 80rpx;
@@ -2487,14 +2721,7 @@ export default {
 .tool-icon {
 		width: 50rpx;
 		height: 50rpx;
-}
-
-	/* 科技风格工具图标反转（深色背景下白色图标反转回正常色） */
-.container.theme-ark .tool-icon {
-		filter: invert(1);
-}
-
-	/* New图标样式 */
+}/* New图标样式 */
 .new-badge {
 		position: absolute;
 		top: -40rpx;
@@ -2508,7 +2735,9 @@ export default {
 		flex-direction: column;
 		align-items: center;
 		width: 100%;
-		height: 90rpx;
+		min-width: 0;
+		min-height: 90rpx;
+		height: auto;
 		justify-content: flex-start;
 }
 .tool-name {
@@ -2516,30 +2745,26 @@ export default {
 		font-weight: bold;
 		color: #333;
 		margin-bottom: 8rpx;
-		line-height: 1.4;
-		height: 40rpx;
+		line-height: 1.35;
+		min-height: 40rpx;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		width: 100%;
+		text-align: center;
+		word-break: break-word;
 }
 .tool-desc {
 		font-size: 24rpx;
 		color: #999;
-		line-height: 1.4;
+		line-height: 1.35;
 		width: 100%;
 		text-align: center;
 		word-wrap: break-word;
 		word-break: break-word;
-}
-.container.theme-ark .tool-name {
-		color: #E8E8F0;
-}
-.container.theme-ark .tool-desc {
-		color: #8A8AA0;
-}
-
-	/* ========== 数据状态区域 ========== */
+		white-space: normal;
+		overflow: visible;
+}/* ========== 数据状态区域 ========== */
 
 	/* 简约风格 */
 .data-status {
@@ -2549,56 +2774,167 @@ export default {
 		margin-bottom: 30rpx;
 		font-size: 24rpx;
 		color: #409EFF;
-}
+}/* ========== 更新提示样式 ========== */
 
-	/* 科技风格 */
-.container.theme-ark .data-status {
-		background: linear-gradient(135deg, #16162A 0%, #1E1E3A 100%);
-		border-radius: 8rpx;
-		color: #00D4AA;
-		border: 1rpx solid #2A2A4A;
-		box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.3);
+	/* 数据更新居中弹窗 */
+.update-modal-mask {
+		z-index: 10000;
+}
+.update-found-modal {
 		position: relative;
+		width: 82%;
+		max-width: 620rpx;
+		background: #fff;
+		border-radius: 24rpx;
+		padding: 48rpx 36rpx 32rpx;
+		box-shadow: 0 16rpx 48rpx rgba(0, 0, 0, 0.18);
+		display: flex;
+		flex-direction: column;
+		align-items: center;
 }
-.container.theme-ark .data-status::before {
-		content: '';
+.ufm-badge {
 		position: absolute;
-		top: 0;
-		left: 0;
-		width: 40rpx;
-		height: 40rpx;
-		border-top: 3rpx solid #00D4AA;
-		border-left: 3rpx solid #00D4AA;
+		top: -18rpx;
+		left: 50%;
+		transform: translateX(-50%);
+		background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+		color: #fff;
+		font-size: 20rpx;
+		font-weight: 700;
+		padding: 6rpx 22rpx;
+		border-radius: 999rpx;
+		letter-spacing: 2rpx;
+		box-shadow: 0 4rpx 12rpx rgba(234, 88, 12, 0.35);
 }
-
-	/* ========== 更新提示样式 ========== */
-
-	/* 简约风格 */
+.ufm-title {
+		font-size: 34rpx;
+		font-weight: 700;
+		color: #1f2937;
+		margin-bottom: 12rpx;
+}
+.ufm-desc {
+		font-size: 24rpx;
+		color: #6b7280;
+		text-align: center;
+		line-height: 1.5;
+		margin-bottom: 28rpx;
+}
+.ufm-versions {
+		width: 100%;
+		background: #f8fafc;
+		border: 1rpx solid #e5e7eb;
+		border-radius: 14rpx;
+		padding: 16rpx 20rpx;
+		margin-bottom: 28rpx;
+}
+.ufm-ver-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 8rpx 0;
+}
+.ufm-ver-label {
+		font-size: 24rpx;
+		color: #6b7280;
+}
+.ufm-ver-value {
+		font-size: 24rpx;
+		color: #374151;
+		font-weight: 600;
+}
+.ufm-ver-value.highlight {
+		color: #ea580c;
+}
+.ufm-btn {
+		width: 100%;
+		margin: 0 0 16rpx 0;
+		font-size: 28rpx;
+		font-weight: 600;
+		border-radius: 999rpx;
+		padding: 20rpx 0;
+		line-height: 1.4;
+}
+.ufm-btn::after { border: none; }
+.ufm-btn.primary {
+		background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+		color: #fff;
+		box-shadow: 0 8rpx 20rpx rgba(234, 88, 12, 0.3);
+}
+.ufm-btn-row {
+		width: 100%;
+		display: flex;
+		gap: 16rpx;
+}
+.ufm-btn-row .ufm-btn {
+		flex: 1;
+		margin-bottom: 0;
+		font-size: 24rpx;
+		padding: 16rpx 0;
+}
+.ufm-btn.ghost {
+		background: #f3f4f6;
+		color: #4b5563;
+		font-weight: 500;
+}
+.ufm-btn.mute {
+		background: transparent;
+		color: #9ca3af;
+		font-weight: 500;
+		border: 1rpx solid #e5e7eb;
+}
+	/* 简约风格 - 兼容旧 class */
 .update-hint {
-		background-color: #fff6e6;
-		border-left: 8rpx solid #ff9900;
-		padding: 20rpx;
+		background: linear-gradient(135deg, #fff7eb 0%, #ffe8c8 100%);
+		border: 1rpx solid #ffc36b;
+		border-left: 10rpx solid #ff9900;
+		padding: 22rpx 24rpx;
 		margin-bottom: 20rpx;
-		border-radius: 8rpx;
+		border-radius: 12rpx;
 		animation: fadeIn 0.5s ease-in-out;
+		box-shadow: 0 4rpx 16rpx rgba(255, 153, 0, 0.18);
+}
+.update-hint-main {
+		display: flex;
+		flex-direction: column;
+		gap: 6rpx;
+		margin-bottom: 16rpx;
 }
 .hint-text {
-		color: #ff9900;
-		font-size: 26rpx;
-		font-weight: bold;
+		color: #d97706;
+		font-size: 28rpx;
+		font-weight: 700;
 }
-
-	/* 科技风格 */
-.container.theme-ark .update-hint {
-		background: linear-gradient(135deg, #2A2A4A 0%, #1A1A2E 100%);
-		border-left: 4rpx solid #FF6B35;
-		border-radius: 4rpx;
+.hint-sub {
+		color: #b45309;
+		font-size: 22rpx;
+		opacity: 0.9;
 }
-.container.theme-ark .hint-text {
-		color: #FF6B35;
-		text-shadow: 0 0 8rpx rgba(255, 107, 53, 0.3);
+.update-hint-actions {
+		display: flex;
+		gap: 16rpx;
+		flex-wrap: wrap;
 }
-@keyframes fadeIn {
+.update-hint-btn {
+		flex: 1;
+		min-width: 160rpx;
+		margin: 0;
+		font-size: 24rpx;
+		padding: 12rpx 20rpx;
+		border-radius: 999rpx;
+		background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+		color: #fff;
+		font-weight: 600;
+		line-height: 1.4;
+		box-shadow: 0 4rpx 12rpx rgba(234, 88, 12, 0.28);
+}
+.update-hint-btn::after { border: none; }
+.update-hint-btn.ghost {
+		background: transparent;
+		color: #b45309;
+		border: 1rpx solid #f0b25a;
+		box-shadow: none;
+		font-weight: 500;
+}@keyframes fadeIn {
 from {
 			opacity: 0;
 			transform: translateY(-10px);
@@ -2622,11 +2958,7 @@ to {
 		white-space: normal;
 		flex: 1;
 		min-width: 300rpx;
-}
-.container.theme-ark .status-text {
-		color: #E8E8F0;
-}
-.data-detail-item {
+}.data-detail-item {
 		color: #333 !important;
 		font-size: 24rpx;
 		margin-right: 20rpx;
@@ -2653,13 +2985,7 @@ to {
 		font-size: 22rpx;
 		padding: 8rpx 20rpx;
 		line-height: 1.4;
-}
-.container.theme-ark .update-btn.small {
-		background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%);
-		border-radius: 4rpx;
-		border: 1rpx solid #FF6B35;
-}
-.update-btn-img {
+}.update-btn-img {
 		width: 36rpx;
 		height: 36rpx;
 		margin-right: 12rpx;
@@ -2677,35 +3003,10 @@ to {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-}
-.container.theme-ark .data-detail-item {
-		color: #8A8AA0;
-}
-.update-section {
+}.update-section {
 		text-align: center;
 		margin-top: 40rpx;
-}
-
-	/* 科技风格 */
-.container.theme-ark .update-btn {
-		background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%);
-		border-radius: 4rpx;
-		border: 2rpx solid #FF6B35;
-		box-shadow: 0 0 20rpx rgba(255, 107, 53, 0.3);
-		position: relative;
-		overflow: hidden;
-}
-.container.theme-ark .update-btn::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: -100%;
-		width: 100%;
-		height: 100%;
-		background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-		animation: scanLine 2s infinite;
-}
-@keyframes scanLine {
+}@keyframes scanLine {
 0% { left: -100%;
 }
 100% { left: 100%;
@@ -2739,27 +3040,7 @@ to {
 }
 .copyright-text:last-child {
 		margin-bottom: 0;
-}
-
-	/* 科技风格 */
-.container.theme-ark .footer-section {
-		position: relative;
-}
-.container.theme-ark .footer-section::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: 20%;
-		right: 20%;
-		height: 1rpx;
-		background: linear-gradient(90deg, transparent, #2A2A4A, transparent);
-}
-.container.theme-ark .copyright-text {
-		color: #8A8AA0;
-		letter-spacing: 1rpx;
-}
-
-	/* ========== 工具箱编辑模式样式（新增） ========== */
+}/* ========== 工具箱编辑模式样式（新增） ========== */
 	/* 编辑模式下的工具箱 */
 .tools-grid.editing {
 		position: relative;
@@ -2773,13 +3054,7 @@ to {
 		background-color: #fff;
 		border: 2rpx solid #f0f0f0;
 		z-index: 1;
-}
-.container.theme-ark .tool-card.editing-card {
-		background: linear-gradient(135deg, #1E1E3A 0%, #2A2A4A 100%);
-		border: 2rpx solid #2A2A4A;
-}
-
-	/* ========== 删除按钮样式 ========== */
+}/* ========== 删除按钮样式 ========== */
 .delete-btn {
 		position: absolute;
 		right: -10rpx;
@@ -2793,14 +3068,7 @@ to {
 		justify-content: center;
 		z-index: 10;
 		box-shadow: 0 2rpx 8rpx rgba(255, 107, 107, 0.3);
-}
-.container.theme-ark .delete-btn {
-		background: linear-gradient(135deg, #FF4444 0%, #CC0000 100%);
-		border-radius: 4rpx;
-		border: 1rpx solid #FF4444;
-		box-shadow: 0 0 10rpx rgba(255, 68, 68, 0.4);
-}
-.delete-text {
+}.delete-text {
 		color: #fff;
 		font-size: 24rpx;
 		font-weight: bold;
@@ -2831,14 +3099,7 @@ to {
 .visibility-label {
 		font-size: 22rpx;
 		color: #666;
-}
-.container.theme-ark .tool-edit-controls {
-		border-top: 1rpx solid #2A2A4A;
-}
-.container.theme-ark .visibility-label {
-		color: #8A8AA0;
-}
-.visibility-switch {
+}.visibility-switch {
 		transform: scale(0.7);
 }
 
@@ -2857,15 +3118,7 @@ to {
 		padding: 4rpx 12rpx;
 		border-radius: 20rpx;
 		display: inline-block;
-}
-.container.theme-ark .hint-text {
-		color: #00D4AA;
-		background-color: rgba(0, 212, 170, 0.1);
-		border-radius: 4rpx;
-		border: 1rpx solid rgba(0, 212, 170, 0.3);
-}
-
-	/* 排序箭头按钮 */
+}/* 排序箭头按钮 */
 .sort-arrows {
 		position: absolute;
 		top: 0;
@@ -2893,17 +3146,7 @@ to {
 .arrow-btn:active {
 		background-color: rgba(64, 158, 255, 1);
 		transform: scale(0.9);
-}
-.container.theme-ark .arrow-btn {
-		background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%);
-		border-radius: 4rpx;
-		border: 1rpx solid #FF6B35;
-		box-shadow: 0 0 10rpx rgba(255, 107, 53, 0.4);
-}
-.container.theme-ark .arrow-btn:active {
-		background: linear-gradient(135deg, #FF8C5A 0%, #FFAA80 100%);
-}
-.arrow-up {
+}.arrow-up {
 		top: -26rpx;
 		left: 50%;
 		margin-left: -24rpx;
@@ -2966,49 +3209,7 @@ to {
 .edit-btn.save {
 		background-color: #409EFF;
 		color: #fff;
-}
-
-	/* 科技风格 */
-.container.theme-ark .edit-controls-bar {
-		background: linear-gradient(135deg, #16162A 0%, #1E1E3A 100%);
-		border-radius: 8rpx;
-		border: 1rpx solid #2A2A4A;
-}
-.container.theme-ark .info-text {
-		color: #8A8AA0;
-}
-.container.theme-ark .edit-btn {
-		border-radius: 4rpx;
-		border: 1rpx solid;
-		transition: all 0.3s;
-}
-.container.theme-ark .edit-btn.reset {
-		background: linear-gradient(135deg, #2A2A4A 0%, #1A1A2E 100%);
-		color: #FF6B6B;
-		border-color: #FF6B6B;
-}
-.container.theme-ark .edit-btn.reset:active {
-		background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%);
-		color: #fff;
-}
-.container.theme-ark .edit-btn.cancel {
-		background: linear-gradient(135deg, #2A2A4A 0%, #1A1A2E 100%);
-		color: #8A8AA0;
-		border-color: #2A2A4A;
-}
-.container.theme-ark .edit-btn.cancel:active {
-		background: linear-gradient(135deg, #3A3A5A 0%, #2A2A4A 100%);
-}
-.container.theme-ark .edit-btn.save {
-		background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%);
-		color: #fff;
-		border-color: #FF6B35;
-}
-.container.theme-ark .edit-btn.save:active {
-		background: linear-gradient(135deg, #FF8C5A 0%, #FFAA80 100%);
-}
-
-	/* ========== 界园风格完整样式 ========== */
+}/* ========== 界园风格完整样式 ========== */
 
 	/* 轮播图 */
 .container.theme-jieyuan .carousel-section {
@@ -3277,8 +3478,16 @@ to {
 		font-weight: bold;
 }
 .questionnaire-modal .modal-close {
-		font-size: 48rpx;
+		width: 56rpx;
+		height: 56rpx;
+		line-height: 56rpx;
+		text-align: center;
+		border-radius: 50%;
+		font-size: 34rpx;
 		color: #999;
+		background: #f2f3f5;
+		flex-shrink: 0;
+	overflow: hidden;
 }
 .questionnaire-modal .modal-body {
 		max-height: 70vh;
@@ -3353,7 +3562,6 @@ to {
 		color: #999;
 }
 
-
 /* 顶部搜索栏 */
 .search-header {
 	padding: 20rpx 30rpx;
@@ -3379,7 +3587,6 @@ to {
 	flex: 1;
 }
 
-
 /* 自定义导航栏 - 简约白 */
 .custom-nav-bar {
 	position: fixed;
@@ -3397,7 +3604,27 @@ to {
 	padding: 0 10px;
 }
 .nav-left {
-	width: 10px;
+	width: auto;
+	min-width: 10px;
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+}
+.nav-switch-btn {
+	padding: 6px 10px;
+	background: #FBFB45;
+	border: 1rpx solid #18181b;
+	border-radius: 14px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.nav-switch-text {
+	font-size: 12px;
+	color: #000000;
+	font-weight: 500;
+	line-height: 1.2;
+	white-space: nowrap;
 }
 .nav-right {
 	width: 100px;
@@ -3433,5 +3660,366 @@ to {
 @keyframes highlightFlash {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.6; transform: scale(1.03); }
+}.custom-nav-bar.theme-jieyuan {
+  background: #FAF3E0;
 }
+.custom-nav-bar.theme-jieyuan .nav-switch-btn {
+  background: rgba(226, 88, 132, 0.1);
+  border-color: rgba(226, 88, 132, 0.25);
+}
+.custom-nav-bar.theme-jieyuan .nav-switch-text {
+  color: #e25884;
+}
+
+/* ========== 活动横幅（数据源：知晓云 tableID 224660）========== */
+.activity-banner {
+	display: flex;
+	align-items: center;
+	margin: 0 0 24rpx 0;
+	padding: 20rpx 24rpx;
+	background-color: var(--ak-surface-panel, #fff);
+	border: 1rpx solid var(--ak-hairline, transparent);
+	border-left: 6rpx solid var(--ak-signal-accent, #f6540e);
+	border-radius: var(--ak-radius, 16rpx);
+	box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.05);
+}
+.activity-banner:active {
+	background-color: var(--ak-surface-press, #f2f2f0);
+}
+.ab-flag {
+	flex-shrink: 0;
+	padding: 4rpx 12rpx;
+	margin-right: 16rpx;
+	background-color: var(--ak-signal-accent, #f6540e);
+	border-radius: 4rpx;
+}
+.ab-flag-text {
+	font-size: 20rpx;
+	font-weight: 700;
+	letter-spacing: 2rpx;
+	color: #fff;
+	line-height: 1.4;
+}
+.ab-text {
+	flex: 1;
+	min-width: 0;
+	font-size: 26rpx;
+	line-height: 1.5;
+	color: var(--ak-text-primary, #333);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+/* 右侧箭头用 CSS 绘制：三角/折线类字符在 iOS 会被渲染成 emoji */
+.ab-chevron {
+	flex-shrink: 0;
+	width: 14rpx;
+	height: 14rpx;
+	margin-left: 14rpx;
+	border-top: 3rpx solid var(--ak-text-muted, #bbb);
+	border-right: 3rpx solid var(--ak-text-muted, #bbb);
+	transform: rotate(45deg);
+}
+
+/* ========== 工具箱：列表模式 ========== */
+.tools-wrap.tools-list {
+	display: flex;
+	flex-direction: column;
+}
+.tools-list .tool-card {
+	flex-direction: row;
+	align-items: center;
+	text-align: left;
+	padding: 22rpx 24rpx;
+	min-height: 0;
+	min-width: 0;
+	margin-bottom: 16rpx;
+}
+.tools-list .tool-card:last-child {
+	margin-bottom: 0;
+}
+.tools-list .tool-icon-container {
+	margin-bottom: 0;
+	margin-right: 20rpx;
+	width: 72rpx;
+	height: 72rpx;
+}
+.tools-list .tool-icon {
+	width: 44rpx;
+	height: 44rpx;
+}
+.tools-list .tool-info {
+	flex: 1;
+	align-items: flex-start;
+	justify-content: center;
+	text-align: left;
+	min-height: 0;
+	min-width: 0;
+}
+.tools-list .tool-name {
+	justify-content: flex-start;
+	text-align: left;
+	min-height: 0;
+	margin-bottom: 4rpx;
+	font-size: 28rpx;
+}
+.tools-list .tool-desc {
+	text-align: left;
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.tools-list .new-badge {
+	top: -14rpx;
+	right: -14rpx;
+	width: 52rpx;
+	height: 52rpx;
+}
+
+/* 列表 / 极简用的右侧箭头（宫格模式隐藏）*/
+.tool-chevron {
+	flex-shrink: 0;
+	width: 14rpx;
+	height: 14rpx;
+	margin-left: 12rpx;
+	border-top: 3rpx solid var(--ak-text-muted, #c4c4c4);
+	border-right: 3rpx solid var(--ak-text-muted, #c4c4c4);
+	transform: rotate(45deg);
+}
+.tools-grid .tool-chevron {
+	display: none;
+}
+
+/* ========== 工具箱：极简模式 ========== */
+.tools-wrap.tools-minimal {
+	display: flex;
+	flex-direction: column;
+}
+.tools-core-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 20rpx;
+	margin-bottom: 18rpx;
+}
+.core-card {
+	min-height: 176rpx;
+}
+.tool-icon-container.core {
+	width: 88rpx;
+	height: 88rpx;
+	margin-bottom: 18rpx;
+}
+.tool-icon.core {
+	width: 52rpx;
+	height: 52rpx;
+}
+.tool-info.core {
+	min-height: 0;
+}
+.tool-name.core {
+	font-size: 29rpx;
+}
+.tool-desc.core {
+	font-size: 22rpx;
+	color: var(--ak-text-muted, #999);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 100%;
+}
+.pinned-empty {
+	margin-bottom: 18rpx;
+	padding: 26rpx 24rpx;
+	text-align: center;
+	background-color: var(--ak-surface-muted, #f8f8f8);
+	border-radius: var(--ak-radius, 16rpx);
+}
+.pinned-empty-text {
+	font-size: 24rpx;
+	line-height: 1.6;
+	color: var(--ak-text-muted, #999);
+}
+
+/* 二级收纳组（手机文件夹观感）*/
+.nested-folder {
+	border: 1rpx solid var(--ak-hairline, #e8e8e8);
+	border-radius: var(--ak-radius, 16rpx);
+	background-color: var(--ak-surface-panel, #fff);
+	overflow: hidden;
+}
+.nested-head {
+	display: flex;
+	align-items: center;
+	padding: 22rpx 24rpx;
+}
+.nested-head:active {
+	background-color: var(--ak-surface-press, #f2f2f0);
+}
+/* 文件夹图标：CSS 绘制（上沿小舌头 + 主体）*/
+.nested-folder-ic {
+	flex-shrink: 0;
+	position: relative;
+	width: 60rpx;
+	height: 46rpx;
+	margin-right: 18rpx;
+	border-radius: 8rpx;
+	background-color: var(--ak-color-primary, #4aabea);
+}
+.nested-folder-ic::before {
+	content: '';
+	position: absolute;
+	left: 6rpx;
+	top: -10rpx;
+	width: 26rpx;
+	height: 12rpx;
+	border-radius: 6rpx 6rpx 0 0;
+	background-color: var(--ak-color-primary, #4aabea);
+}
+.nested-head-info {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+}
+.nested-head-title {
+	font-size: 28rpx;
+	font-weight: 700;
+	line-height: 1.4;
+	color: var(--ak-text-primary, #333);
+}
+.nested-head-sub {
+	margin-top: 2rpx;
+	font-size: 22rpx;
+	line-height: 1.4;
+	color: var(--ak-text-muted, #999);
+}
+.nested-chev {
+	flex-shrink: 0;
+	width: 16rpx;
+	height: 16rpx;
+	border-right: 3rpx solid var(--ak-text-muted, #bbb);
+	border-bottom: 3rpx solid var(--ak-text-muted, #bbb);
+	transition: transform 0.22s;
+}
+.nested-chev.is-down {
+	transform: rotate(45deg);
+	margin-top: -6rpx;
+}
+.nested-chev.is-up {
+	transform: rotate(-135deg);
+	margin-top: 6rpx;
+}
+.nested-body {
+	padding: 8rpx 0;
+	border-top: 1rpx solid var(--ak-hairline-soft, #f0f0f0);
+}
+.nested-item {
+	display: flex;
+	align-items: center;
+	padding: 20rpx 24rpx;
+}
+.nested-item:active {
+	background-color: var(--ak-surface-press, #f2f2f0);
+}
+.nested-item-icon {
+	flex-shrink: 0;
+	width: 40rpx;
+	height: 40rpx;
+	margin-right: 18rpx;
+}
+.nested-item-info {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+}
+.nested-item-name {
+	font-size: 26rpx;
+	line-height: 1.4;
+	color: var(--ak-text-primary, #333);
+}
+.nested-item-desc {
+	margin-top: 2rpx;
+	font-size: 21rpx;
+	line-height: 1.4;
+	color: var(--ak-text-muted, #999);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* ========== 编辑模式：核心 / 收纳 切换 ========== */
+.pin-btn {
+	margin-top: 12rpx;
+	padding: 8rpx 18rpx;
+	align-self: center;
+	border: 1rpx solid var(--ak-hairline, #dcdcdc);
+	border-radius: 6rpx;
+	background-color: transparent;
+}
+.pin-btn.is-pinned {
+	border-color: var(--ak-color-primary, #4aabea);
+	background-color: var(--ak-color-primary, #4aabea);
+}
+.pin-text {
+	font-size: 22rpx;
+	line-height: 1.4;
+	color: var(--ak-text-secondary, #666);
+}
+.pin-btn.is-pinned .pin-text {
+	color: #fff;
+}
+
+
+/* ==========================================================================
+   工具箱 · 排版微调   2026-10-08
+   —— 仅调整间距 / 对齐 / 行高 / 定位。
+      不涉及任何颜色、阴影、圆角、图标底板，各主题外观保持不变。
+   ========================================================================== */
+
+/* 1. 宫格：行高统一
+      原先每行高度随该行描述行数浮动（实测 134 / 150 / 135px 三种），
+      整片参差；改为等分行高后各列对齐。 */
+.tools-wrap.tools-grid {
+	grid-auto-rows: 1fr;
+}
+
+/* 2. 行高统一后，内容较少的卡片会贴顶、底部空一块，改为垂直居中 */
+.tools-wrap.tools-grid .tool-card,
+.tools-core-grid .core-card {
+	justify-content: center;
+}
+
+/* 3. NEW 角标贴到「宫格卡片」的右上角
+      角标是 .tool-icon-container 的子元素，而该容器自带 position:relative，
+      绝对定位只能相对它计算 —— 宫格模式下看上去就是钉在了「工具图标」的右上角，
+      而不是「格子」的右上角。
+      这里把宫格里的图标容器改成 static，让角标回落到卡片
+      （.tool-card 自带 position:relative）的右上角；
+      列表模式不动：那边角标贴着图标反而更合适。
+      .tools-grid 同时匹配浏览态与编辑态（编辑态是 class="tools-grid editing"）。 */
+.tools-grid .tool-icon-container,
+.tools-core-grid .tool-icon-container {
+	position: static;
+}
+.tools-grid .new-badge,
+.tools-core-grid .new-badge {
+	top: 0;
+	right: 0;
+	width: 52rpx;
+	height: 52rpx;
+}
+
+/* 4. 修复极简模式核心网格横向溢出
+      .tool-desc.core 是 white-space:nowrap，会把 1fr 轨道的 auto 最小值
+      撑到最长描述文字的宽度，实测两列轨道变成 171rpx / 174rpx（应为 156.5rpx），
+      整个核心网格宽于区段右边界、描述文字被挤出卡片外。
+      补 min-width:0 让轨道按 1fr 正常分配，描述文字则按它自身已有的
+      overflow:hidden + text-overflow:ellipsis 截断（这正是原作者的写法）。
+      项目内已有同样处理：ak-theme.css 中 .container.theme-ark .tool-card{min-width:0} */
+.tools-core-grid > .core-card {
+	min-width: 0;
+}
+
 </style>

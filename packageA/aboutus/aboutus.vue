@@ -1,4 +1,4 @@
-﻿<template>
+<template>
 	<view :class="['container', 'theme-' + themeMode]">
 		<!-- 顶部Logo和名称 -->
 		<view class="header-section">
@@ -6,46 +6,70 @@
 				<image class="app-logo" src="/static/app-logo.png" mode="aspectFit"></image>
 			</view>
 			<text class="app-name">方舟通行证谷子查询工具</text>
-			<image class="qq-logo" src="/static/腾讯频道.png"></image><text class="app-version-link" @click="gotofeedbackQQgroup()">QQ交流频道</text>
+			<image class="qq-logo" src="/static/tencent-channel.png"></image><text class="app-version-link" @click="gotofeedbackQQgroup()">QQ交流频道</text>
 			<p></p>
 			<image class="qq-logo" src="/static/QQ.png"></image><text class="app-version">反馈群：128568825</text>
 			<p></p>
 			<text class="app-version-link" @click="gotoNotice('697a057b1f9139d2e7b9b6a7')">免责声明</text>
 			<text class="app-version-link" @click="gotoNotice('697a059bf07d9206ee9a9550')">长期公告</text>
 			<text class="app-version-link" @click="gotoNotice('697a04d052987431f1b5d5a7')">隐私政策</text>
-			<p></p>
-			<text class="app-version">欢迎拥有开发能力的博士们参与开发哦~</text>
-			<p></p>
-			<image class="qq-logo" src="/static/github.png"></image><text class="app-version-link" @click="gotogithubmainrepo()">Github项目地址</text>
-			<image class="qq-logo" src="/static/github.png"></image><text class="app-version-link" @click="gotogithubdatabaserepo()">Github数据仓库</text>
 			
 		</view>
 
-		<!-- 开发者信息 -->
+		<!-- 开源贡献 -->
 		<view class="section">
-			<view class="section-header">
-				<text class="section-title">开发者</text>
+			<view class="section-header section-header-toggle" @click="githubSectionOpen = !githubSectionOpen">
+				<text class="section-title">开源贡献</text>
+				<view class="header-right">
+					<text class="section-summary">{{ githubSummary }}</text>
+					<text class="expand-icon">{{ githubSectionOpen ? '−' : '+' }}</text>
+				</view>
 			</view>
-			<view class="section-content">
-				<view class="grid-container">
-					<view 
-						class="contributor-item" 
-						v-for="(dev, index) in visibleDevelopers" 
-						:key="index"
-					>
+			<!-- 贡献者头像：常驻显示，不参与折叠 -->
+			<view class="section-content github-avatar-zone">
+				<view class="grid-container github-avatar-grid" v-if="githubContributors.length">
+					<view class="contributor-item" v-for="(c, ci) in githubContributors" :key="ci">
 						<view class="avatar-container">
-							<image class="contributor-avatar" :src="dev.avatar" mode="aspectFit"></image>
+							<image class="contributor-avatar" :src="imgSrc(c.avatar)" mode="aspectFill"></image>
 						</view>
-						<text class="contributor-name">{{ dev.name }}</text>
-						<text class="contributor-role">{{ dev.role }}</text>
+						<text class="contributor-name">{{ c.login }}</text>
+						<text class="contributor-role">{{ c.count }} 次提交</text>
 					</view>
 				</view>
-				<view class="expand-section" v-if="developers.length > 4">
-					<text class="expand-text" @click="toggleExpand('developers')">
-						{{ expandedSections.developers ? '收起' : `展开全部 ${developers.length} 位开发者` }}
-					</text>
-					<text class="expand-icon">{{ expandedSections.developers ? '−' : '+' }}</text>
+				<text class="repo-updated" v-else-if="!githubLoadFailed">贡献者头像加载中…</text>
+			</view>
+			<!-- 仓库数据卡：可折叠 -->
+			<view class="section-content github-detail-zone" v-if="githubSectionOpen">
+				<view class="repo-card" v-for="(repo, index) in githubRepos" :key="index" @click.stop="gotoGithubRepo(repo)">
+					<view class="repo-head">
+						<image class="repo-icon" src="/static/github.png" mode="aspectFit"></image>
+						<view class="repo-info">
+							<text class="repo-name">{{ repo.name }}</text>
+							<text class="repo-desc">{{ repo.desc }}</text>
+						</view>
+						<text class="repo-arrow">›</text>
+					</view>
+					<view class="repo-stats">
+						<view class="repo-stat">
+							<text class="repo-stat-num">{{ repo.stats.stars }}</text>
+							<text class="repo-stat-label">Star</text>
+						</view>
+						<view class="repo-stat">
+							<text class="repo-stat-num">{{ repo.stats.forks }}</text>
+							<text class="repo-stat-label">Fork</text>
+						</view>
+						<view class="repo-stat">
+							<text class="repo-stat-num">{{ repo.stats.commits }}</text>
+							<text class="repo-stat-label">Commit</text>
+						</view>
+						<view class="repo-stat">
+							<text class="repo-stat-num">{{ repo.stats.contributors }}</text>
+							<text class="repo-stat-label">贡献者</text>
+						</view>
+					</view>
 				</view>
+				<text class="repo-updated" v-if="githubUpdatedAt">数据更新于 {{ githubUpdatedAt }} · 点击仓库卡可{{ linkActionHint() }}</text>
+				<text class="repo-fail" v-if="githubLoadFailed">实时数据加载失败，当前展示最近一次缓存</text>
 			</view>
 		</view>
 
@@ -62,7 +86,7 @@
 						:key="index"
 					>
 						<view class="avatar-container">
-							<image class="contributor-avatar" :src="contributor.avatar" mode="aspectFit"></image>
+							<image class="contributor-avatar" :src="imgSrc(contributor.avatar)" mode="aspectFill"></image>
 						</view>
 						<text class="contributor-name">{{ contributor.name }}</text>
 						<text class="contributor-role">{{ contributor.contribution }}</text>
@@ -70,7 +94,7 @@
 					
 					<view class="contributor-item"  @click="onCarouselItemClick()">
 						<view class="avatar-container">
-							<image class="contributor-avatar" src="/static/add.png" mode="aspectFit"></image>
+							<image class="contributor-avatar avatar-glyph" src="/static/add.png" mode="aspectFit"></image>
 						</view>
 						<text class="contributor-name">加入贡献</text>
 						<text class="contributor-role">加入玩家贡献</text>
@@ -123,6 +147,36 @@
 				</view>
 			</view>
 		</view>
+		
+		<!-- 开发者信息 -->
+		<view class="section">
+			<view class="section-header">
+				<text class="section-title">开发者</text>
+			</view>
+			<view class="section-content">
+				<view class="grid-container">
+					<view 
+						class="contributor-item" 
+						v-for="(dev, index) in visibleDevelopers" 
+						:key="index"
+					>
+						<view class="avatar-container">
+							<image class="contributor-avatar" :src="imgSrc(dev.avatar)" mode="aspectFill"></image>
+						</view>
+						<text class="contributor-name">{{ dev.name }}</text>
+						<text class="contributor-role">{{ dev.role }}</text>
+					</view>
+				</view>
+				<view class="expand-section" v-if="developers.length > 4">
+					<text class="expand-text" @click="toggleExpand('developers')">
+						{{ expandedSections.developers ? '收起' : `展开全部 ${developers.length} 位开发者` }}
+					</text>
+					<text class="expand-icon">{{ expandedSections.developers ? '−' : '+' }}</text>
+				</view>
+			</view>
+		</view>
+
+		
 
 		<!-- 特别鸣谢 -->
 		<view class="section">
@@ -137,7 +191,7 @@
 						:key="index"
 					>
 						<view class="avatar-container">
-							<image class="contributor-avatar" :src="thank.avatar" mode="aspectFit"></image>
+							<image class="contributor-avatar" :src="imgSrc(thank.avatar)" mode="aspectFill"></image>
 						</view>
 						<text class="contributor-name">{{ thank.name }}</text>
 						<text class="contributor-role">{{ thank.role }}</text>
@@ -162,6 +216,8 @@
 
 <script>
 	import errorLog from "@/utils/errorLog.js";
+import { markDailyTask } from "@/utils/dailyTask.js";
+import { openLink, linkActionText } from "@/utils/openLink.js";
 	export default {
 		data() {
 			return {
@@ -187,7 +243,27 @@
 					{ avatar: '/static/default-avatar.png', name: '明日方舟官方', role: '数据支持' },
 					{ avatar: 'https://bkimg.cdn.bcebos.com/pic/b64543a98226cffc1e170998dd565d90f603738dbcd8?x-bce-process=image', name: '森空岛', role: '提供部分非可操控干员头像' },
 					{ avatar: 'https://p.qlogo.cn/gh/1045868302/1045868302/40', name: '长沙罗德岛秘密交易中心', role: '赞助/研发'}
-				]
+				],
+				// GitHub 开源贡献数据
+				githubRepos: [
+					{
+						full: 'awadwd/Arknights-Authorization-Tool',
+						name: 'Arknights-Authorization-Tool',
+						desc: '谷子查询工具主程序仓库',
+						url: 'https://github.com/awadwd/Arknights-Authorization-Tool',
+						stats: { stars: '--', forks: '--', commits: '--', contributors: '--' }
+					},
+					{
+						full: 'awadwd/ArknightsAuthorization_Series-mirror',
+						name: 'Series-mirror',
+						desc: '数据仓库（Series 镜像）',
+						url: 'https://github.com/awadwd/ArknightsAuthorization_Series-mirror',
+						stats: { stars: '--', forks: '--', commits: '--', contributors: '--' }
+					}
+				],
+				githubUpdatedAt: '',
+				githubLoadFailed: false,
+				githubSectionOpen: false
 			}
 		},
 		computed: {
@@ -202,11 +278,39 @@
 			// 可见的鸣谢（根据展开状态）
 			visibleThanks() {
 				return this.expandedSections.thanks ? this.thanks : this.thanks.slice(0, 4);
+			},
+			// 开源贡献折叠状态下的单行摘要
+			githubSummary() {
+				if (this.githubRepos.some((r) => r.stats.stars === '--')) {
+					return this.githubLoadFailed ? '暂无数据' : '加载中…';
+				}
+				const stars = this.githubRepos.reduce((acc, r) => acc + (r.stats.stars || 0), 0);
+				const commits = this.githubRepos.reduce((acc, r) => acc + (r.stats.commits || 0), 0);
+				const devs = this.githubContributors.length;
+				return `共 ${commits} 次提交 · ${stars} Star${devs ? ` · ${devs} 位开发者` : ''}`;
+			},
+			// 跨仓库合并去重后的贡献者列表（按提交次数降序）
+			githubContributors() {
+				const map = new Map();
+				this.githubRepos.forEach((repo) => {
+					(repo.stats.contribList || []).forEach((c) => {
+						const prev = map.get(c.login);
+						if (prev) {
+							prev.count += c.count;
+						} else {
+							map.set(c.login, { login: c.login, avatar: c.avatar, count: c.count });
+						}
+					});
+				});
+				return Array.from(map.values()).sort((a, b) => b.count - a.count);
 			}
 		},
 		onLoad() {
+			// 每日任务打点
+			markDailyTask('view_about');
 			this.loadThemeSetting();
 			this.getAppVersion();
+			this.loadGithubStats();
 			// 设置分享配置
 			    wx.showShareMenu({
 			      withShareTicket: true,
@@ -237,11 +341,136 @@
 					console.error('[logError] storage failed:', logErr);
 				}
 			},
+
+			// ===== GitHub 开源贡献 =====
+			loadGithubStats() {
+				const CACHE_KEY = 'github_stats_cache_v2'; // v2：含贡献者头像列表
+				const TTL = 3 * 60 * 60 * 1000; // 3 小时缓存
+				let cached = null;
+				try {
+					const raw = uni.getStorageSync(CACHE_KEY);
+					if (raw && raw.time && raw.data) cached = raw;
+				} catch (e) {}
+				// 有缓存先展示（无论新鲜与否），再决定是否刷新
+				if (cached) {
+					this.applyGithubStats(cached.data, cached.time);
+					if (Date.now() - cached.time < TTL) return;
+				}
+				this.fetchGithubStats().then(({ data, time }) => {
+					this.githubLoadFailed = false;
+					this.applyGithubStats(data, time);
+					try { uni.setStorageSync(CACHE_KEY, { time, data }); } catch (e) {}
+				}).catch((err) => {
+					console.error('[github] 加载开源贡献数据失败:', err);
+					// 完全没有缓存可展示时提示失败；有旧缓存则静默保留
+					if (!cached) this.githubLoadFailed = true;
+				});
+			},
+
+			fetchGithubStats() {
+				const time = Date.now();
+				return Promise.all(this.githubRepos.map((repo) => this.fetchOneRepoStats(repo.full)))
+					.then((list) => ({ data: list, time }));
+			},
+
+			fetchOneRepoStats(fullName) {
+				// 优先走自建 Cloudflare API（域名已在白名单，服务端缓存 GitHub 数据+代理头像）
+				const selfUrl = 'https://arknightsauthorizationseriesdata-editor.pages.dev/api/github-stats?repo=' + encodeURIComponent(fullName);
+				return new Promise((resolve, reject) => {
+					uni.request({
+						url: selfUrl,
+						method: 'GET',
+						timeout: 10000,
+						success: (res) => {
+							if (res.statusCode === 200 && res.data && res.data.stars !== undefined) {
+								resolve({
+									stars: res.data.stars,
+									forks: res.data.forks,
+									commits: res.data.commits,
+									contributors: res.data.contributors,
+									contribList: (res.data.contribList || []).map((c) => ({
+										login: c.login,
+										avatar: c.avatar || '/static/default-avatar.png',
+										count: c.count || 0
+									}))
+								});
+							} else {
+								reject(new Error('self api status ' + res.statusCode));
+							}
+						},
+						fail: (err) => reject(err)
+					});
+				}).catch(() => this.fetchOneRepoStatsDirect(fullName)); // 自建 API 失败时回退直连 GitHub
+			},
+
+			fetchOneRepoStatsDirect(fullName) {
+				const base = 'https://api.github.com/repos/' + fullName;
+				const header = { 'Accept': 'application/vnd.github+json' };
+				const req = (url) => new Promise((resolve) => {
+					uni.request({
+						url,
+						method: 'GET',
+						header,
+						timeout: 10000,
+						success: (res) => resolve(res),
+						fail: () => resolve(null)
+					});
+				});
+				return Promise.all([
+					req(base),
+					req(base + '/commits?per_page=1'),
+					req(base + '/contributors?per_page=1&anon=1'),
+					req(base + '/contributors?per_page=8')
+				]).then(([info, commits, contribs, contribList]) => {
+					if (!info || info.statusCode !== 200 || !info.data) {
+						throw new Error('repo api failed: ' + fullName);
+					}
+					// 贡献者头像列表（真实账号，含头像与提交次数）
+					let contribListData = [];
+					if (contribList && contribList.statusCode === 200 && Array.isArray(contribList.data)) {
+						contribListData = contribList.data
+							.filter((c) => c && c.login)
+							.map((c) => ({ login: c.login, avatar: c.avatar_url || '/static/default-avatar.png', count: c.contributions || 0 }));
+					}
+					return {
+						stars: info.data.stargazers_count || 0,
+						forks: info.data.forks_count || 0,
+						commits: this.parseLastPage(commits ? commits.header : null),
+						contributors: this.parseLastPage(contribs ? contribs.header : null),
+						contribList: contribListData
+					};
+				});
+			},
+
+			// 从 Link 响应头解析总条数（per_page=1 时最后一页页码即总数）
+			parseLastPage(headerObj) {
+				if (!headerObj) return '--';
+				const link = headerObj.Link || headerObj.link || '';
+				const m = link.match(/page=(\d+)>;\s*rel="last"/);
+				return m ? Number(m[1]) : 1;
+			},
+
+			applyGithubStats(data, time) {
+				if (!Array.isArray(data)) return;
+				this.githubRepos.forEach((repo, i) => {
+					if (data[i]) this.$set ? this.$set(repo, 'stats', data[i]) : (repo.stats = data[i]);
+				});
+				const d = new Date(time);
+				const pad = (n) => (n < 10 ? '0' + n : '' + n);
+				this.githubUpdatedAt = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+			},
+
+			// 仓库卡的点击动作文案（App / H5 = 打开链接，小程序 = 复制链接）
+			linkActionHint() {
+				return linkActionText();
+			},
+			
+			gotoGithubRepo(repo) {
+				openLink(repo && repo.url);
+			},
 			gotofeedback() {
 				// #ifdef MP-WEIXIN	
 				wx.openEmbeddedMiniProgram({
-				
-				// NOTE: Replace with your own mini-program AppID for navigation
 				appId: 'wxebadf544ddae62cb',
 				path: 'pages/webview/index?sid=24775309&hash=7022&navigateBackMiniProgram=true',});
 				// #endif
@@ -284,55 +513,11 @@
 			},
 			
 			gotogithubmainrepo() {
-				// #ifdef MP-WEIXIN
-				  wx.setClipboardData({
-					  data: "https://github.com/awadwd/Arknights-Authorization-Tool",
-					  success: ()=>{
-						  uni.showToast({
-						  	title: '链接复制成功，请前往浏览器打开'
-						  });
-					  },
-					  fail(err) {
-					  	console.error('复制失败:',err)
-						uni.showToast({
-							title: err,
-						})
-					  }
-				  })
-				// #endif
-				// #ifdef APP-PLUS
-				plus.runtime.openURL('https://github.com/awadwd/Arknights-Authorization-Tool');
-				// #endif
-				
-				// #ifdef H5
-				window.open('https://github.com/awadwd/Arknights-Authorization-Tool');
-				// #endif
+				openLink("https://github.com/awadwd/Arknights-Authorization-Tool");
 			},
 			
 			gotogithubdatabaserepo() {
-				// #ifdef MP-WEIXIN
-				  wx.setClipboardData({
-					  data: "https://github.com/awadwd/ArknightsAuthorization_Series-mirror",
-					  success: ()=>{
-						  uni.showToast({
-						  	title: '链接复制成功，请前往浏览器打开'
-						  });
-					  },
-					  fail(err) {
-					  	console.error('复制失败:',err)
-						uni.showToast({
-							title: err,
-						})
-					  }
-				  })
-				// #endif
-				// #ifdef APP-PLUS
-				plus.runtime.openURL('https://github.com/awadwd/ArknightsAuthorization_Series-mirror');
-				// #endif
-				
-				// #ifdef H5
-				window.open('https://github.com/awadwd/ArknightsAuthorization_Series-mirror');
-				// #endif
+				openLink("https://github.com/awadwd/ArknightsAuthorization_Series-mirror");
 			},
 			
 			// 跳转到公告页面（新增方法）
@@ -357,7 +542,7 @@
 				loadThemeSetting() {
 					try {
 						const themeMode = uni.getStorageSync('themeMode');
-						if (themeMode && (themeMode === 'simple' || themeMode === 'ark' || themeMode === 'jieyuan')) {
+						if (themeMode && (themeMode === 'simple' || themeMode === 'ak' || themeMode === 'ark' || themeMode === 'jieyuan' || themeMode === 'liquid' || themeMode === 'liquidDark')) {
 							this.themeMode = themeMode;
 						} else {
 							this.themeMode = 'simple';
@@ -400,35 +585,14 @@
 			
 			
 			onCarouselItemClick() {
-			  // 统一复制固定链接并提示用户
-			  const fixedLink = "https://afdian.com/a/AuthorizationSeries";
-			  
-			  // 复制链接到剪贴板
-			  uni.setClipboardData({
-			    data: fixedLink,
-			    success: () => {
-			      // 显示提示信息
-			      uni.showToast({
-			        title: '链接复制成功',
-			        icon: 'success'
-			      });
-			    },
-			    fail: (err) => {
-			      console.error('复制链接失败:', err);
-			      uni.showToast({
-			        title: '复制失败，请手动复制链接',
-			        icon: 'none'
-			      });
-			    }
-			  });
+				// 轮播图固定跳转链接（App / H5 直接打开，小程序复制）
+				openLink("https://afdian.com/a/AuthorizationSeries");
 			},
 			
 			//跳转至微信小程序问卷页面
 			gotoquestionnaire() {
 				// #ifdef MP-WEIXIN
 				wx.openEmbeddedMiniProgram({
-				
-				// NOTE: Replace with your own mini-program AppID for navigation
 				appId: 'wxebadf544ddae62cb',
 				path: 'pages/webview/index?sid=25128247&hash=3578&navigateBackMiniProgram=true',});
 				// #endif
@@ -444,9 +608,7 @@
 			gotoCustomSerachWordquestionnaire(){
 				// #ifdef MP-WEIXIN
 				wx.openEmbeddedMiniProgram({
-					
-				// NOTE: Replace with your own mini-program AppID for navigation
-				appId: 'wxebadf544ddae62cb',
+					appId: 'wxebadf544ddae62cb',
 					path: 'pages/webview/index?sid=24662080&hash=738a&navigateBackMiniProgram=true',
 				});
 				// #endif
@@ -533,6 +695,130 @@
 		box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
 	}
 
+	/* 开源贡献 */
+	.repo-card {
+		background-color: #f8f9fa;
+		border: 1rpx solid #ebeef5;
+		border-radius: 16rpx;
+		padding: 24rpx;
+		margin-bottom: 20rpx;
+	}
+
+	.repo-card:active {
+		background-color: #f0f7ff;
+	}
+
+	.repo-card:last-child {
+		margin-bottom: 0;
+	}
+
+	.repo-head {
+		display: flex;
+		align-items: center;
+		margin-bottom: 20rpx;
+	}
+
+	.repo-icon {
+		width: 40rpx;
+		height: 40rpx;
+		margin-right: 16rpx;
+	}
+
+	.repo-info {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.repo-name {
+		font-size: 26rpx;
+		font-weight: bold;
+		color: #333;
+	}
+
+	.repo-desc {
+		font-size: 22rpx;
+		color: #999;
+		margin-top: 4rpx;
+	}
+
+	.repo-arrow {
+		font-size: 36rpx;
+		color: #c0c4cc;
+	}
+
+	.repo-stats {
+		display: flex;
+	}
+
+	.repo-stat {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.repo-stat-num {
+		font-size: 30rpx;
+		font-weight: bold;
+		color: #409EFF;
+	}
+
+	.repo-stat-label {
+		font-size: 20rpx;
+		color: #999;
+		margin-top: 4rpx;
+	}
+
+	.repo-updated {
+		display: block;
+		text-align: center;
+		font-size: 20rpx;
+		color: #c0c4cc;
+		margin-top: 16rpx;
+	}
+
+	.repo-fail {
+		display: block;
+		text-align: center;
+		font-size: 20rpx;
+		color: #E6A23C;
+		margin-top: 10rpx;
+	}
+
+	/* 开源贡献折叠头 */
+	.section-header-toggle {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.header-right {
+		display: flex;
+		align-items: center;
+	}
+
+	.section-summary {
+		font-size: 22rpx;
+		color: #999;
+		margin-right: 12rpx;
+	}
+
+	/* 贡献者头像常驻区 */
+	.github-avatar-zone {
+		padding-top: 24rpx;
+		padding-bottom: 10rpx;
+	}
+
+	.github-avatar-grid {
+		margin-bottom: 0;
+	}
+
+	/* 可折叠的仓库数据卡区 */
+	.github-detail-zone {
+		padding-top: 0;
+	}
+
 	.section-header {
 		padding: 25rpx 30rpx;
 		border-bottom: 1rpx solid #f0f0f0;
@@ -578,8 +864,15 @@
 	}
 
 	.contributor-avatar {
-		width: 60rpx;
-		height: 60rpx;
+		width: 100%;
+		height: 100%;
+		display: block;
+	}
+
+	/* 图标型头像（加号占位图）：保持图形比例并留出安全边距 */
+	.avatar-glyph {
+		width: 60%;
+		height: 60%;
 	}
 
 	.contributor-name {
@@ -688,34 +981,7 @@
 		.support-grid {
 			grid-template-columns: 1fr;
 		}
-	}
-
-	/* ========== 科技风格 ========== */
-	.container.theme-ark {
-		background: linear-gradient(180deg, #0D0D15 0%, #1A1A2E 100%);
-	}
-	.container.theme-ark .header-section,
-	.container.theme-ark .about-content,
-	.container.theme-ark .section-card,
-	.container.theme-ark .footer-section,
-	.container.theme-ark .developers-list,
-	.container.theme-ark .section-item {
-		background: linear-gradient(135deg, #16162A 0%, #1E1E3A 100%);
-		border: 1rpx solid #2A2A4A;
-	}
-	.container.theme-ark .app-name { color: #FF6B35; text-shadow: 0 0 10rpx rgba(255,107,53,0.3); }
-	.container.theme-ark .app-version,
-	.container.theme-ark .app-version-link { color: #e0e0e0; }
-	.container.theme-ark .section-title,
-	.container.theme-ark .section-text,
-	.container.theme-ark .section-content { color: #e0e0e0; }
-	.container.theme-ark .section-toggle { color: #FF6B35; }
-	.container.theme-ark .copyright-text { color: #888; }
-	.container.theme-ark .developer-name { color: #FF6B35; }
-	.container.theme-ark .app-logo { filter: brightness(0) invert(1); opacity: 0.8; }
-	.container.theme-ark .qq-logo { filter: brightness(0) invert(1); opacity: 0.7; }
-
-	/* ========== 界园风格 ========== */
+	}/* ========== 界园风格 ========== */
 	.container.theme-jieyuan {
 		background-color: #FAF3E0;
 	}

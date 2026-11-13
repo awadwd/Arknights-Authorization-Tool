@@ -62,7 +62,7 @@
               <view class="character-avatar-wrap">
                 <image 
                   class="character-avatar" 
-                  :src="char.imageUrl || char.avatar || '/static/default-avatar.png'" 
+                  :src="imgSrc(pAvatar(char)) || '/static/default-avatar.png'" 
                   mode="aspectFit"
                   @error="onCharacterImageError(index)"
                 ></image>
@@ -179,7 +179,14 @@
 
 <script>
   import errorLog from "@/utils/errorLog.js";
+  import avatarMixin from "@/utils/avatarMixin.js";
+  import { boxCtx } from "@/utils/avatarPref.js";
+import { markDailyTask } from "@/utils/dailyTask.js";
+  import { fetchSelfHosted } from "@/utils/knowCloudProxy.js";
   export default {
+
+    mixins: [avatarMixin],
+
     data() {
       return {
         themeMode: 'simple',
@@ -215,6 +222,7 @@
     },
 
     onShow() {
+      this.refreshAvatarPref();
       // 仅刷新调试信息，不重复下载
       this.refreshDebugInfo();
     },
@@ -230,7 +238,7 @@
       loadThemeSetting() {
         try {
           const theme = uni.getStorageSync('themeMode');
-          if (theme && ['simple', 'ark', 'jieyuan'].includes(theme)) {
+          if (theme && ['simple', 'ak', 'ark', 'jieyuan', 'liquid', 'liquidDark'].includes(theme)) {
             this.themeMode = theme;
           }
         } catch (e) {
@@ -246,23 +254,42 @@
           this.arknightsData = localData;
           this.buildBarcodeMap();
           console.log('从本地加载数据:', localData.length, '盒，条码:', Object.keys(this.barcodeMap).length, '条');
-          // 查找本地 3.0
-          const local3 = localData.find(b => b.Box_id === '3.0');
-          console.log('[本地缓存] 3.0 barcodes:', local3 ? local3.barcodes : 'not found');
-          // 统计所有盒的 barcodes 长度
-          let totalBytes = 0;
-          const boxBarcodesInfo = [];
-          for (const box of localData) {
-            const arr = box.barcodes || [];
-            totalBytes += arr.length;
-            if (arr.length > 1) {
-              boxBarcodesInfo.push(box.Box_id + ':' + arr.length);
-            }
-          }
-          console.log('[本地缓存] barcodes 总条数:', totalBytes, '多条码盒前 10:', boxBarcodesInfo.slice(0, 10));
+          this.refreshDebugInfo();
+          // 已有本地数据时后台静默更新，不阻塞
+          this.silentCheckUpdate().catch(e => this.logError(e));
+          return;
+        }
+
+        // 无本地数据：先加载提示，尝试拉取；仍无则弹窗引导回首页
+        uni.showLoading({ title: '正在检查数据...', mask: true });
+        try {
+          await this.silentCheckUpdate();
+        } catch (e) {
+          this.logError(e);
+        } finally {
+          uni.hideLoading();
         }
         this.refreshDebugInfo();
-        this.silentCheckUpdate();
+        if (!this.arknightsData || !this.arknightsData.length) {
+          this.promptDownloadData();
+        }
+      },
+
+      // 无数据引导：确认后 reLaunch 回首页并高亮「更新干员数据」
+      promptDownloadData() {
+        uni.showModal({
+          title: '需要先下载数据',
+          content: '尚未检测到干员数据，请先到首页点击「更新干员数据」完成下载',
+          confirmText: '去首页',
+          cancelText: '取消',
+          showCancel: true,
+          success: (res) => {
+            if (!res.confirm) return;
+            try { uni.setStorageSync('needHighlight', true); } catch (storageErr) { this.logError(storageErr); }
+            // 始终 reLaunch，避免页面栈异常导致回不去首页
+            uni.reLaunch({ url: '/pages/index/index' });
+          }
+        });
       },
       
       async silentCheckUpdate() {
@@ -353,10 +380,15 @@
       
       async getVersionFromKnowCloud() {
         try {
-          const clientId = 'YOUR_KNOW_CLOUD_CLIENT_ID';
-          const baseUrl = 'https://YOUR_KNOW_CLOUD_CLIENT_ID.myminapp.com/hserve/v2.2';
+          const clientId = '21680db9b1362913357c';
+          const baseUrl = 'https://21680db9b1362913357c.myminapp.com/hserve/v2.2';
           
-          const res = await uni.request({
+          let res;
+          const sh_Version = await fetchSelfHosted("Version", { data: { limit: 1, offset: 0 } });
+          if (sh_Version) {
+            res = { statusCode: 200, data: sh_Version };
+          } else {
+          res = await uni.request({
             url: `${baseUrl}/table/Version/record?limit=1&offset=0`,
             method: 'GET',
             header: {
@@ -365,6 +397,7 @@
             },
             timeout: 10000
           });
+          }
           
           console.log('[version] status:', res.statusCode, 'objects:', res.data && res.data.objects ? res.data.objects.length : -1);
           
@@ -626,7 +659,8 @@
                 avatar: charData.avatar || charData.imageUrl || '',
                 hotcharacter: charData.hotcharacter || false,
                 nolyELITE1: charData.nolyELITE1 || false,
-                market_price: charData.market_price || null
+                market_price: charData.market_price || null,
+                _avatarCtx: boxCtx(boxData)
               });
             } else if (typeof charData === 'string' && charData.trim()) {
               characters.push({
@@ -661,6 +695,8 @@
 
         // 提取角色列表
         const characters = found && boxInfo.boxData ? this.extractCharacters(boxInfo.boxData) : [];
+        // 每日任务打点
+        if (found) markDailyTask('scan_try');
 
         this.scanResult = {
           show: true,
@@ -754,7 +790,7 @@
             console.error('跳转问卷小程序失败:', err);
             // 失败时回退到原反馈页面
             uni.navigateTo({
-              url: '/pages/box_feedback/box_feedback'
+              url: '/pages/box_feedback_new/box_feedback_new'
             });
           }
         });
@@ -1327,26 +1363,4 @@
 
   .privacy-btn.confirm .btn-text {
     color: #fff;
-  }
-
-  /* 深色主题适配 */
-  .theme-ark .privacy-content {
-    background-color: #2a2a2a;
-  }
-
-  .theme-ark .privacy-text {
-    color: #e0e0e0;
-  }
-
-  .theme-ark .privacy-item {
-    color: #aaa;
-  }
-
-  .theme-ark .privacy-btn.cancel {
-    background-color: #444;
-  }
-
-  .theme-ark .privacy-btn.cancel .btn-text {
-    color: #ccc;
-  }
-</style>
+  }</style>

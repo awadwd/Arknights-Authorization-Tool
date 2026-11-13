@@ -1,0 +1,82 @@
+/* AE 共享 — 严格对齐 endspace-theme（Light Industrial）
+   bg #fafafa | card #fff | border #e4e4e7
+   text #18181b / #52525b / #a1a1aa
+   accent #FBFB45（亮柠檬黄，仅主 CTA / 高亮）
+*/
+page {
+	--es-bg: #fafafa;
+	--es-surface: #ffffff;
+	--es-bg-soft: #f4f4f5;
+	--es-text: #18181b;
+	--es-text-2: #52525b;
+	--es-text-3: #a1a1aa;
+	--es-border: #e4e4e7;
+	--es-accent: #FBFB45;
+	--es-accent-dim: rgba(251, 251, 69, 0.15);
+	--es-radius: 12rpx;
+	--es-shadow: 0 1px 2px rgba(0,0,0,.04), 0 2px 4px rgba(0,0,0,.04);
+}
+
+.ef-page {
+	min-height: 100vh;
+	background: var(--es-bg) !important;
+	color: var(--es-text) !important;
+	box-sizing: border-box;
+	position: relative;
+}
+
+/* 极淡技术网格 */
+.ef-page::before {
+	content: '';
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	z-index: 0;
+	background-image:
+		linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+	background-size: 40px 40px;
+}
+
+.ef-card {
+	background: var(--es-surface) !important;
+	border: 1rpx solid var(--es-border) !important;
+	border-radius: var(--es-radius) !important;
+	box-shadow: var(--es-shadow) !important;
+	position: relative;
+	z-index: 1;
+}
+.ef-card::before { display: none !important; }
+
+/* 次要按钮：白底灰边黑字 */
+.ef-btn,
+.btn-ghost {
+	background: var(--es-surface) !important;
+	color: var(--es-text) !important;
+	border: 1rpx solid var(--es-border) !important;
+	border-radius: 10rpx !important;
+	font-weight: 600 !important;
+	box-shadow: none !important;
+}
+.ef-btn::after { border: none; }
+
+/* 主 CTA：亮柠檬黄 + 黑字 */
+.ef-btn-primary,
+.btn-accent {
+	background: var(--es-accent) !important;
+	color: #000 !important;
+	border: 1rpx solid #000 !important;
+	border-radius: 10rpx !important;
+	font-weight: 700 !important;
+	box-shadow: none !important;
+}
+.ef-btn-primary::after { border: none; }
+
+.ef-tag {
+	background: var(--es-bg-soft);
+	color: var(--es-text-2);
+	border: 1rpx solid var(--es-border);
+	border-radius: 6rpx;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+}

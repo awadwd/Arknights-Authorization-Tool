@@ -227,7 +227,7 @@
 				loadThemeSetting() {
 					try {
 						const themeMode = uni.getStorageSync('themeMode');
-						if (themeMode && (themeMode === 'simple' || themeMode === 'ark' || themeMode === 'jieyuan')) {
+						if (themeMode && (themeMode === 'simple' || themeMode === 'ak' || themeMode === 'ark' || themeMode === 'jieyuan' || themeMode === 'liquid' || themeMode === 'liquidDark')) {
 							this.themeMode = themeMode;
 						} else {
 							this.themeMode = 'simple';
@@ -528,6 +528,9 @@
 		padding: 20rpx 30rpx;
 		position: relative;
 	}
+	.search-input-container:focus-within {
+		box-shadow: var(--ak-focus-shadow, 0 0 0 4rpx rgba(64, 158, 255, 0.18), 0 10rpx 24rpx -6rpx rgba(31, 94, 168, 0.28), inset 0 0 0 2rpx rgba(64, 158, 255, 0.45), inset 0 2rpx 8rpx rgba(31, 94, 168, 0.10));
+	}
 
 	.search-icon {
 		width: 32rpx;
@@ -812,41 +815,7 @@
 
 	.tip-text:last-child {
 		margin-bottom: 0;
-	}
-
-	/* ========== 科技风格 ========== */
-	.container.theme-ark {
-		background: linear-gradient(180deg, #0D0D15 0%, #1A1A2E 100%);
-	}
-	.container.theme-ark .header,
-	.container.theme-ark .search-section,
-	.container.theme-ark .stats-section,
-	.container.theme-ark .character-list,
-	.container.theme-ark .character-card,
-	.container.theme-ark .empty-state,
-	.container.theme-ark .tip-section {
-		background: linear-gradient(135deg, #16162A 0%, #1E1E3A 100%);
-		border: 1rpx solid #2A2A4A;
-	}
-	.container.theme-ark .subtitle { color: #e0e0e0; }
-	.container.theme-ark .search-input-container { background-color: #16162A; border-color: #2A2A4A; }
-	.container.theme-ark .search-input { color: #e0e0e0; }
-	.container.theme-ark .search-icon { filter: brightness(0) invert(1); opacity: 0.7; }
-	.container.theme-ark .clear-search { color: #888; }
-	.container.theme-ark .stats-text { color: #FF6B35; }
-	.container.theme-ark .character-name { color: #e0e0e0; }
-	.container.theme-ark .words-tags { color: #e0e0e0; }
-	.container.theme-ark .fixed-tag { background: rgba(255,107,53,0.15); color: #FF6B35; }
-	.container.theme-ark .word-tag { background: rgba(255,107,53,0.1); color: #FF6B35; border-color: rgba(255,107,53,0.3); }
-	.container.theme-ark .empty-text { color: #888; }
-	.container.theme-ark .tip-text { color: #888; }
-	.container.theme-ark .pagination { background: rgba(22,22,42,0.8); }
-	.container.theme-ark .page-btn { background: #16162A; color: #e0e0e0; border-color: #2A2A4A; }
-	.container.theme-ark .page-btn:active { background: #FF6B35; color: #fff; }
-	.container.theme-ark .add-word-input { background-color: #16162A; color: #e0e0e0; border-color: #2A2A4A; }
-	.container.theme-ark .add-word-section { background: rgba(22,22,42,0.5); border-color: #2A2A4A; }
-
-	/* ========== 界园风格 ========== */
+	}/* ========== 界园风格 ========== */
 	.container.theme-jieyuan {
 		background-color: #FAF3E0;
 	}

@@ -1,12 +1,33 @@
 <template>
-  <view class="list-page">
+  <view class="list-page" :class="'theme-' + themeMode">
     <!-- 说明 -->
     <view class="notice-bar">
-      <text class="notice-text">以下盒号扫码数据不完整，建议优先补充多条码以提升识别率</text>
+      <text class="notice-text">以下盒号扫码数据不完整（按当前盒号数据自动筛选），建议优先补充多条码以提升识别率</text>
+    </view>
+
+    <!-- 加载中 -->
+    <view v-if="loading" class="il-state">
+      <view class="il-ring"></view>
+      <text class="il-text">正在读取盒号数据…</text>
+    </view>
+
+    <!-- 加载失败 -->
+    <view v-else-if="loadError" class="il-state">
+      <view class="il-glyph"></view>
+      <text class="il-text">{{ loadError }}</text>
+      <view class="il-btn" @click="loadData">
+        <text class="il-btn-text">重新加载</text>
+      </view>
+    </view>
+
+    <!-- 没有不完整盒号 -->
+    <view v-else-if="!hasData" class="il-state">
+      <view class="il-glyph ok"></view>
+      <text class="il-text">当前所有盒号的条码数据都完整</text>
     </view>
 
     <!-- 三行三列表格 -->
-    <view class="table-wrap">
+    <view v-else class="table-wrap">
       <!-- 表头 -->
       <view class="table-row header">
         <view class="table-cell header-cell" style="width:200rpx;"></view>
@@ -94,14 +115,14 @@
     </view>
 
     <!-- 统计摘要 -->
-    <view class="summary-bar">
+    <view v-if="!loading && !loadError && hasData" class="summary-bar">
       <text class="summary-text">
         共 {{ totalBoxes }} 盒 · 完全缺失 {{ missing_regular.length + missing_sp.length }} 盒 · 仅单条码 {{ single_regular.length + single_sp.length }} 盒
       </text>
     </view>
 
     <!-- 提示 -->
-    <view class="tip-section">
+    <view v-if="!loading && !loadError && hasData" class="tip-section">
       <text class="tip-text">点击任意盒号可跳转到反馈页面补充条码数据</text>
     </view>
   </view>
@@ -109,83 +130,186 @@
 
 <script>
 import errorLog from "@/utils/errorLog.js";
+import { markDailyTask } from "@/utils/dailyTask.js";
+
+// 盒号数据源：与「扫码识别」页保持一致
+const BOX_DATA_URL = 'https://raw.gitcode.com/huangjinzhou1/ArknightsAuthorization_Series/raw/main/Box_Id.json';
+
 export default {
   data() {
     return {
-      // 常规款 - 仅单条码
-      single_regular: [
-        { bid: '1.0', bname: '', barcode: '6972643691935' },
-        { bid: '4.0', bname: '', barcode: '6975194631917' },
-        { bid: '12.0', bname: '', barcode: '6975194634116' },
-        { bid: '26.0', bname: '', barcode: '6975194634550' },
-        { bid: '34.0', bname: '', barcode: '6975194636455' },
-        { bid: '35.0', bname: '', barcode: '6975194637476' },
-        { bid: '36.0', bname: '', barcode: '6975194637865' },
-        { bid: '38.0', bname: '', barcode: '6975194639876' },
-        { bid: '43.0', bname: '', barcode: '6977427182036' },
-        { bid: '47.0', bname: '', barcode: '6977427186591' },
-        { bid: '48.0', bname: '', barcode: '6977427186607' },
-        { bid: '49.0', bname: '', barcode: '6977427188847' },
-        { bid: '52.0', bname: '', barcode: '6978899534309' },
-      ],
-      // SP - 仅单条码
-      single_sp: [
-        { bid: 'CanNot Wait For', bname: '', barcode: '6972643696046' },
-        { bid: 'ManiFesto:', bname: '', barcode: '6972643696053' },
-        { bid: '前航远歌', bname: '', barcode: '6972643696060' },
-        { bid: '灯华梦踏', bname: '', barcode: '6972643696077' },
-        { bid: '零号特工', bname: '', barcode: '6972643698262' },
-        { bid: '梦人', bname: '', barcode: '6975194638275' },
-        { bid: '行者', bname: '', barcode: '6975194638299' },
-        { bid: '集成映射', bname: '', barcode: '6977427185105' },
-        { bid: '水晶箭行动', bname: '', barcode: '6975194637445' },
-        { bid: '无忧梦呓', bname: '', barcode: '6977427188458' },
-        { bid: '渡星客', bname: '', barcode: '6977427189967' },
-      ],
-      // 常规款 - 完全缺失
-      missing_regular: [
-        { bid: '14.0', bname: '' },
-        { bid: '44.0', bname: '' },
-        { bid: '53.0', bname: '' },
-        { bid: '54.0', bname: '' },
-      ],
-      // SP - 完全缺失
-      missing_sp: [
-        { bid: '梦源之地', bname: '' },
-        { bid: '浮生听风', bname: '' },
-        { bid: '象限解构者', bname: '' },
-        { bid: '迷航追踪', bname: '' },
-        { bid: '琅环玄机', bname: '' },
-        { bid: '踏沙寻影', bname: '' },
-        { bid: '缉速狂飙', bname: '' },
-        { bid: '战术交汇', bname: '' },
-        { bid: '第一期设定集赠品', bname: '' },
-        { bid: '嘉年华2026', bname: '' },
-      ],
+      // 主题模式
+      themeMode: 'simple',
+      // 盒号原始数据（本地缓存优先，缺失时远程兜底）
+      arknightsData: [],
+      loading: true,
+      loadError: ''
     };
   },
   computed: {
-    totalBoxes() {
-      return this.single_regular.length + this.single_sp.length +
-             this.missing_regular.length + this.missing_sp.length;
+    /**
+     * 从 arknightsData 自动筛选出不完整盒号，不再依赖手工维护的清单。
+     * 判定规则（一个盒子的条码数量 = barcodes 数组 + barcode 单值，去重去空）：
+     *   · 0 条  → 完全缺失（无任何条码数据）
+     *   · 1 条  → 仅单条码（缺少整盒 / 单抽 / 复刻盒条码）
+     *   · >1 条 → 数据完整，不在本页展示
+     * 分栏规则：Box_id 为纯数字（如 1.0 / 52.0）→ 常规款；文字盒号 → SP / 特别通行认证
+     */
+    incompleteGroups() {
+      const groups = {
+        single_regular: [],
+        single_sp: [],
+        missing_regular: [],
+        missing_sp: []
+      };
+      const list = Array.isArray(this.arknightsData) ? this.arknightsData : [];
+      for (let i = 0; i < list.length; i++) {
+        const box = list[i] || {};
+        const rawId = box.Box_id;
+        const bid = String(rawId === undefined || rawId === null ? '' : rawId).trim();
+        if (!bid) continue;
+
+        const codes = this.collectBarcodes(box);
+        const isRegular = /^\d+(\.\d+)?$/.test(bid);
+        const item = {
+          bid: bid,
+          bname: box.Box_name || '',
+          barcode: codes.length ? codes[0] : '',
+          barcodes: codes,
+          sortKey: isRegular ? parseFloat(bid) : 0
+        };
+
+        if (codes.length === 0) {
+          (isRegular ? groups.missing_regular : groups.missing_sp).push(item);
+        } else if (codes.length === 1) {
+          (isRegular ? groups.single_regular : groups.single_sp).push(item);
+        }
+      }
+      // 常规款按盒号数值升序；SP 保持数据原始顺序
+      const byNum = (a, b) => a.sortKey - b.sortKey;
+      groups.single_regular.sort(byNum);
+      groups.missing_regular.sort(byNum);
+      return groups;
     },
+    single_regular() {
+      return this.incompleteGroups.single_regular;
+    },
+    single_sp() {
+      return this.incompleteGroups.single_sp;
+    },
+    missing_regular() {
+      return this.incompleteGroups.missing_regular;
+    },
+    missing_sp() {
+      return this.incompleteGroups.missing_sp;
+    },
+    totalBoxes() {
+      return Array.isArray(this.arknightsData) ? this.arknightsData.length : 0;
+    },
+    hasData() {
+      return this.totalBoxes > 0;
+    }
   },
   onLoad() {
+    this.loadThemeSetting();
     uni.setNavigationBarTitle({ title: '数据不全盒号列表' });
+    this.loadData();
   },
   methods: {
+    loadThemeSetting() {
+      try {
+        const t = uni.getStorageSync('themeMode');
+        this.themeMode = (t && ['simple', 'ak', 'ark', 'jieyuan', 'liquid', 'liquidDark'].indexOf(t) > -1) ? t : 'simple';
+      } catch (e) {
+        this.themeMode = 'simple';
+      }
+    },
     logError(e, ctx) {
-				try {
-					errorLog.logError(e, ctx);
-				} catch (logErr) {
-					console.error('[logError] storage failed:', logErr);
-				}
-			},
+      try {
+        errorLog.logError(e, ctx);
+      } catch (logErr) {
+        console.error('[logError] storage failed:', logErr);
+      }
+    },
+    /**
+     * 汇总单个盒子的全部条码：barcodes 数组 + barcode 单值，去重、去空、去空格
+     */
+    collectBarcodes(box) {
+      const list = [];
+      const seen = {};
+      const push = (val) => {
+        if (val === undefined || val === null) return;
+        const code = String(val).trim().replace(/\s+/g, '');
+        if (!code || seen[code]) return;
+        seen[code] = true;
+        list.push(code);
+      };
+      const arr = box.barcodes;
+      if (Array.isArray(arr)) {
+        for (let i = 0; i < arr.length; i++) push(arr[i]);
+      }
+      push(box.barcode);
+      return list;
+    },
+    /**
+     * 数据加载：本地缓存优先（秒开、可离线），无缓存时远程兜底
+     */
+    loadData() {
+      this.loadError = '';
+      let local = null;
+      try {
+        local = uni.getStorageSync('arknightsData');
+      } catch (e) {
+        this.logError(e, 'incomplete_list.storage');
+      }
+      if (Array.isArray(local) && local.length > 0) {
+        this.arknightsData = local;
+        this.loading = false;
+        return;
+      }
+      this.loading = true;
+      this.downloadFromGitcode().then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          this.arknightsData = data;
+          try {
+            uni.setStorageSync('arknightsData', data);
+          } catch (e) {
+            this.logError(e, 'incomplete_list.cache');
+          }
+        } else {
+          this.loadError = '未获取到盒号数据，请检查网络后重试';
+        }
+        this.loading = false;
+      }).catch((e) => {
+        this.logError(e, 'incomplete_list.loadData');
+        this.loadError = '盒号数据加载失败，请检查网络后重试';
+        this.loading = false;
+      });
+    },
+    downloadFromGitcode() {
+      return new Promise((resolve, reject) => {
+        uni.request({
+          url: BOX_DATA_URL,
+          method: 'GET',
+          timeout: 15000,
+          success: (res) => {
+            if (res && res.statusCode === 200 && Array.isArray(res.data)) {
+              resolve(res.data);
+            } else {
+              resolve(null);
+            }
+          },
+          fail: (err) => reject(err)
+        });
+      });
+    },
     goToFeedback(item) {
+    // 每日任务打点
+    markDailyTask('feedback_try');
       uni.setStorageSync('feedbackBoxId', item.bid);
       uni.setStorageSync('feedbackBoxName', item.bname || item.bid);
       uni.navigateTo({
-        url: '/pages/box_feedback/box_feedback',
+        url: '/pages/box_feedback_new/box_feedback_new?boxId=' + encodeURIComponent(item.bid),
       });
     },
   },
@@ -347,5 +471,63 @@ export default {
 .tip-text {
   font-size: 24rpx;
   color: #409EFF;
+}
+
+/* ================= 加载 / 失败 / 空态 ================= */
+.il-state {
+  margin: 40rpx 20rpx;
+  padding: 60rpx 30rpx;
+  background-color: var(--ak-surface-panel, #ffffff);
+  border-radius: 16rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.il-ring {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  border: 4rpx solid var(--ak-hairline-soft, #e4e7ed);
+  border-top-color: var(--ak-signal-info, #409EFF);
+  animation: il-spin 0.9s linear infinite;
+}
+
+@keyframes il-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.il-glyph {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  border: 4rpx solid var(--ak-hairline, #c0c4cc);
+  box-sizing: border-box;
+}
+
+.il-glyph.ok {
+  border-color: var(--ak-color-primary, #67c23a);
+}
+
+.il-text {
+  margin-top: 24rpx;
+  font-size: 26rpx;
+  line-height: 1.6;
+  text-align: center;
+  color: var(--ak-text-muted, #909399);
+}
+
+.il-btn {
+  margin-top: 30rpx;
+  padding: 14rpx 48rpx;
+  border-radius: 32rpx;
+  background-color: var(--ak-signal-action, #409EFF);
+}
+
+.il-btn-text {
+  font-size: 26rpx;
+  color: var(--ak-text-on-action, #ffffff);
 }
 </style>

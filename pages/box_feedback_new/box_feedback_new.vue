@@ -167,7 +167,7 @@
 						</view>
 						<image v-if="ref.type === 'image'" :src="ref.content" mode="aspectFill" class="reference-image" @tap="previewReferenceImage(index)"></image>
 						<text v-if="ref.type === 'text'" class="reference-text">{{ ref.content }}</text>
-						<text v-if="ref.type === 'link'" class="reference-link" @tap="openLink(ref.content)">{{ ref.content }}</text>
+						<text v-if="ref.type === 'link'" class="reference-link" @tap="openReferenceLink(ref.content)">{{ ref.content }}</text>
 					</view>
 				</view>
 				
@@ -242,6 +242,7 @@
 
 <script>
 	import errorLog from "@/utils/errorLog.js";
+import { openLink } from "@/utils/openLink.js";
 	export default {
 		data() {
 			return {
@@ -300,7 +301,17 @@
 		
 		onLoad(options) {
 			this.loadThemeSetting();
-			this.boxId = options.boxId || '';
+			// App 与小程序不会自动解开 url 里的中文参数：盒号不全列表里那些中文盒号
+			// （如「嘉年华…」）传过来是 %E5%98%89… 的形态，不 decode 会原样显示在页面上。
+			let rawBoxId = options.boxId || '';
+			try {
+				// 兼容双重编码：%2520 这种解一次还剩 % 的，再解一次
+				rawBoxId = decodeURIComponent(String(rawBoxId));
+				if (/%[0-9a-fA-F]{2}/.test(rawBoxId)) {
+					rawBoxId = decodeURIComponent(rawBoxId);
+				}
+			} catch (e) {}
+			this.boxId = rawBoxId;
 			if (this.boxId) {
 				this.feedbackForm.boxId = this.boxId;
 				this.loadBoxData(this.boxId);
@@ -320,7 +331,7 @@
 			loadThemeSetting() {
 				try {
 					const themeMode = uni.getStorageSync('themeMode');
-					if (themeMode && (themeMode === 'simple' || themeMode === 'dark' || themeMode === 'jieyuan')) {
+					if (themeMode && (themeMode === 'simple' || themeMode === 'ak' || themeMode === 'ark' || themeMode === 'dark' || themeMode === 'jieyuan' || themeMode === 'liquid' || themeMode === 'liquidDark')) {
 						this.themeMode = themeMode;
 					}
 				} catch (e) {
@@ -608,11 +619,9 @@
 				if (images.length > 0) { uni.previewImage({ urls: images, current: current }); }
 			},
 			
-			openLink(url) {
-				uni.setClipboardData({
-					data: url,
-					success: () => { uni.showToast({ title: '链接已复制', icon: 'success' }); }
-				});
+			openReferenceLink(url) {
+				// App / H5 直接唤起浏览器，小程序端复制
+				openLink(url);
 			},
 			
 			getRefTypeText(type) {
@@ -698,6 +707,29 @@
 	.notice-content { flex: 1; }
 	.notice-title { font-size: 30rpx; font-weight: bold; color: #fff; display: block; margin-bottom: 10rpx; }
 	.notice-text { font-size: 24rpx; color: rgba(255, 255, 255, 0.9); display: block; line-height: 1.6; }
+	/* 液态玻璃主题：.notice-section 被主题统一成「纯色实底 + 无渐变」，
+	   而这里的标题/正文是为紫色渐变准备的白字，白色底上会完全看不清。
+	   页面级作用域，不影响到首页的公告栏。 */
+	.theme-liquid .notice-section .notice-title,
+	.theme-liquidDark .notice-section .notice-title {
+		color: var(--ak-text-primary);
+	}
+	.theme-liquid .notice-section .notice-text,
+	.theme-liquidDark .notice-section .notice-text {
+		color: var(--ak-text-secondary);
+	}
+	/* 提示条上的图标底板：避免白底卡片上只剩一个悬空表情 */
+	.theme-liquid .notice-section .notice-icon,
+	.theme-liquidDark .notice-section .notice-icon {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 72rpx;
+		height: 72rpx;
+		border-radius: 50%;
+		background-color: rgba(120, 140, 200, 0.12);
+	}
+
 	.form-section { background-color: #fff; border-radius: 16rpx; padding: 30rpx; box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05); }
 	.section-title { font-size: 32rpx; font-weight: bold; color: #333; display: block; margin-bottom: 30rpx; padding-bottom: 20rpx; border-bottom: 2rpx solid #f0f0f0; }
 	.subsection-title { font-size: 28rpx; font-weight: bold; color: #409EFF; display: block; margin-bottom: 20rpx; }
@@ -750,7 +782,6 @@
 	.success-title { font-size: 36rpx; font-weight: bold; color: #333; margin-bottom: 15rpx; }
 	.success-text { font-size: 28rpx; color: #666; margin-bottom: 40rpx; text-align: center; }
 	.success-btn { background-color: #409EFF; color: #fff; font-size: 28rpx; padding: 20rpx 60rpx; border-radius: 40rpx; border: none; }
-
 
 /* 干员列表区块 */
 	.market-char-section {
@@ -959,9 +990,4 @@
 }
 .privacy-btn.confirm .btn-text {
 	color: #fff;
-}
-.theme-ark .privacy-content { background-color: #2a2a2a; }
-.theme-ark .privacy-text { color: #e0e0e0; }
-.theme-ark .privacy-btn.cancel { background-color: #444; }
-.theme-ark .privacy-btn.cancel .btn-text { color: #ccc; }
-</style>
+}</style>

@@ -75,10 +75,11 @@
 
 <script>
 import errorLog from "@/utils/errorLog.js";
+import { fetchSelfHosted } from "@/utils/knowCloudProxy.js";
 // 开源版本：知晓云配置已禁用，商业版请配置知晓云
 const KNOW_CLOUD_CONFIG = {
-  clientId: 'YOUR_KNOW_CLOUD_CLIENT_ID',
-  baseUrl: 'https://YOUR_KNOW_CLOUD_CLIENT_ID.myminapp.com/hserve/v2.2',
+  clientId: '21680db9b1362913357c',
+  baseUrl: 'https://21680db9b1362913357c.myminapp.com/hserve/v2.2',
   tableNames: {
     more_notice: 'more_notice'
   }
@@ -164,7 +165,7 @@ export default {
     	loadThemeSetting() {
     		try {
     			const themeMode = uni.getStorageSync('themeMode');
-    			if (themeMode && (themeMode === 'simple' || themeMode === 'ark' || themeMode === 'jieyuan')) {
+    			if (themeMode && (themeMode === 'simple' || themeMode === 'ak' || themeMode === 'ark' || themeMode === 'jieyuan' || themeMode === 'liquid' || themeMode === 'liquidDark')) {
     				this.themeMode = themeMode;
     			} else {
     				this.themeMode = 'simple';
@@ -202,6 +203,13 @@ export default {
 
     // 知晓云 API 请求封装 - 使用ClientID认证
     async knowCloudRequest(tableName, options = {}, retryCount = 0) {
+      // 优先走自建 API，失败则回落知晓云
+      try {
+        const sh = await fetchSelfHosted(tableName, options);
+        if (sh) return sh;
+      } catch (e) {
+        // 忽略，继续走知晓云
+      }
       // 防止无限重试
       if (retryCount > 3) {
         console.error('知晓云请求重试次数过多');
@@ -699,31 +707,7 @@ export default {
 .expand-text {
   font-size: 24rpx;
   font-weight: 500;
-}
-
-/* ========== 科技风格 ========== */
-.container.theme-ark {
-	background: linear-gradient(180deg, #0D0D15 0%, #1A1A2E 100%);
-}
-.container.theme-ark .left-panel,
-.container.theme-ark .content-panel {
-	background: linear-gradient(135deg, #16162A 0%, #1E1E3A 100%);
-	border: 1rpx solid #2A2A4A;
-}
-.container.theme-ark .panel-title { color: #FF6B35; }
-.container.theme-ark .notice-item { border-bottom-color: #2A2A4A; }
-.container.theme-ark .notice-item.active { background: rgba(255,107,53,0.1); }
-.container.theme-ark .notice-title-text { color: #e0e0e0; }
-.container.theme-ark .notice-time { color: #888; }
-.container.theme-ark .top-badge { background: #FF6B35; color: #fff; }
-.container.theme-ark .content-title { color: #FF6B35; }
-.container.theme-ark .content-text { color: #e0e0e0; }
-.container.theme-ark .collapse-btn { background: rgba(255,107,53,0.1); }
-.container.theme-ark .expand-panel-btn { background: rgba(255,107,53,0.1); color: #FF6B35; }
-.container.theme-ark .expand-text { color: #FF6B35; }
-.container.theme-ark .collapse-icon { filter: brightness(0) invert(1); opacity: 0.7; }
-
-/* ========== 界园风格 ========== */
+}/* ========== 界园风格 ========== */
 .container.theme-jieyuan {
 	background-color: #FAF3E0;
 }

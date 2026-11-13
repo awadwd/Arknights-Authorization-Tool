@@ -1,4 +1,4 @@
-﻿<template>
+<template>
 	<view :class="['container', 'theme-' + themeMode]">
 		<!-- 头部盒号信息 -->
 		<view class="header">
@@ -60,7 +60,7 @@
 				>
 					<image 
 						class="box-image" 
-						:src="boxData.Box_ImageUrl" 
+						:src="imgSrc(boxData.Box_ImageUrl)" 
 						mode="widthFix"
 						@load="onImageLoad"
 						@error="onImageError"
@@ -92,6 +92,7 @@
 
 <script>
 	import errorLog from "@/utils/errorLog.js";
+import { mergeGuessData, pruneStoredGuessData } from "@/utils/guessData.js";
 	export default {
 		data() {
 			return {
@@ -111,13 +112,22 @@
 
 			console.log('box_info页面加载，参数:', options);
 			// 兼容 calendar.vue 传的 box_id 参数名
-			this.boxId = options.boxId || options.box_id || '';
+			// 注意：App 与小程序平台不会自动解开 url 里的中文参数，
+			// 小组件（akpassport://widget?boxId=...）传进来的是 %E5%98%89... 这种形态，
+			// 必须手动 decode，否则 String(item.Box_id) === String(this.boxId) 永远不成立。
+			let rawBoxId = options.boxId || options.box_id || '';
+			try {
+				rawBoxId = decodeURIComponent(String(rawBoxId));
+			} catch (e) {}
+			this.boxId = rawBoxId;
 			this.loadBoxData();
-			// 设置分享配置
+			// 设置分享配置（仅微信小程序提供该 API，App 上调会抛 TypeError 刷脏错误日志）
+			// #ifdef MP-WEIXIN
 			wx.showShareMenu({
 				withShareTicket: true,
 				menus: ['shareAppMessage', 'shareTimeline']
 			});
+			// #endif
 			
 			uni.setNavigationBarTitle({
 				title: `明日方舟通行认证 ${this.boxId} 盒号信息`,
@@ -157,7 +167,7 @@
 				loadThemeSetting() {
 					try {
 						const themeMode = uni.getStorageSync('themeMode');
-						if (themeMode && (themeMode === 'simple' || themeMode === 'ark' || themeMode === 'jieyuan')) {
+						if (themeMode && (themeMode === 'simple' || themeMode === 'ak' || themeMode === 'ark' || themeMode === 'jieyuan' || themeMode === 'liquid' || themeMode === 'liquidDark')) {
 							this.themeMode = themeMode;
 						} else {
 							this.themeMode = 'simple';
@@ -200,9 +210,7 @@
 					// 微信小程序跳转方法
 					if (wx && wx.openEmbeddedMiniProgram) {
 						wx.openEmbeddedMiniProgram({
-							
-				// NOTE: Replace with your own mini-program AppID for navigation
-				appId: 'wxebadf544ddae62cb',
+							appId: 'wxebadf544ddae62cb',
 							path: 'pages/webview/index?sid=25733968&hash=15bc&navigateBackMiniProgram=true',
 							success: (res) => {
 								console.log('跳转问卷成功:', res);
@@ -328,6 +336,8 @@
 				try {
 					const data = uni.getStorageSync('arknightsData');
 					const enableGuessData = uni.getStorageSync('enableGuessData');
+					// 正式数据上线后清掉重复的预测盒号
+					pruneStoredGuessData();
 					const guessData = uni.getStorageSync('guessData');
 					
 					let allData = [];
@@ -339,7 +349,7 @@
 					
 					// 如果启用了预测数据，合并预测数据
 					if (enableGuessData === 'true' && guessData && Array.isArray(guessData) && guessData.length > 0) {
-						allData = [...allData, ...guessData];
+						allData = mergeGuessData(allData, guessData).data;
 						console.log('合并预测数据:', guessData.length, '个盒号');
 					}
 					
@@ -715,40 +725,7 @@
 			max-width: 1200rpx;
 			margin: 0 auto;
 		}
-	}
-
-	/* ========== 科技风格 ========== */
-	.container.theme-ark {
-		background: linear-gradient(180deg, #0D0D15 0%, #1A1A2E 100%);
-	}
-	.container.theme-ark .box-detail-card,
-	.container.theme-ark .market-price-section,
-	.container.theme-ark .history-section {
-		background: linear-gradient(135deg, #16162A 0%, #1E1E3A 100%);
-		border: 1rpx solid #2A2A4A;
-	}
-	.container.theme-ark .box-id,
-	.container.theme-ark .character-name,
-	.container.theme-ark .box-info-text,
-	.container.theme-ark .section-title { color: #e0e0e0; }
-	.container.theme-ark .character-tag { background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%); color: #fff; }
-	.container.theme-ark .box-meta { color: #888; }
-	.container.theme-ark .action-btn { background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%); color: #fff; border: none; }
-	.container.theme-ark .back-btn { background: rgba(255,107,53,0.1); color: #FF6B35; }
-	.container.theme-ark .share-btn { background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%); color: #fff; border: none; }
-	.container.theme-ark .box-info-label { color: #888; }
-	.container.theme-ark .favorite-btn { background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%); color: #fff; border: none; }
-	.container.theme-ark .favorite-btn.favorited { background: #555; color: #FF6B35; }
-	.container.theme-ark .market-price-tag { background: rgba(255,107,53,0.1); color: #FF6B35; border-color: rgba(255,107,53,0.3); }
-	.container.theme-ark .market-price-value { color: #e0e0e0; }
-	.container.theme-ark .history-item { border-bottom-color: #2A2A4A; }
-	.container.theme-ark .history-text { color: #888; }
-	.container.theme-ark .history-time { color: #888; }
-	.container.theme-ark .empty-state { background: linear-gradient(135deg, #16162A 0%, #1E1E3A 100%); border-color: #2A2A4A; }
-	.container.theme-ark .empty-icon { filter: brightness(0) invert(1); opacity: 0.4; }
-	.container.theme-ark .empty-text { color: #888; }
-
-	/* ========== 界园风格 ========== */
+	}/* ========== 界园风格 ========== */
 	.container.theme-jieyuan {
 		background-color: #FAF3E0;
 	}

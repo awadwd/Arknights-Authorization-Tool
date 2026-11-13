@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -28,6 +28,8 @@ public sealed class RemoteProxy
 		"https://cdn.jsdelivr.net/",
 		"https://fastly.jsdelivr.net/",
 		"https://raw.githubusercontent.com/",
+		// 塞壬唱片官方接口：音乐播放器取音源地址用
+		"https://monster-siren.hypergryph.com/",
 	};
 
 	/// <summary>需要转发给上游的请求头白名单（其余如 Host / Origin / Cookie 一律不带）。</summary>

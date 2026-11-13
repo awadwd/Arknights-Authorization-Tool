@@ -15,7 +15,7 @@
 				@click="handleLinkClick(item)"
 			>
 				<view class="link-icon-wrap">
-					<image class="link-icon" :src="item.icon" mode="aspectFit"></image>
+					<image class="link-icon" :src="imgSrc(item.icon)" mode="aspectFit"></image>
 				</view>
 				<view class="link-content">
 					<view class="link-header">
@@ -50,6 +50,7 @@
 
 <script>
 import errorLog from "@/utils/errorLog.js";
+import { openLink } from "@/utils/openLink.js";
 // ============================================
 // 友情链接数据配置区 - 在此添加/修改链接
 // ============================================
@@ -114,7 +115,7 @@ export default {
 		loadThemeSetting() {
 			try {
 				const themeMode = uni.getStorageSync('themeMode');
-				if (themeMode && (themeMode === 'simple' || themeMode === 'ark' || themeMode === 'jieyuan')) {
+				if (themeMode && (themeMode === 'simple' || themeMode === 'ak' || themeMode === 'ark' || themeMode === 'jieyuan' || themeMode === 'liquid' || themeMode === 'liquidDark')) {
 					this.themeMode = themeMode;
 				}
 			} catch (e) {
@@ -126,29 +127,17 @@ export default {
 		// 处理链接点击
 		handleLinkClick(item) {
 			if (item.type === 0) {
-				// 网址链接：复制到剪贴板
-				this.copyLink(item);
+				// 网址链接：App / H5 直接打开，小程序复制
+				this.openWebLink(item);
 			} else {
 				// 小程序：尝试打开
 				this.openMiniProgram(item);
 			}
 		},
 
-		// 复制链接到剪贴板
-		copyLink(item) {
-			uni.setClipboardData({
-				data: item.link,
-				success: () => {
-					uni.showToast({
-						title: '链接已复制，请到浏览器打开',
-						icon: 'none',
-						duration: 2500
-					});
-				},
-				fail: () => {
-					uni.showToast({ title: '复制失败', icon: 'none' });
-				}
-			});
+		// 打开外部链接（App / H5 直接打开，小程序复制）
+		openWebLink(item) {
+			openLink(item && item.link, { copyTip: '链接已复制，请到浏览器打开' });
 		},
 
 		// 打开小程序
@@ -430,52 +419,7 @@ export default {
 .empty-hint {
 	font-size: 26rpx;
 	color: #bbb;
-}
-
-/* 主题适配 - 方舟 */
-.container.theme-ark {
-	background-color: #1a1a2e;
-}
-
-.container.theme-ark .nav-bar {
-	background-color: #16213e;
-}
-
-.container.theme-ark .nav-title,
-.container.theme-ark .back-icon {
-	color: #fff;
-}
-
-.container.theme-ark .intro-text {
-	color: #a0a0a0;
-}
-
-.container.theme-ark .link-card {
-	background-color: #16213e;
-	box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.2);
-}
-
-.container.theme-ark .link-icon-wrap {
-	background-color: #1a1a2e;
-}
-
-.container.theme-ark .link-title {
-	color: #fff;
-}
-
-.container.theme-ark .link-desc {
-	color: #a0a0a0;
-}
-
-.container.theme-ark .arrow-icon {
-	color: #666;
-}
-
-.container.theme-ark .empty-text,
-.container.theme-ark .empty-hint {
-	color: #666;
-}
-	/* 免责声明 */
+}/* 免责声明 */
 	.disclaimer {
 		margin: 40rpx 30rpx 60rpx;
 		padding: 24rpx 20rpx;
@@ -488,15 +432,4 @@ export default {
 		font-size: 22rpx;
 		color: #999;
 		line-height: 1.8;
-	}
-
-	.container.theme-ark .disclaimer {
-		background-color: #1a1a2e;
-	}
-
-	.container.theme-ark .disclaimer-line {
-		color: #666;
-	}
-
-
-</style>
+	}</style>

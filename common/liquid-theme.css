@@ -1,0 +1,575 @@
+/* ==========================================================================
+   liquid-theme.css · 液态玻璃主题（theme-liquid / theme-liquidDark）
+   --------------------------------------------------------------------------
+   定位：第 5 / 6 个主题（浅色 theme-liquid、深色 theme-liquidDark），独立开关。
+         **新增文件，不改动 simple / ak / ark / jieyuan 的任何一个字。**
+
+   架构：两个都是**独立主题类**。页面模板统一 `:class="'theme-' + themeMode"`，
+         因此 21 个页面模板一行都不用改。
+
+   ★ 设计原则（对齐 iOS 26 Liquid Glass 的层级语义）
+     · 内容层 = 纯色实底     画布 / 面板 / 卡片底板 —— 干净、不干扰阅读
+     · 控件层 = 液态玻璃     次要按钮 / 工具入口 / 搜索框 / 开关 / 弹窗
+     · 主操作层 = 实心填充   「更新数据 / 立即更新 / 保存 / 删除 / 置顶」等主操作按钮
+       **不进玻璃层**：它们原本是「彩色实底 + 白字 + 白图标」，玻璃化后会变成
+       白底白字 → 直接不可见。iOS 原生同理：primary 是 tinted 实心，secondary 才是玻璃。
+
+   ★ v3 修复（2026-10-10，iOS 真机反馈「部分位置奇怪 / 不像原生」）
+     1. **去掉选择器的 `.container` 限定**。项目页面根元素实测有 7 种写法：
+          .container / .list-page / .scan-page / .chat-page / .page-root
+          / .viewer-page / .custom-nav-bar
+        而首页的 `.custom-nav-bar` 是 `.container` 的**兄弟节点**，旧的 `.container.theme-liquid .nav-*`
+        一条都匹配不到 → 表现为「终末地仍是黄底、导航搜索框仍是灰底」；
+        另有 5 个非 container 根的页面整体不生效。改为通用前缀后一并修好。
+        （已确认主包内针对这些类只有 1 条 !important 竞争，且不涉及本文件声明的属性。）
+     2. 主操作按钮移出玻璃层（见上）。
+     3. 玻璃配方重调：旧配方 = 52% 白底 + 顶部 80% 白渐变，两层叠加后 ≈ 90% 白，
+        在浅灰画布上就是「一张纯白卡」；v3 把有效白降到 ~45%，并补足多层内高光与投影，
+        透出画布的冷灰蓝，才有玻璃该有的通透感与浮起感。
+
+   平台：
+     · iOS App（WKWebView）：-webkit-backdrop-filter 走 WebKit 原生高斯模糊，硬件加速
+     · 安卓 App / 微信小程序：同属性；低版本内核走文件末尾 @supports 降级分支
+     · ⚠️ 在**纯色画布**上 backdrop-filter「无内容可模糊」，所以静态观感里的玻璃感来自
+        半透明 + 内高光 + 外投影三件套；一旦控件压到内容/其他控件上（滚动、弹窗），
+        立刻出现真实模糊。
+     · ⚠️ 真·折射在 WKWebView 上**做不到**，这不是本文件的实现缺陷：
+        Safari/WebKit 不支持 backdrop-filter 引用 SVG filter（feDisplacementMap），
+        Apple 原生入口 -apple-visual-effect 又被 WKPreferences 私有开关门控。
+        参考 github.com/rdev/liquid-glass-react 的 README 原话：
+        "Safari and Firefox only partially support the effect (displacement will not be visible)"。
+
+   ★ 生效前提：各页面 loadThemeSetting() 白名单必须含 'liquid' / 'liquidDark'。
+   ========================================================================== */
+
+/* ==========================================================================
+   1 · 设计令牌
+   --------------------------------------------------------------------------
+   ★ 令牌必须定义在**页面根元素**上才能被全页继承，而根元素有 7 种写法，
+     故逐一列出（少写一种，那种页面就拿不到令牌 → 主题半残）。
+   ========================================================================== */
+
+/* 1.0 尺寸 / 模糊类令牌：浅色深色**共用**，所以两个主题的 7 种根一起列。
+   ⚠️ 必须共用：若只在浅色根上定义，深色根上 `var(--lg-radius)` 就是未定义变量，
+   CSS 会把整条声明判为 invalid at computed-value time 并回退到**属性的初始值**
+   （border-radius → 0、backdrop-filter → none），**不是**回退到上一条声明。
+   —— 这个坑真机上看就是「深色主题圆角全平、玻璃模糊全没」。 */
+.container.theme-liquid,
+.list-page.theme-liquid,
+.scan-page.theme-liquid,
+.chat-page.theme-liquid,
+.page-root.theme-liquid,
+.viewer-page.theme-liquid,
+.custom-nav-bar.theme-liquid,
+.wh.theme-liquid,
+.container.theme-liquidDark,
+.list-page.theme-liquidDark,
+.scan-page.theme-liquidDark,
+.chat-page.theme-liquidDark,
+.page-root.theme-liquidDark,
+.viewer-page.theme-liquidDark,
+.custom-nav-bar.theme-liquidDark,
+.wh.theme-liquidDark {
+	--lg-blur: 18px;
+	--lg-saturate: 185%;
+	--lg-brightness: 1.05;
+	--lg-contrast: 1.03;
+	--lg-radius: 32rpx;
+	--lg-radius-sm: 20rpx;
+	--lg-radius-pill: 999rpx;
+}
+
+/* 1.1 配色令牌：浅色（默认） */
+.container.theme-liquid,
+.list-page.theme-liquid,
+.scan-page.theme-liquid,
+.chat-page.theme-liquid,
+.page-root.theme-liquid,
+.viewer-page.theme-liquid,
+.custom-nav-bar.theme-liquid,
+.wh.theme-liquid {
+	/* 语义色：向 iOS 系统色靠拢 */
+	--ak-color-primary: #0a84ff;
+	--ak-color-advanced: #ff9f0a;
+	--ak-color-accent: #ff375f;
+	--ak-color-low: #8e8e93;
+
+	/* 内容层：纯色实底 */
+	--lg-canvas: #e5eaf3;
+	--lg-surface: #f7f9fc;
+	--lg-surface-2: #eef2f9;
+
+	/* 文字：iOS 语义灰阶 */
+	--ak-text-primary: #1c1c1e;
+	--ak-text-secondary: rgba(60, 60, 67, 0.68);
+	--ak-text-muted: rgba(60, 60, 67, 0.44);
+	--ak-text-inverse: #ffffff;
+	--ak-text-on-action: #1c1c1e;
+
+	/* 线条 */
+	--ak-hairline: rgba(60, 60, 67, 0.16);
+	--ak-hairline-soft: rgba(60, 60, 67, 0.09);
+	--ak-mask: rgba(20, 22, 28, 0.34);
+
+	/* ---- 玻璃控件专用令牌（配色部分；尺寸 / 模糊见 1.0 共用块）----
+	   有效白 ≈ 底 0.34 + 顶 0.46 渐变 → 约 45%，仍能透出画布的冷灰蓝。
+	   旧版是 0.52 + 0.80，叠加≈90% 白，就是"纯白卡"的元凶。 */
+	--lg-ctrl-bg: rgba(255, 255, 255, 0.34);
+	--lg-ctrl-bg-strong: rgba(255, 255, 255, 0.54);
+	/* 三段式：顶部亮（棱）→ 中段最透（玻璃身）→ 底部微亮（反光） */
+	--lg-ctrl-grad: linear-gradient(180deg,
+			rgba(255, 255, 255, 0.46) 0%,
+			rgba(255, 255, 255, 0.14) 46%,
+			rgba(255, 255, 255, 0.28) 100%);
+	--lg-edge: rgba(255, 255, 255, 0.92);
+	--lg-edge-soft: rgba(255, 255, 255, 0.52);
+	--lg-sheen: rgba(255, 255, 255, 0.98);
+	--lg-glow: rgba(255, 255, 255, 0.85);
+	--lg-shadow: 0 12rpx 30rpx rgba(23, 32, 58, 0.13), 0 2rpx 6rpx rgba(23, 32, 58, 0.07);
+	--lg-shadow-lift: 0 18rpx 42rpx rgba(23, 32, 58, 0.20), 0 3rpx 8rpx rgba(23, 32, 58, 0.09);
+
+	/* 表面（内容层）专用 */
+	--lg-surface-shadow: 0 2rpx 10rpx rgba(31, 41, 71, 0.06);
+	--lg-surface-line: rgba(60, 60, 67, 0.08);
+
+	--ak-radius: 32rpx;
+	font-family: -apple-system, "SF Pro Text", "PingFang SC", "HarmonyOS Sans SC", "Noto Sans SC", Roboto, sans-serif;
+}
+
+/* ==========================================================================
+   2 · 内容层 · 画布：纯色（不透明、无渐变、无模糊）
+   ========================================================================== */
+.theme-liquid,
+.theme-liquidDark {
+	background-color: var(--lg-canvas) !important;
+	background-image: none !important;
+}
+
+/* 导航栏：条本身属于「背景」→ 纯色；只有里面的搜索/切换按钮才是玻璃 */
+.custom-nav-bar.theme-liquid,
+.custom-nav-bar.theme-liquidDark {
+	background-color: var(--lg-surface) !important;
+	background-image: none !important;
+	border-bottom: 1rpx solid var(--lg-surface-line) !important;
+	box-shadow: none !important;
+}
+.custom-nav-bar.theme-liquid .nav-search-text,
+.custom-nav-bar.theme-liquidDark .nav-search-text {
+	color: var(--ak-text-muted) !important;
+}
+.custom-nav-bar.theme-liquid .nav-switch-text,
+.custom-nav-bar.theme-liquidDark .nav-switch-text {
+	color: var(--ak-color-primary) !important;
+	font-weight: 700 !important;
+}
+
+/* ==========================================================================
+   3 · 内容层 · 面板 / 卡片：纯色实底（不是玻璃）
+   --------------------------------------------------------------------------
+   与 ak 层的排除清单一致：语义色组件（盒卡 / 稀有度 / 幸运色 / 排行榜）一律不碰。
+   ========================================================================== */
+.theme-liquid .card,
+.theme-liquidDark .card,
+.theme-liquid .section,
+.theme-liquidDark .section,
+.theme-liquid .section-content,
+.theme-liquidDark .section-content,
+.theme-liquid .nested-folder,
+.theme-liquidDark .nested-folder,
+.theme-liquid .notice-section,
+.theme-liquidDark .notice-section,
+.theme-liquid .search-section,
+.theme-liquidDark .search-section,
+.theme-liquid .advanced-filter-section,
+.theme-liquidDark .advanced-filter-section,
+.theme-liquid .stats-section,
+.theme-liquidDark .stats-section,
+.theme-liquid .support-item,
+.theme-liquidDark .support-item,
+.theme-liquid .contributor-item,
+.theme-liquidDark .contributor-item,
+.theme-liquid .setting-item,
+.theme-liquidDark .setting-item,
+.theme-liquid .history-item,
+.theme-liquidDark .history-item,
+.theme-liquid .form-item,
+.theme-liquidDark .form-item,
+.theme-liquid .debug-item,
+.theme-liquidDark .debug-item {
+	background-color: var(--lg-surface) !important;
+	background-image: none !important;
+	border: 1rpx solid var(--lg-surface-line) !important;
+	border-radius: var(--lg-radius) !important;
+	box-shadow: var(--lg-surface-shadow) !important;
+	-webkit-backdrop-filter: none !important;
+	backdrop-filter: none !important;
+}
+/* 次级面板：比卡片略深一档，用于嵌套/内层 */
+.theme-liquid .nested-body,
+.theme-liquidDark .nested-body,
+.theme-liquid .data-detail-item,
+.theme-liquidDark .data-detail-item {
+	background-color: var(--lg-surface-2) !important;
+	background-image: none !important;
+	border: 1rpx solid var(--lg-surface-line) !important;
+	border-radius: var(--lg-radius-sm) !important;
+	box-shadow: none !important;
+}
+/* 布局容器：保持透明，露出画布纯色 */
+.theme-liquid .tools-wrap,
+.theme-liquidDark .tools-wrap,
+.theme-liquid .carousel-section,
+.theme-liquidDark .carousel-section,
+.theme-liquid .footer-section,
+.theme-liquidDark .footer-section {
+	background-color: transparent !important;
+	background-image: none !important;
+	box-shadow: none !important;
+}
+
+/* ==========================================================================
+   4 · 控件层 · 液态玻璃（核心）
+   --------------------------------------------------------------------------
+   ⚠️ 只有「次要操作 / 图标按钮 / 入口」进这一层。
+      主操作按钮（update-btn / ufm-btn / edit-btn / delete-btn / pin-btn / arrow-btn）
+      一律**不在此列** —— 它们是彩色实底 + 白字，进玻璃层会变成白底白字而消失。
+   ========================================================================== */
+
+/* 4.1 通用玻璃控件基底 ————————————————————————————————
+   玻璃感的三根支柱（纯色画布下 backdrop-filter 无内容可模糊，只能靠它们）：
+     ① 三段式垂直渐变：上亮（棱）→ 中透（身）→ 下微亮（反光）
+     ② 内高光：顶部 1rpx 锐利高光 + 顶部柔光晕 + 底部反光
+     ③ 双层外投影：远影定位 + 近影压实，产生"浮起"错觉 */
+.theme-liquid .tools-manage-btn,
+.theme-liquidDark .tools-manage-btn,
+.theme-liquid .nested-head,
+.theme-liquidDark .nested-head,
+.theme-liquid .nav-search-box,
+.theme-liquidDark .nav-search-box,
+.theme-liquid .nav-switch-btn,
+.theme-liquidDark .nav-switch-btn,
+.theme-liquid .expand-btn,
+.theme-liquidDark .expand-btn,
+.theme-liquid .close-btn,
+.theme-liquidDark .close-btn,
+.theme-liquid .modal-close,
+.theme-liquidDark .modal-close,
+.theme-liquid .notice-toggle,
+.theme-liquidDark .notice-toggle,
+.theme-liquid .notice-expand,
+.theme-liquidDark .notice-expand,
+.theme-liquid .white-button,
+.theme-liquidDark .white-button {
+	-webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness)) contrast(var(--lg-contrast));
+	backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness)) contrast(var(--lg-contrast));
+	background-color: var(--lg-ctrl-bg) !important;
+	background-image: var(--lg-ctrl-grad) !important;
+	border: 1rpx solid var(--lg-edge) !important;
+	border-radius: var(--lg-radius-pill) !important;
+	box-shadow:
+		inset 0 1rpx 0 var(--lg-sheen),
+		inset 0 3rpx 6rpx -4rpx var(--lg-glow),
+		inset 0 -1rpx 0 var(--lg-edge-soft),
+		var(--lg-shadow) !important;
+	transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+
+/* 4.1.1 功能查询跳转项（搜索功能页底部「常用功能」一行） —————————————
+   这类行是可点控件，按玻璃铁律给玻璃材质；静态内容仍走上面的纯色实底。 */
+.theme-liquid .result-list .result-item,
+.theme-liquidDark .result-list .result-item,
+.theme-liquid .default-list .result-item,
+.theme-liquidDark .default-list .result-item {
+	-webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness)) contrast(var(--lg-contrast));
+	backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness)) contrast(var(--lg-contrast));
+	background-color: var(--lg-ctrl-bg) !important;
+	background-image: var(--lg-ctrl-grad) !important;
+	border: 1rpx solid var(--lg-edge) !important;
+	border-radius: var(--lg-radius) !important;
+	box-shadow:
+		inset 0 1rpx 0 var(--lg-sheen),
+		inset 0 3rpx 6rpx -4rpx var(--lg-glow),
+		inset 0 -1rpx 0 var(--lg-edge-soft),
+		var(--lg-shadow) !important;
+}
+/* 4.2 工具卡片：功能入口 = 大号玻璃砖 ——————————————————————
+   全站最主要的"功能按钮"，给完整玻璃材质 + 上缘高光。 */
+.theme-liquid .tool-card,
+.theme-liquidDark .tool-card {
+	-webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness)) contrast(var(--lg-contrast));
+	backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness)) contrast(var(--lg-contrast));
+	background-color: var(--lg-ctrl-bg) !important;
+	background-image: var(--lg-ctrl-grad) !important;
+	border: 1rpx solid var(--lg-edge) !important;
+	border-radius: var(--lg-radius) !important;
+	box-shadow:
+		inset 0 1rpx 0 var(--lg-sheen),
+		inset 0 4rpx 8rpx -5rpx var(--lg-glow),
+		inset 0 -1rpx 0 var(--lg-edge-soft),
+		var(--lg-shadow) !important;
+	transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+
+/* 按下：玻璃被"按亮"并轻微下沉 */
+.theme-liquid .tool-card:active,
+.theme-liquidDark .tool-card:active,
+.theme-liquid .tools-manage-btn:active,
+.theme-liquidDark .tools-manage-btn:active,
+.theme-liquid .nested-head:active,
+.theme-liquidDark .nested-head:active,
+.theme-liquid .nav-search-box:active,
+.theme-liquidDark .nav-search-box:active,
+.theme-liquid .nav-switch-btn:active,
+.theme-liquidDark .nav-switch-btn:active,
+.theme-liquid .expand-btn:active,
+.theme-liquidDark .expand-btn:active,
+.theme-liquid .close-btn:active,
+.theme-liquidDark .close-btn:active,
+.theme-liquid .modal-close:active,
+.theme-liquidDark .modal-close:active,
+.theme-liquid .notice-toggle:active,
+.theme-liquidDark .notice-toggle:active,
+.theme-liquid .white-button:active,
+.theme-liquidDark .white-button:active {
+	background-color: var(--lg-ctrl-bg-strong) !important;
+	box-shadow:
+		inset 0 1rpx 0 var(--lg-sheen),
+		var(--lg-shadow-lift) !important;
+	transform: scale(0.972);
+}
+
+/* 4.3 控件内的配色与图标底板 */
+.theme-liquid .manage-text,
+.theme-liquidDark .manage-text,
+.theme-liquid .nav-switch-text,
+.theme-liquidDark .nav-switch-text,
+.theme-liquid .pin-text,
+.theme-liquidDark .pin-text {
+	color: var(--ak-color-primary) !important;
+	font-weight: 700 !important;
+}
+.theme-liquid .tool-name,
+.theme-liquidDark .tool-name {
+	color: var(--ak-text-primary) !important;
+	font-weight: 700 !important;
+	letter-spacing: 0.01em !important;
+}
+.theme-liquid .tool-desc,
+.theme-liquidDark .tool-desc {
+	color: var(--ak-text-secondary) !important;
+}
+/* 图标底板：贴在玻璃上的一小块浅色玻璃，别用纯白（会在卡上留一块白斑） */
+.theme-liquid .tool-icon-container,
+.theme-liquidDark .tool-icon-container {
+	background-color: rgba(255, 255, 255, 0.46) !important;
+	border: 1rpx solid var(--lg-edge-soft) !important;
+	border-radius: var(--lg-radius-sm) !important;
+	box-shadow: inset 0 1rpx 0 var(--lg-sheen) !important;
+}
+
+/* 4.4 工具箱面板：让「台面」透明，玻璃卡片直接浮在画布纯色上
+   —— 白玻璃 vs 浅灰蓝画布，对比明确；若保留近白台面，玻璃会与底色糊在一起。 */
+.theme-liquid .tools-section,
+.theme-liquidDark .tools-section {
+	background-color: transparent !important;
+	background-image: none !important;
+	border: none !important;
+	border-radius: 0 !important;
+	box-shadow: none !important;
+	-webkit-backdrop-filter: none !important;
+	backdrop-filter: none !important;
+}
+.theme-liquid .tools-title,
+.theme-liquidDark .tools-title {
+	color: var(--ak-text-primary) !important;
+	font-family: -apple-system, "SF Pro Display", "PingFang SC", sans-serif !important;
+	font-weight: 800 !important;
+	letter-spacing: -0.01em !important;
+}
+
+/* 4.5 数据状态条 / 页脚：纯色 */
+.theme-liquid .data-status,
+.theme-liquidDark .data-status {
+	background-color: var(--lg-surface) !important;
+	background-image: none !important;
+	border: 1rpx solid var(--lg-surface-line) !important;
+	border-radius: var(--lg-radius) !important;
+	box-shadow: var(--lg-surface-shadow) !important;
+}
+.theme-liquid .copyright,
+.theme-liquidDark .copyright,
+.theme-liquid .footer-copyright,
+.theme-liquidDark .footer-copyright {
+	color: var(--ak-text-muted) !important;
+	border-top-color: var(--lg-surface-line) !important;
+}
+
+/* 4.6 弹窗：浮层 = 控件层 → 玻璃（最经典的原生玻璃场景） */
+.theme-liquid .modal-content,
+.theme-liquidDark .modal-content,
+.theme-liquid .dialog-content,
+.theme-liquidDark .dialog-content,
+.theme-liquid .popup-content,
+.theme-liquidDark .popup-content {
+	-webkit-backdrop-filter: blur(28px) saturate(190%) brightness(1.05);
+	backdrop-filter: blur(28px) saturate(190%) brightness(1.05);
+	background-color: var(--lg-ctrl-bg-strong) !important;
+	background-image: var(--lg-ctrl-grad) !important;
+	border: 1rpx solid var(--lg-edge) !important;
+	border-radius: 40rpx !important;
+	box-shadow:
+		inset 0 1rpx 0 var(--lg-sheen),
+		0 24rpx 70rpx rgba(20, 26, 45, 0.26) !important;
+}
+.theme-liquid .modal-mask,
+.theme-liquidDark .modal-mask,
+.theme-liquid .update-modal-mask,
+.theme-liquidDark .update-modal-mask {
+	background-color: var(--ak-mask) !important;
+}
+
+/* ==========================================================================
+   5 · 降级：内核不支持 backdrop-filter 时，用「高光渐变」模拟玻璃
+   --------------------------------------------------------------------------
+   安卓低版本 WebView / 极老基础库走这里。仍有通透高光感，只是不带真实模糊。
+   ========================================================================== */
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+	.theme-liquid .tool-card,
+	.theme-liquidDark .tool-card,
+	.theme-liquid .tools-manage-btn,
+	.theme-liquidDark .tools-manage-btn,
+	.theme-liquid .nested-head,
+	.theme-liquidDark .nested-head,
+	.theme-liquid .nav-search-box,
+	.theme-liquidDark .nav-search-box,
+	.theme-liquid .nav-switch-btn,
+	.theme-liquidDark .nav-switch-btn,
+	.theme-liquid .modal-content,
+	.theme-liquidDark .modal-content {
+		background-image: linear-gradient(180deg,
+				rgba(255, 255, 255, 0.88) 0%,
+				rgba(255, 255, 255, 0.62) 48%,
+				rgba(255, 255, 255, 0.76) 100%) !important;
+	}
+	.theme-liquidDark .tool-card,
+	.theme-liquidDark .tools-manage-btn,
+	.theme-liquidDark .nested-head,
+	.theme-liquidDark .nav-search-box,
+	.theme-liquidDark .nav-switch-btn {
+		background-image: linear-gradient(180deg,
+				rgba(255, 255, 255, 0.18) 0%,
+				rgba(255, 255, 255, 0.09) 52%,
+				rgba(255, 255, 255, 0.14) 100%) !important;
+	}
+}
+
+/* ==========================================================================
+   6 · 未来分支：Apple 若开放私有属性，自动升级为「真·iOS 原生 Liquid Glass」
+   --------------------------------------------------------------------------
+   现状（2026-10）：-apple-visual-effect 被 WKWebView 的私有开关
+   WKPreferences.useSystemAppearance 门控，默认关闭，uni-app 改不到。
+   此处把「将来可用」的写法预置好：一旦放量，本主题无需改代码即自动生效。
+   ========================================================================== */
+@supports (-apple-visual-effect: -apple-system-glass-material) {
+	.theme-liquid .tool-card,
+	.theme-liquidDark .tool-card,
+	.theme-liquid .tools-manage-btn,
+	.theme-liquidDark .tools-manage-btn,
+	.theme-liquid .nested-head,
+	.theme-liquidDark .nested-head,
+	.theme-liquid .nav-search-box,
+	.theme-liquidDark .nav-search-box,
+	.theme-liquid .nav-switch-btn,
+	.theme-liquidDark .nav-switch-btn,
+	.theme-liquid .modal-content,
+	.theme-liquidDark .modal-content {
+		background: transparent !important;
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+		/* 唯一非标准的真·原生材质属性（当前被 WKPreferences 私有开关门控） */
+		-apple-visual-effect: -apple-system-glass-material;
+	}
+}
+
+/* ==========================================================================
+   7 · 深色变体（theme-liquidDark）
+   --------------------------------------------------------------------------
+   注意：深色版挂的是 theme-liquidDark（不是 theme-ark），不会自动反色工具图标，
+        深底上必须手动 invert，否则深色图标在深色玻璃上看不见 —— 已在下面处理。
+   ========================================================================== */
+.container.theme-liquidDark,
+.list-page.theme-liquidDark,
+.scan-page.theme-liquidDark,
+.chat-page.theme-liquidDark,
+.page-root.theme-liquidDark,
+.viewer-page.theme-liquidDark,
+.custom-nav-bar.theme-liquidDark,
+.wh.theme-liquidDark {
+	--ak-color-primary: #4da3ff;
+	--ak-color-advanced: #ffb340;
+	--ak-color-accent: #ff5f7a;
+	--ak-color-low: #8e93a3;
+
+	--lg-canvas: #101219;
+	--lg-surface: #191d27;
+	--lg-surface-2: #212633;
+
+	--ak-text-primary: #f2f4f9;
+	--ak-text-secondary: rgba(236, 240, 250, 0.68);
+	--ak-text-muted: rgba(236, 240, 250, 0.44);
+	--ak-text-inverse: #12162a;
+	--ak-text-on-action: #12162a;
+
+	--ak-hairline: rgba(255, 255, 255, 0.20);
+	--ak-hairline-soft: rgba(255, 255, 255, 0.10);
+	--ak-mask: rgba(4, 6, 14, 0.62);
+
+	--lg-ctrl-bg: rgba(255, 255, 255, 0.10);
+	--lg-ctrl-bg-strong: rgba(255, 255, 255, 0.18);
+	--lg-ctrl-grad: linear-gradient(180deg,
+			rgba(255, 255, 255, 0.17) 0%,
+			rgba(255, 255, 255, 0.06) 46%,
+			rgba(255, 255, 255, 0.12) 100%);
+	--lg-edge: rgba(255, 255, 255, 0.28);
+	--lg-edge-soft: rgba(255, 255, 255, 0.12);
+	--lg-sheen: rgba(255, 255, 255, 0.34);
+	--lg-glow: rgba(255, 255, 255, 0.22);
+	--lg-shadow: 0 14rpx 34rpx rgba(0, 0, 0, 0.48), 0 3rpx 8rpx rgba(0, 0, 0, 0.34);
+	--lg-shadow-lift: 0 20rpx 48rpx rgba(0, 0, 0, 0.58), 0 4rpx 10rpx rgba(0, 0, 0, 0.38);
+	--lg-surface-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.28);
+	--lg-surface-line: rgba(255, 255, 255, 0.07);
+	--lg-icon-bg: rgba(255, 255, 255, 0.10);
+}
+
+/* 深底上工具图标必须反色（theme-ark 会自动做，theme-liquidDark 不会） */
+.theme-liquidDark .tool-icon {
+	filter: invert(1) brightness(1.08) !important;
+}
+/* 深色下图标底板改用低亮玻璃，而非白色 */
+.theme-liquidDark .tool-icon-container {
+	background-color: var(--lg-icon-bg, rgba(255, 255, 255, 0.10)) !important;
+	border-color: var(--lg-edge) !important;
+}
+.theme-liquidDark .nav-search-box,
+.theme-liquidDark .nav-switch-btn {
+	color: var(--ak-text-primary) !important;
+}
+.theme-liquidDark .nav-search-text {
+	color: var(--ak-text-muted) !important;
+}
+/* 深色弹窗底仍是玻璃，只需去掉过亮的分量 */
+.theme-liquidDark .modal-content,
+.theme-liquidDark .dialog-content {
+	background-color: rgba(46, 54, 76, 0.72) !important;
+}
+
+/* 深色下这两处文字是「写死的深色」，深底上读不出来，必须显式覆盖：
+   · .status-text       —— 模板里是内联 `style="color:#333"`（外部 !important 能压过内联样式）
+   · .data-detail-item  —— 样式表里是 `color:#333 !important`（用更高特异性 + !important 压过） */
+.theme-liquidDark .status-text,
+.theme-liquidDark .data-detail-item {
+	color: var(--ak-text-secondary) !important;
+}
+.theme-liquidDark .status-text {
+	color: var(--ak-text-primary) !important;
+}

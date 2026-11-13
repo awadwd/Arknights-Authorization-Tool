@@ -1,79 +1,167 @@
 	<template>
 
-				<view class="container">
-
-				<view class="mode-section">
-
-					<view class="mode-tabs">
-
-						<view class="mode-tab" :class="{ active: currentMode === 'show' }" @click="changeMode('show')"><text class="mode-icon">🏆</text><text class="mode-text">点亮模式</text></view>
-
-						<view class="mode-tab" :class="{ active: currentMode === 'trade' }" @click="changeMode('trade')"><text class="mode-icon">📋</text><text class="mode-text">出物模式</text></view>
-
+				<view class="container" :class="'theme-' + themeMode">
+				<!-- 左侧抽屉：顶部按钮收进来，点左侧把手滑出 -->
+				<view class="left-drawer-handle" @click="toggleLeftDrawer">
+					<text class="left-drawer-handle-icon">☰</text>
+				</view>
+				<view class="left-drawer-mask" v-if="leftDrawerOpen" @click="closeLeftDrawer"></view>
+				<view class="left-drawer" :class="{ open: leftDrawerOpen, 'has-top-fns': topRegionInDrawer }">
+					<view class="left-drawer-head">
+						<text class="left-drawer-title">快捷功能</text>
+						<text class="left-drawer-close" @click="closeLeftDrawer">✕</text>
 					</view>
+					<scroll-view class="left-drawer-scroll" scroll-y>
+						<!-- 顶部功能区（抽屉模式） -->
+						<view class="drawer-block" v-if="topRegionInDrawer">
+							<text class="drawer-block-title">顶部功能区</text>
+							<view class="drawer-mode-tabs">
+								<view class="drawer-mode-tab" :class="{ active: currentMode === 'show' }" @click="changeMode('show')"><text class="mode-icon">🏆</text><text class="mode-text">点亮模式</text></view>
+								<view class="drawer-mode-tab" :class="{ active: currentMode === 'trade' }" @click="changeMode('trade')"><text class="mode-icon">📋</text><text class="mode-text">出物模式</text></view>
+							</view>
+							<view class="search-input-wrapper drawer-search"><input class="search-input" v-model="searchKeyword" placeholder="搜索角色名称..." @input="handleSearch" /><view class="search-clear" v-if="searchKeyword" @click="clearSearch">×</view></view>
+							<view class="search-results drawer-search-results" v-if="showSearchResults && searchResults.length > 0">
+								<view class="search-result-item" v-for="(result, index) in searchResults" :key="index" @click="onSearchResultClick(result)"><view class="result-info"><text class="result-character-name">{{ result.character && result.character.name }}</text><text class="result-box-id">盒号 {{ result.boxId }}</text></view><view class="result-actions"><button class="result-btn" :class="isCharacterOwned(result.character && result.character.name) ? 'owned' : 'lightup'" @click.stop="onSearchResultToggle(result)">{{ isCharacterOwned(result.character && result.character.name) ? '已点亮' : '点亮' }}</button></view></view>
+							</view>
+							<view class="no-search-results" v-if="showSearchResults && searchResults.length === 0 && searchKeyword"><text>没有找到匹配的角色</text></view>
+							<view class="drawer-ach-row">
+								<view class="achievement-btn drawer-ach-btn" @click="viewAchievements"><text class="trophy-icon">🏆</text><text class="achievement-text">成就榜</text><text class="achievement-count">{{ unlockedAchievements.length }}/{{ achievements.length }}</text><view class="badge" v-if="unreadAchievement > 0"><text class="badge-num">{{ unreadAchievement }}</text></view></view>
+								<text class="drawer-ach-tip">单击点亮精一 · 双击点亮精二</text>
+							</view>
+							<view class="drawer-filters">
+								<button class="filter-btn" v-for="(option, index) in boxFilterOptions" :key="index" :class="{ active: boxFilterIndex === index }" @click="setBoxFilter(index)">{{ option }}</button>
+							</view>
+							<view class="drawer-stats">
+								<text class="drawer-stat">点亮 {{ ownedCount }}/{{ totalCharacters }}</text>
+								<text class="drawer-stat">想要 {{ wantedCount }}</text>
+								<text class="drawer-stat">出物 {{ tradeCount }}</text>
+							</view>
+							<view class="drawer-elite">
+								<view class="elite-option" :class="{ active: eliteLevel === 'all' }" @click="setEliteLevel('all')"><text class="elite-tag all-tag">全部</text></view>
+								<view class="elite-option" :class="{ active: eliteLevel === 'elite1' }" @click="setEliteLevel('elite1')"><text class="elite-tag elite1-tag">仅精一</text></view>
+								<view class="elite-option" :class="{ active: eliteLevel === 'elite2' }" @click="setEliteLevel('elite2')"><text class="elite-tag elite2-tag">可精二</text></view>
+							</view>
+						</view>
 
-					<view class="action-buttons">
+						<!-- 快捷功能 -->
+						<view class="drawer-block">
+							<text class="drawer-block-title">快捷功能</text>
+							<view class="left-drawer-item" @click="drawerAction('overview')">
+								<text class="left-drawer-item-icon">🖼</text>
+								<text class="left-drawer-item-text">{{ isGeneratingShareImage ? '生成中..' : '查看概览' }}</text>
+							</view>
+							<view class="left-drawer-item" @click="openSharePoster">
+								<text class="left-drawer-item-icon">📤</text>
+								<text class="left-drawer-item-text">分享展柜</text>
+							</view>
+							<view class="left-drawer-item" @click="drawerAction('want')">
+								<text class="left-drawer-item-icon">💜</text>
+								<text class="left-drawer-item-text">{{ wantMode ? '取消想要' : '标记想要' }}</text>
+							</view>
+							<view class="left-drawer-item" @click="drawerAction('scan')">
+								<text class="left-drawer-item-icon">📷</text>
+								<text class="left-drawer-item-text">扫码查盒</text>
+							</view>
+						</view>
 
-						<button class="action-btn secondary" @click="openSharePreview"><text>{{ isGeneratingShareImage ? '生成中..' : '查看概览' }}</text></button>
-
-						<button class="action-btn secondary" @click="toggleWantMode"><text>{{ wantMode ? '取消想要' : '标记想要' }}</text></button>
-						<button class="action-btn secondary" @click="startScan"><text>📷 扫码查盒</text></button>
-
-					</view>
-
+						<!-- 顶部功能区位置 -->
+						<view class="drawer-block">
+							<text class="drawer-block-title">顶部功能区位置</text>
+							<view class="drawer-seg">
+								<view class="drawer-seg-item" :class="{ active: !topRegionInDrawer }" @click="setTopRegionInDrawer(false)">留在页面</view>
+								<view class="drawer-seg-item" :class="{ active: topRegionInDrawer }" @click="setTopRegionInDrawer(true)">收进抽屉</view>
+							</view>
+							<text class="left-drawer-tip">收进抽屉后，页面顶部只保留一条入口；模式切换、搜索、盒筛选与精一/精二筛选都在本抽屉内操作。</text>
+						</view>
+					</scroll-view>
 				</view>
 
-				<view class="search-input-wrapper"><input class="search-input" v-model="searchKeyword" placeholder="搜索角色名称..." @input="handleSearch" /><view class="search-clear" v-if="searchKeyword" @click="clearSearch">×</view></view>
 
-				<view class="search-results" v-if="showSearchResults && searchResults.length > 0">
+				<!-- 顶部功能区（不随列表滚动）：可整体向上收起，也可整体收进左侧抽屉 -->
+				<view class="top-region" :class="{ 'is-folded': topCollapsed, 'is-in-drawer': topRegionInDrawer }">
+					<!-- 抽屉模式：页面只留一条入口 -->
+					<view class="top-region-entry" v-if="topRegionInDrawer">
+						<view class="tre-main" @click="openLeftDrawer">
+							<text class="tre-icon">☰</text>
+							<text class="tre-text">顶部功能区已收进左侧抽屉</text>
+							<text class="tre-meta">点亮 {{ ownedCount }}/{{ totalCharacters }}</text>
+						</view>
+						<text class="tre-action" @click.stop="setTopRegionInDrawer(false)">收回</text>
+					</view>
+					<block v-else>
+						<view class="top-region-body" v-if="!topCollapsed">
+						<view class="mode-section">
+							<view class="mode-tabs">
 
-					<view class="search-result-item" v-for="(result, index) in searchResults" :key="index" @click="onSearchResultClick(result)"><view class="result-info"><text class="result-character-name">{{ result.character && result.character.name }}</text><text class="result-box-id">盒号 {{ result.boxId }}</text></view><view class="result-actions"><button class="result-btn" :class="isCharacterOwned(result.character && result.character.name) ? 'owned' : 'lightup'" @click.stop="onSearchResultToggle(result)">{{ isCharacterOwned(result.character && result.character.name) ? '已点亮' : '点亮' }}</button></view></view>
+								<view class="mode-tab" :class="{ active: currentMode === 'show' }" @click="changeMode('show')"><text class="mode-icon">🏆</text><text class="mode-text">点亮模式</text></view>
 
+								<view class="mode-tab" :class="{ active: currentMode === 'trade' }" @click="changeMode('trade')"><text class="mode-icon">📋</text><text class="mode-text">出物模式</text></view>
+
+							</view>
+
+					
+						</view>
+
+						<view class="search-input-wrapper"><input class="search-input" v-model="searchKeyword" placeholder="搜索角色名称..." @input="handleSearch" /><view class="search-clear" v-if="searchKeyword" @click="clearSearch">×</view></view>
+
+						<view class="search-results" v-if="showSearchResults && searchResults.length > 0">
+
+							<view class="search-result-item" v-for="(result, index) in searchResults" :key="index" @click="onSearchResultClick(result)"><view class="result-info"><text class="result-character-name">{{ result.character && result.character.name }}</text><text class="result-box-id">盒号 {{ result.boxId }}</text></view><view class="result-actions"><button class="result-btn" :class="isCharacterOwned(result.character && result.character.name) ? 'owned' : 'lightup'" @click.stop="onSearchResultToggle(result)">{{ isCharacterOwned(result.character && result.character.name) ? '已点亮' : '点亮' }}</button></view></view>
+
+						</view>
+
+						<view class="no-search-results" v-if="showSearchResults && searchResults.length === 0 && searchKeyword"><text>没有找到匹配的角色</text></view>
+
+						 <view class="operation-bar">
+
+						    <!-- 左侧成就榜按钮 -->
+
+						    <view class="achievement-btn" @click="viewAchievements">
+
+						      <text class="trophy-icon">🏆</text>
+
+						      <text class="achievement-text">成就榜</text>
+
+						      <text class="achievement-count">{{ unlockedAchievements.length }}/{{ achievements.length }}</text>
+
+						      <view class="badge" v-if="unreadAchievement > 0">
+
+						        <text class="badge-num">{{ unreadAchievement }}</text>
+
+						      </view>
+
+						    </view>
+
+						    <!-- 右侧操作提示 -->
+
+						    <view class="tip-area">
+
+						      <text class="tip-text">单击 → 点亮精一</text>
+
+						      <text class="tip-text">双击 → 点亮精二</text>
+
+						    </view>
+
+						  </view>
+
+						<view class="achievement-popup" v-if="showAchievementPopup && currentAchievement"><view class="achievement-popup-content" @click.stop><view class="achievement-popup-icon-text"><text class="achievement-popup-icon">{{ currentAchievement.icon }}</text><text class="achievement-popup-name">{{ currentAchievement.name }}</text></view><text class="achievement-popup-desc">{{ currentAchievement.desc }}</text><button class="achievement-popup-close" @click="showAchievementPopup = false">知道了</button></view></view>
+
+						<view class="achievement-list-mask" v-if="showAchievementList" @click="showAchievementList = false"><view class="achievement-list-panel" @click.stop><view class="achievement-list-header"><text class="achievement-list-title">🏆 成就榜</text><text class="achievement-list-progress">{{ unlockedAchievements.length }}/{{ achievements.length }}</text><button class="achievement-list-close" @click="showAchievementList = false">×</button></view><scroll-view class="achievement-scroll" scroll-y><view class="achievement-item" v-for="item in achievements" :key="item.id" :class="{ unlocked: unlockedAchievements.includes(item.id) }" @click="showAchievementDetail(item)"><text class="achievement-icon">{{ item.icon }}</text><view class="achievement-info"><text class="achievement-name">{{ unlockedAchievements.includes(item.id) ? item.name : '???' }}</text><text class="achievement-desc">{{ item.desc }}</text></view><text class="achievement-status">{{ unlockedAchievements.includes(item.id) ? '已解锁' : '未解锁' }}</text></view></scroll-view><text class="achievement-progress-text">已解锁 {{ unlockedAchievements.length }}/{{ achievements.length }}</text></view></view>
+
+						<view class="filter-stats-section"><view class="box-filter-buttons"><button class="filter-btn" v-for="(option, index) in boxFilterOptions" :key="index" :class="{ active: boxFilterIndex === index }" @click="setBoxFilter(index)">{{ option }}</button></view><view class="stats-info"><text class="stat-item">点亮: {{ ownedCount }}/{{ totalCharacters }}</text><text class="stat-item">想要: {{ wantedCount }}</text><text class="stat-item">出物: {{ tradeCount }}</text></view></view>
+
+						<view class="elite-level-selector"><view class="elite-option" :class="{ active: eliteLevel === 'all' }" @click="setEliteLevel('all')"><text class="elite-tag all-tag">全部</text></view><view class="elite-option" :class="{ active: eliteLevel === 'elite1' }" @click="setEliteLevel('elite1')"><text class="elite-tag elite1-tag">仅精一</text></view><view class="elite-option" :class="{ active: eliteLevel === 'elite2' }" @click="setEliteLevel('elite2')"><text class="elite-tag elite2-tag">可精二</text></view></view>
+						</view>
+						<view class="top-fold-bar" @click="onFoldBarClick" @touchstart="onFoldTouchStart" @touchend="onFoldTouchEnd">
+							<text class="top-fold-dot" :class="{ on: !topCollapsed }"></text>
+							<text class="top-fold-text">{{ topCollapsed ? ('顶部功能区已收起 · 点亮 ' + ownedCount + '/' + totalCharacters) : '顶部功能区 · 点此向上收起' }}</text>
+							<text class="top-fold-move" v-if="!topCollapsed" @click.stop="setTopRegionInDrawer(true)">⇤ 收进抽屉</text>
+							<text class="top-fold-arrow" :class="{ up: !topCollapsed }">⌃</text>
+						</view>
+					</block>
 				</view>
 
-				<view class="no-search-results" v-if="showSearchResults && searchResults.length === 0 && searchKeyword"><text>没有找到匹配的角色</text></view>
-
-				 <view class="operation-bar">
-
-				    <!-- 左侧成就榜按钮 -->
-
-				    <view class="achievement-btn" @click="viewAchievements">
-
-				      <text class="trophy-icon">🏆</text>
-
-				      <text class="achievement-text">成就榜</text>
-
-				      <text class="achievement-count">{{ unlockedAchievements.length }}/{{ achievements.length }}</text>
-
-				      <view class="badge" v-if="unreadAchievement > 0">
-
-				        <text class="badge-num">{{ unreadAchievement }}</text>
-
-				      </view>
-
-				    </view>
-
-				    <!-- 右侧操作提示 -->
-
-				    <view class="tip-area">
-
-				      <text class="tip-text">单击 → 点亮精一</text>
-
-				      <text class="tip-text">双击 → 点亮精二</text>
-
-				    </view>
-
-				  </view>
-
-				<view class="achievement-popup" v-if="showAchievementPopup && currentAchievement"><view class="achievement-popup-content" @click.stop><view class="achievement-popup-icon-text"><text class="achievement-popup-icon">{{ currentAchievement.icon }}</text><text class="achievement-popup-name">{{ currentAchievement.name }}</text></view><text class="achievement-popup-desc">{{ currentAchievement.desc }}</text><button class="achievement-popup-close" @click="showAchievementPopup = false">知道了</button></view></view>
-
-				<view class="achievement-list-mask" v-if="showAchievementList" @click="showAchievementList = false"><view class="achievement-list-panel" @click.stop><view class="achievement-list-header"><text class="achievement-list-title">🏆 成就榜</text><text class="achievement-list-progress">{{ unlockedAchievements.length }}/{{ achievements.length }}</text><button class="achievement-list-close" @click="showAchievementList = false">×</button></view><scroll-view class="achievement-scroll" scroll-y><view class="achievement-item" v-for="item in achievements" :key="item.id" :class="{ unlocked: unlockedAchievements.includes(item.id) }" @click="showAchievementDetail(item)"><text class="achievement-icon">{{ item.icon }}</text><view class="achievement-info"><text class="achievement-name">{{ unlockedAchievements.includes(item.id) ? item.name : '???' }}</text><text class="achievement-desc">{{ item.desc }}</text></view><text class="achievement-status">{{ unlockedAchievements.includes(item.id) ? '已解锁' : '未解锁' }}</text></view></scroll-view><text class="achievement-progress-text">已解锁 {{ unlockedAchievements.length }}/{{ achievements.length }}</text></view></view>
-
-				<view class="filter-stats-section"><view class="box-filter-buttons"><button class="filter-btn" v-for="(option, index) in boxFilterOptions" :key="index" :class="{ active: boxFilterIndex === index }" @click="setBoxFilter(index)">{{ option }}</button></view><view class="stats-info"><text class="stat-item">点亮: {{ ownedCount }}/{{ totalCharacters }}</text><text class="stat-item">想要: {{ wantedCount }}</text><text class="stat-item">出物: {{ tradeCount }}</text></view></view>
-
-				<view class="elite-level-selector"><view class="elite-option" :class="{ active: eliteLevel === 'all' }" @click="setEliteLevel('all')"><text class="elite-tag all-tag">全部</text></view><view class="elite-option" :class="{ active: eliteLevel === 'elite1' }" @click="setEliteLevel('elite1')"><text class="elite-tag elite1-tag">仅精一</text></view><view class="elite-option" :class="{ active: eliteLevel === 'elite2' }" @click="setEliteLevel('elite2')"><text class="elite-tag elite2-tag">可精二</text></view></view>
-
-				<scroll-view class="boxes-scroll-view" scroll-y @scrolltolower="loadMore" @scroll="onPageScroll" :scroll-top="scrollTop" :scroll-into-view="scrollTargetId">
+				<scroll-view class="boxes-scroll-view" :class="{ 'is-top-folded': topCollapsed && !topRegionInDrawer, 'is-top-in-drawer': topRegionInDrawer }" :style="boxesScrollHeight ? ('height: ' + boxesScrollHeight + 'px') : ''" scroll-y @scrolltolower="loadMore" @scroll="onPageScroll" :scroll-top="scrollTop" :scroll-into-view="scrollTargetId">
 
 					<view class="box-section" v-for="(box, index) in displayBoxes" :key="box && (box.Box_id || index)" :id="boxSectionDomId(box && box.Box_id)" :class="{'box-highlight': box && box.Box_id === highlightBoxId}">
 
@@ -83,17 +171,10 @@
 
 							<view class="character-item" v-for="(character, charIndex) in getFilteredCharacters(box)" :key="charIndex" @click="toggleCharacterOwnership(character, box && box.Box_id)" @longpress="showCharacterActionSheet(character, box && box.Box_id)">
 
-								<view class="character-avatar-wrapper"><image class="character-avatar" :class="{ 'owned': isCharacterOwnedAtLevel(character && character.name, 'elite1', box && box.Box_id) || isCharacterOwnedAtLevel(character && character.name, 'elite2', box && box.Box_id), 'grayed': !isCharacterOwnedAtLevel(character && character.name, 'elite1', box && box.Box_id) && !isCharacterOwnedAtLevel(character && character.name, 'elite2', box && box.Box_id), 'wanted': isCharacterWanted(character && character.name), 'for-trade': isCharacterForTrade(character && character.name) }" :src="(character && character.avatar) || defaultAvatar" mode="aspectFit" @error="onAvatarError(character)" /><view class="status-indicators"><view class="owned-indicator elite1-indicator" v-if="isCharacterOwnedAtLevel(character && character.name, 'elite1', box && box.Box_id)">★</view><view class="owned-indicator elite2-indicator" v-if="isCharacterOwnedAtLevel(character && character.name, 'elite2', box && box.Box_id) && !isCharacterOwnedAtLevel(character && character.name, 'pair', box && box.Box_id)">★★</view><view class="want-indicator" v-if="isCharacterWanted(character && character.name)">💜</view><view class="trade-indicator" v-if="isCharacterForTrade(character && character.name)">📋</view><view class="hot-indicator" v-if="character && character.hotcharacter">🔥</view><view class="pair-indicator" v-if="getCharacterPairCount(character && character.name, box && box.Box_id) > 0"><text class="pair-text">一对</text><text class="pair-count">×{{ getCharacterPairCount(character && character.name, box && box.Box_id) }}</text></view></view></view>
+								<view class="character-avatar-wrapper"><image class="character-avatar" :class="{ 'owned': isCharacterOwnedAtLevel(character && character.name, 'elite1', box && box.Box_id) || isCharacterOwnedAtLevel(character && character.name, 'elite2', box && box.Box_id), 'grayed': !isCharacterOwnedAtLevel(character && character.name, 'elite1', box && box.Box_id) && !isCharacterOwnedAtLevel(character && character.name, 'elite2', box && box.Box_id), 'wanted': isCharacterWanted(character && character.name), 'for-trade': isCharacterForTrade(character && character.name) }" :src="imgSrc(displayAvatar(character, box))" mode="aspectFit" @error="onAvatarError(character, box)" /><view class="avatar-level-switch" v-if="canSwitchAvatar(character, box)" @click.stop="toggleAvatarLevel(character, box)"><text class="avatar-level-text">{{ avatarLevelOf(character, box) === 2 ? '精二' : '精一' }}</text></view><view class="status-indicators"><view class="owned-indicator elite1-indicator" v-if="isCharacterOwnedAtLevel(character && character.name, 'elite1', box && box.Box_id)">★</view><view class="owned-indicator elite2-indicator" v-if="isCharacterOwnedAtLevel(character && character.name, 'elite2', box && box.Box_id) && !isCharacterOwnedAtLevel(character && character.name, 'pair', box && box.Box_id)">★★</view><view class="want-indicator" v-if="isCharacterWanted(character && character.name)">💜</view><view class="trade-indicator" v-if="isCharacterForTrade(character && character.name)">📋</view><view class="hot-indicator" v-if="character && character.hotcharacter">🔥</view><view class="pair-indicator" v-if="getCharacterPairCount(character && character.name, box && box.Box_id) > 0"><text class="pair-text">一对</text><text class="pair-count">×{{ getCharacterPairCount(character && character.name, box && box.Box_id) }}</text></view></view><view class="quantity-display" v-if="showQuantityStepper && currentMode !== 'trade' && charHasAnyCount(character && character.name, box && box.Box_id)"><view class="quantity-item" v-if="canHavePair(character)"><text class="elite-label pair-label">对</text><view class="quantity-controls"><text class="quantity-btn" @click.stop="adjustQuantity(character && character.name, 'pair', -1, box && box.Box_id)">-</text><text class="quantity-value">{{ getCharacterPairCount(character && character.name, box && box.Box_id) }}</text><text class="quantity-btn" @click.stop="adjustQuantity(character && character.name, 'pair', 1, box && box.Box_id)">+</text></view></view><view class="quantity-item"><text class="elite-label elite1-label">一</text><view class="quantity-controls"><text class="quantity-btn" @click.stop="adjustQuantity(character && character.name, 'elite1', -1, box && box.Box_id)">-</text><text class="quantity-value">{{ getCharacterLooseCount(character && character.name, 'elite1', box && box.Box_id) }}</text><text class="quantity-btn" @click.stop="adjustQuantity(character && character.name, 'elite1', 1, box && box.Box_id)">+</text></view></view><view class="quantity-item" v-if="canHavePair(character)"><text class="elite-label elite2-label">二</text><view class="quantity-controls"><text class="quantity-btn" @click.stop="adjustQuantity(character && character.name, 'elite2', -1, box && box.Box_id)">-</text><text class="quantity-value">{{ getCharacterLooseCount(character && character.name, 'elite2', box && box.Box_id) }}</text><text class="quantity-btn" @click.stop="adjustQuantity(character && character.name, 'elite2', 1, box && box.Box_id)">+</text></view></view></view></view>
 
-								<view class="quantity-display" v-if="isCharacterOwnedAtLevel(character && character.name, 'elite1', box && box.Box_id) || isCharacterOwnedAtLevel(character && character.name, 'elite2', box && box.Box_id)"><view class="quantity-item" v-if="getCharacterEliteCount(character && character.name, 'elite1', box && box.Box_id) > 0"><text class="elite-label elite1-label">精</text><view class="quantity-controls"><text class="quantity-btn" @click.stop="adjustQuantity(character && character.name, 'elite1', -1, box && box.Box_id)">-</text><text class="quantity-value">{{ getCharacterEliteCount(character && character.name, 'elite1', box && box.Box_id) }}</text><text class="quantity-btn" @click.stop="adjustQuantity(character && character.name, 'elite1', 1, box && box.Box_id)">+</text></view></view><view class="quantity-item" v-if="getCharacterEliteCount(character && character.name, 'elite2', box && box.Box_id) > 0"><text class="elite-label elite2-label">精</text><view class="quantity-controls"><text class="quantity-btn" @click.stop="adjustQuantity(character && character.name, 'elite2', -1, box && box.Box_id)">-</text><text class="quantity-value">{{ getCharacterEliteCount(character && character.name, 'elite2', box && box.Box_id) }}</text><text class="quantity-btn" @click.stop="adjustQuantity(character && character.name, 'elite2', 1, box && box.Box_id)">+</text></view></view><view class="quantity-item" v-if="getCharacterPairCount(character && character.name, box && box.Box_id) > 0"><text class="elite-label pair-label">一对</text><view class="quantity-controls"><text class="quantity-btn" @click.stop="adjustQuantity(character && character.name, 'pair', -1, box && box.Box_id)">-</text><text class="quantity-value">{{ getCharacterPairCount(character && character.name, box && box.Box_id) }}</text><text class="quantity-btn" @click.stop="adjustQuantity(character && character.name, 'pair', 1, box && box.Box_id)">+</text></view></view></view>
-
-								<view class="price-display" v-if="character && character.market_price && currentMode !== 'trade'"><text class="price-text" v-if="character.market_price.ELITE1">{{ character.market_price.ELITE1 }}元</text><text class="price-text" v-if="character.market_price.ELITE2 && canHavePair(character)">{{ character.market_price.ELITE2 }}元</text></view>
-
-								<view class="price-display" v-if="currentMode === 'trade' && isCharacterForTrade(character && character.name)"><text class="price-text" v-if="getTradePrice(character && character.name, 'elite1')">{{ getTradePrice(character && character.name, 'elite1') }}元</text><text class="price-text" v-if="getTradePrice(character && character.name, 'elite2') && canHavePair(character)">{{ getTradePrice(character && character.name, 'elite2') }}元</text></view>
-
-								<view class="trade-price-inputs" v-if="currentMode === 'trade' && isCharacterOwned(character && character.name)"><view class="price-input-row"><text class="price-label">精一:</text><input class="price-input" type="number" :placeholder="isCharacterOwnedAtLevel(character && character.name, 'elite1') ? '输入价格' : '需点亮精一'" :disabled="!isCharacterOwnedAtLevel(character && character.name, 'elite1')" :value="getTradePrice(character && character.name, 'elite1')" @input="(e) => setTradePrice(character && character.name, 'elite1', e.detail.value)" /><text class="price-unit">关</text></view><view class="price-input-row" v-if="canHavePair(character)"><text class="price-label">精二:</text><input class="price-input" type="number" :placeholder="isCharacterOwnedAtLevel(character && character.name, 'elite2') ? '输入价格' : '需点亮精二'" :disabled="!isCharacterOwnedAtLevel(character && character.name, 'elite2')" :value="getTradePrice(character && character.name, 'elite2')" @input="(e) => setTradePrice(character && character.name, 'elite2', e.detail.value)" /><text class="price-unit">关</text></view><view class="price-input-row" v-else><text class="only-elite1-tip">仅精一</text></view></view>
-
-								<text class="character-name">{{ (character && character.name) || '未知角色' }}</text>
+								<text class="character-name">{{ (character && character.name) || '未知角色' }}</text><text class="loose-line" v-if="currentMode !== 'trade' && looseSummary(character && character.name, box && box.Box_id)">{{ looseSummary(character && character.name, box && box.Box_id) }}</text>
+								<view class="trade-marks" v-if="currentMode === 'trade' && getTradeMarks(character && character.name).length > 0"><text class="trade-mark" v-for="(m, mi) in getTradeMarks(character && character.name)" :key="mi" :class="'mk-' + m.status">{{ m.short }}</text></view>
 
 							</view>
 
@@ -168,9 +249,9 @@
 
 								<image class="card-icon-img" src="/static/elite0.png" mode="aspectFit" />
 
-								<text class="card-value">{{ currentMode === 'show' ? ownedCount : tradeCount }}</text>
+								<text class="card-value">{{ currentMode === 'show' ? ownedCount : tradeOutCount }}</text>
 
-								<text class="card-label">{{ currentMode === 'show' ? '总收藏' : '出物' }}</text>
+								<text class="card-label">{{ currentMode === 'show' ? '总收藏' : '出' }}</text>
 
 							</view>
 
@@ -178,19 +259,19 @@
 
 								<image class="card-icon-img" src="/static/elite0.png" mode="aspectFit" />
 
-								<text class="card-value">{{ elite1Count }}</text>
+								<text class="card-value">{{ currentMode === 'show' ? elite1Count : tradeSwapCount }}</text>
 
-								<text class="card-label">精一</text>
+								<text class="card-label">{{ currentMode === 'show' ? '精一' : '换' }}</text>
 
 							</view>
 
 							<view class="overview-card-item wanted-card">
 
-								<text class="card-icon">💜</text>
+								<text class="card-icon">{{ currentMode === 'show' ? '💜' : '🙏' }}</text>
 
-								<text class="card-value">{{ wantedCount }}</text>
+								<text class="card-value">{{ currentMode === 'show' ? wantedCount : tradeNeedCount }}</text>
 
-								<text class="card-label">想要</text>
+								<text class="card-label">{{ currentMode === 'show' ? '想要' : '要' }}</text>
 
 							</view>
 
@@ -198,9 +279,9 @@
 
 								<image class="card-icon-img" src="/static/elite2_golden.png" mode="aspectFit" />
 
-								<text class="card-value">{{ pairCount }}</text>
+								<text class="card-value">{{ currentMode === 'show' ? pairCount : tradeCount }}</text>
 
-								<text class="card-label">一对</text>
+								<text class="card-label">{{ currentMode === 'show' ? '一对' : '出物干员' }}</text>
 
 							</view>
 
@@ -436,13 +517,13 @@
 
 						<view class="overview-list" v-if="currentMode === 'trade'">
 
-							<text class="section-title">📋 出物列表</text>
+							<text class="section-title">📋 出 / 换 / 要 清单</text>
 
 							<view class="owned-list-items">
 
 								<view class="owned-list-item" v-for="(item, index) in getTradeList()" :key="index">
 
-									<image class="item-avatar" :src="item.avatar" />
+									<image class="item-avatar" :src="imgSrc(item.avatar)" />
 
 									<view class="item-info">
 
@@ -450,13 +531,7 @@
 
 										<view class="item-badges">
 
-											<text class="item-badge elite1" v-if="item.elite1Count > 0">★{{ item.elite1Count }}</text>
-
-											<text class="item-badge elite2" v-if="item.elite2Count > 0">★{{ item.elite2Count }}</text>
-
-											<text class="item-badge pair" v-if="item.pairCount > 0">一对×{{ item.pairCount }}</text>
-
-											<text class="item-badge price" v-if="item.price">¥{{ item.price }}</text>
+											<text class="item-badge" v-for="(m, mi) in item.marks" :key="mi" :class="'mk-' + m.status">{{ m.short }}</text>
 
 										</view>
 
@@ -484,7 +559,7 @@
 
 									<text class="share-option-title">只生成有进度的收集盒号</text>
 
-									<text class="share-option-desc">{{ onlyShowProgressBoxes ? '仅显示有收集进度的盒子，单张长图' : '显示全部盒子，可能生成多张图片，可自行用第三方软件拼接' }}</text>
+									<text class="share-option-desc">{{ onlyShowProgressBoxes ? '仅显示有收集进度的盒子' : '显示全部盒子（空盒折叠成网格）' }}</text>
 
 								</view>
 
@@ -496,9 +571,9 @@
 
 						<view class="overview-footer">
 
-							<button class="generate-btn" @click="generateShareImageFromOverview" :disabled="isGeneratingShareImage">
+							<button class="generate-btn" @click="openBoxesPoster" :disabled="isGeneratingShareImage">
 
-								{{ isGeneratingShareImage ? '生成中..' : (onlyShowProgressBoxes ? '📊 生成分享图' : '📊 生成分享图（可能多张）') }}
+								{{ isGeneratingShareImage ? '生成中..' : (onlyShowProgressBoxes ? '📊 生成进度长图' : '📊 生成进度长图（可能多张）') }}
 
 							</button>
 
@@ -512,9 +587,113 @@
 
 				<canvas canvas-id="shareCanvas" style="position: absolute; left: -9999px; top: -9999px; width: 750rpx; height: 4000rpx;" id="shareCanvas"></canvas>
 
-				<view class="bottom-action-bar"><view class="quick-actions"><button class="quick-btn elite1-btn" @click="selectAllElite1"><text>全选精一</text></button><button class="quick-btn elite2-btn" @click="selectAllElite2"><text>全选精二</text></button><button class="quick-btn pair-btn" @click="selectAllPair"><text>全选一对</text></button><button class="quick-btn clear-btn" @click="clearAll"><text>清空所有</text></button></view><view class="summary-info"><text class="summary-text">已点亮 {{ ownedCount }} | 想要: {{ wantedCount }}</text><text class="summary-text" v-if="currentMode === 'trade'">出物: {{ tradeCount }}</text></view></view>
+				<!-- App 端海报用 canvas 重绘，不再截屏（截屏在 Android 上只能出黑图） -->
+				<!-- #ifdef APP-PLUS -->
+				<canvas canvas-id="posterCanvas" id="posterCanvas" style="position: absolute; left: -9999px; top: -9999px; width: 750rpx; height: 3200rpx;"></canvas>
+				<!-- #endif -->
+
+				<view class="bottom-action-bar"><view class="quick-actions" v-if="currentMode !== 'trade'"><button class="quick-btn elite1-btn" @click="selectAllElite1"><text>全选精一</text></button><button class="quick-btn elite2-btn" @click="selectAllElite2"><text>全选精二</text></button><button class="quick-btn pair-btn" @click="selectAllPair"><text>全选一对</text></button><button class="quick-btn clear-btn" @click="clearAll"><text>清空所有</text></button></view><view class="trade-bar-tip" v-else><text class="trade-bar-tip-text">出物模式 · 点角色编辑「出 / 换 / 要」，长按可改点亮状态</text></view><view class="summary-info"><text class="summary-text">已点亮 {{ ownedCount }} | 想要: {{ wantedCount }}</text><text class="summary-text" v-if="currentMode === 'trade'">出物: {{ tradeCount }}</text><text class="qty-toggle" :class="{ on: showQuantityStepper }" v-if="currentMode !== 'trade'" @click.stop="toggleQuantityStepper">{{ showQuantityStepper ? '隐藏数量' : '显示数量' }}</text></view></view>
+
+				<!-- 出物标记编辑层：点角色弹出，按 精一/精二/一对 分别标 出/换/要 -->
+				<view class="trade-sheet-mask" v-if="tradeSheetOpen" @click="closeTradeSheet">
+					<view class="trade-sheet" @click.stop>
+						<view class="trade-sheet-head">
+							<image class="trade-sheet-avatar" :src="imgSrc(tradeSheetAvatar)" mode="aspectFit" />
+							<view class="trade-sheet-title-box">
+								<text class="trade-sheet-name">{{ tradeSheetName }}</text>
+								<text class="trade-sheet-sub">{{ tradeSheetBoxLabel }}{{ tradeSheetBoxLabel ? ' · ' : '' }}点亮后才能标「出 / 换」</text>
+							</view>
+							<text class="trade-sheet-close" @click="closeTradeSheet">×</text>
+						</view>
+						<view class="trade-sheet-body">
+							<view class="trade-sheet-row" v-for="row in tradeSheetRows" :key="row.level">
+								<view class="trade-row-head">
+									<text class="trade-row-level">{{ row.text }}</text>
+									<text class="trade-row-own" :class="{ on: row.owned }" @click="toggleTradeRowOwned(row)">{{ row.owned ? '已点亮' : '未点亮' }}</text>
+									<text class="trade-row-price" v-if="row.status === 'out' && !(row.price > 0)">未定价</text>
+								</view>
+								<view class="trade-row-opts">
+									<text class="trade-opt mk-out" :class="{ active: row.status === 'out', off: !row.owned }" @click="pickTradeStatus(row.level, 'out')">出</text>
+									<text class="trade-opt mk-swap" :class="{ active: row.status === 'swap', off: !row.owned }" @click="pickTradeStatus(row.level, 'swap')">换</text>
+									<text class="trade-opt mk-want" :class="{ active: row.status === 'want' }" @click="pickTradeStatus(row.level, 'want')">要</text>
+									<input
+										v-if="row.status === 'out'"
+										class="trade-price-field"
+										type="number"
+										:value="row.price ? row.price : ''"
+										placeholder="售价 ¥"
+										@input="onTradeSheetPrice(row.level, $event)"
+									/>
+								</view>
+							</view>
+							<view class="trade-sheet-empty" v-if="!tradeSheetRows.length"><text>这个角色暂无可标记的等级</text></view>
+						</view>
+						<view class="trade-sheet-foot">
+							<text class="trade-sheet-tip">同一等级只能选一种状态，再点一次取消；价格只对「出」生效</text>
+							<button class="trade-sheet-done" @click="closeTradeSheet">完成</button>
+						</view>
+					</view>
+				</view>
+
 
 				<view class="debug-modal" v-if="showDebugModal" @tap="closeDebugModal"><view class="debug-modal-content" @tap.stop><view class="debug-modal-header"><text class="debug-modal-title">调试信息</text><button class="debug-close-btn" @click="closeDebugModal">×</button></view><scroll-view class="debug-body" scroll-y><view class="debug-section"><text class="debug-section-title">数据状态</text><view class="debug-item"><text class="debug-label">过滤后盒号数:</text><text class="debug-value">{{ filteredBoxes.length }}</text></view><view class="debug-item"><text class="debug-label">显示盒子数:</text><text class="debug-value">{{ displayBoxes.length }}</text></view><view class="debug-item"><text class="debug-label">空状态:</text><text class="debug-value">{{ emptyText }}</text></view></view><view class="debug-section"><text class="debug-section-title">用户数据</text><view class="debug-item"><text class="debug-label">已点亮:</text><text class="debug-value">{{ ownedCount }}个</text></view><view class="debug-item"><text class="debug-label">想要:</text><text class="debug-value">{{ wantedCount }}个</text></view><view class="debug-item"><text class="debug-label">出物:</text><text class="debug-value">{{ tradeCount }}个</text></view></view><view class="debug-section"><text class="debug-section-title">本地存储</text><view class="debug-item"><text class="debug-label">arknightsData:</text><text class="debug-value">{{ localStorage.arknightsData ? '存在' : '不存在' }}</text></view><view class="debug-item"><text class="debug-label">收藏:</text><text class="debug-value">{{ localStorage.favoriteCharacterNames ? (localStorage.favoriteCharacterNames.length + '个') : '不存在' }}</text></view></view><view class="debug-section"><button class="test-btn" @click="testCharacterExtraction">测试角色提取</button><view class="test-result" v-if="testResult"><text class="test-result-text">{{ testResult }}</text></view></view></scroll-view><view class="debug-modal-footer"><button class="debug-action-btn" @click="clearLocalStorage">🗑️ 清除所有数据</button><button class="debug-action-btn" @click="reloadData">🔄 重新加载</button></view></view></view>
+
+			<!-- 分享预览：展柜名片铺满整屏，App 端截图即成品 -->
+			<view class="shot-layer" v-if="sharePosterOpen">
+				<view class="shot-page">
+					<view class="shot-card">
+						<view class="shot-head">
+							<text class="shot-title">我的通行证展柜</text>
+							<text class="shot-sub">点亮 {{ ownedCount }}<text v-if="totalCharacters > 0"> / {{ totalCharacters }}</text> · 想要 {{ wantedCount }} · 出物 {{ tradeCount }}</text>
+						</view>
+
+						<view class="shot-list" v-if="shareNameList.length">
+							<view class="shot-chip" :class="{ gold: c.elite2 }" v-for="(c, i) in shareNameList" :key="i">
+								<text class="shot-chip-name">{{ c.name }}</text>
+								<text class="shot-chip-tag" v-if="c.elite2">精二</text>
+							</view>
+							<view class="shot-chip more" v-if="shareNameRest > 0">
+								<text class="shot-chip-name">+{{ shareNameRest }}</text>
+							</view>
+						</view>
+						<view class="shot-note" v-if="shareNameList.length">
+							<text class="shot-note-text">共 {{ shareOwnedList.length }} 位干员已点亮</text>
+							<text class="shot-note-text">精二 {{ shareElite2Count }} 位</text>
+						</view>
+						<view class="shot-empty" v-else>
+							<text class="shot-empty-text">还没有点亮任何通行证，去展柜勾一勾吧</text>
+						</view>
+					</view>
+				</view>
+
+				<view class="shot-foot">
+					<image class="shot-qr" src="/static/wechat-code.jpg" mode="aspectFit"></image>
+					<view class="shot-foot-text">
+						<text class="shot-foot-title">微信扫码 · 记录你的每一张通行证</text>
+						<text class="shot-foot-sub">数据只存在本机，不上传服务器</text>
+					</view>
+				</view>
+
+				<view class="shot-bar" v-if="!capturing">
+					<view class="poster-btn" @click="closeSharePoster"><text>关闭</text></view>
+					<!-- #ifdef APP-PLUS -->
+					<view class="poster-btn" @click="sendPoster"><text>发送图片</text></view>
+					<view class="poster-btn primary" @click="savePoster"><text>保存图片</text></view>
+					<!-- #endif -->
+					<!-- #ifdef MP-WEIXIN -->
+					<button class="poster-btn poster-btn-share" open-type="share"><text>小程序卡片</text></button>
+					<view class="poster-btn primary" @click="copyPosterText"><text>复制文案</text></view>
+					<!-- #endif -->
+					<!-- #ifdef H5 -->
+					<view class="poster-btn primary" @click="copyPosterText"><text>复制文案</text></view>
+					<!-- #endif -->
+				</view>
+
+				<view class="poster-hint" v-if="!capturing">
+					<text>{{ posterHint }}</text>
+				</view>
+			</view>
+
 
 		</view>
 
@@ -525,12 +704,23 @@
 <script>
 
 import errorLog from "@/utils/errorLog.js";
+import { isShell } from "@/utils/wideLayout.js";
+import { markDailyTask } from "@/utils/dailyTask.js";
+import { openLink, linkActionText } from "@/utils/openLink.js";
+import { elite2Url } from "@/utils/eliteAvatar.js";
+import { openMpShareShot } from "@/utils/screenshot.js";
+// #ifdef APP-PLUS
+import { renderGalleryPoster } from "@/utils/posterCanvas.js";
+// #endif
+import { mergeGuessData, pruneStoredGuessData } from "@/utils/guessData.js";
 export default {
 
 	data() {
 
 		return {
 
+			// 主题模式
+			themeMode: 'simple',
 			filteredBoxes: [],
 
 			displayBoxes: [], // 当前显示的盒子（分页）
@@ -551,17 +741,51 @@ export default {
 
 			tradeCharacters: {}, // 出物的角色{角色名 {elite1: {price: 0, note: ''}, elite2: {price: 0, note: ''}}}
 
+			// 出物编辑层（点角色弹出）：出 / 换 / 要 × 精一 / 精二 / 一对
+			tradeSheetOpen: false,
+			tradeSheetName: '',
+			tradeSheetBoxId: '',
+			tradeSheetAvatar: '',
+			tradeSheetBoxLabel: '',
+			tradeSheetPairOk: true,
+			tradeSheetCharacter: null, // 原始角色对象（带 boxType，别用 findCharacterByName 重查丢了字段）
+			tradeOutCount: 0, // 「出」的项数（精一/精二/一对各算一项）
+			tradeSwapCount: 0, // 「换」的项数
+			tradeNeedCount: 0, // 「要」的项数
+
 
 
 			// 界面状态
 
 			currentMode: 'show', // 'show'或'trade'
 
+			leftDrawerOpen: false,
+
+			topCollapsed: false,
+
+			topRegionInDrawer: false, // 顶部功能区是否整体收进左抽屉
+
+			boxesScrollHeight: 0, // 列表实测高度（0 = 用 CSS 兜底）
+
+			boxHeightTimer: null,
+
+			foldTouchY: 0,
+
+			foldSwipeAt: 0,
+
 			wantMode: false,
 
 			showOverviewPage: false, // 是否显示概览页面
 
 			eliteLevel: 'all', // 'all', 'elite1', 'elite2'
+
+
+
+			avatarPref: {}, // 一对时显示精一还是精二：{'角色名@盒号': 1|2}
+
+
+
+			avatarFailed: {}, // 加载失败的头像地址，避免反复请求坏图
 
 			boxFilterIndex: 0, // 默认选择全部
 
@@ -677,6 +901,9 @@ export default {
 
 			// pairCount 由 computed 属性计算
 
+			// 卡片上的数量步进默认隐藏（6 列栅格里太挤、容易误触），按需在底部打开
+			showQuantityStepper: false,
+
 			singleElite1Count: 0, // 单精一数量
 
 			singleElite2Count: 0, // 单精二数量
@@ -684,6 +911,13 @@ export default {
 			// 概览增强统计
 
 			completionRate: 0,
+
+			// 分享海报
+
+			sharePosterOpen: false,
+
+			capturing: false,
+
 
 			completedBoxes: 0,
 
@@ -756,6 +990,24 @@ export default {
 
 	computed: {
 
+		// 出物编辑层的三行（精一 / 精二 / 一对）
+		tradeSheetRows() {
+			const name = this.tradeSheetName;
+			if (!name) return [];
+			const levels = this.tradeSheetPairOk ? ['elite1', 'elite2', 'pair'] : ['elite1'];
+			return levels.map((level) => {
+				const entry = this.getTradeEntry(name, level);
+				const owned = this.isTradeLevelOwned(name, level, this.tradeSheetBoxId);
+				return {
+					level: level,
+					text: this.tradeLevelText(level),
+					owned: owned,
+					status: entry.status,
+					price: entry.price
+				};
+			});
+		},
+
 		// 当前筛选的盒子类型
 
 		currentBoxFilter() {
@@ -804,28 +1056,101 @@ export default {
 
 		// 一对数量
 
+		// 分享海报用的已点亮名单。
+		//
+		// 口径必须和 ownedCount 一致：走「全部盒子 + 用户点亮记录」，
+		// 不受盒子筛选、分页、精一/精二筛选影响。
+		// 旧实现遍历 displayBoxes（一页只有 3 个盒子），会出现图上写
+		// 「点亮 12 / 40」、名单却只列 2 个干员的自相矛盾。
+		shareOwnedList() {
+			const owned = this.ownedCharacters || {};
+			// 先算 name -> 状态，避免在盒子循环里反复遍历点亮记录
+			const state = {};
+			for (const name in owned) {
+				const rec = owned[name] || {};
+				let any = false;
+				let e2 = false;
+				for (const bid in rec) {
+					const d = rec[bid];
+					if (!d) continue;
+					const n1 = this.getCharacterEliteCount(name, 'elite1', bid);
+					const n2 = this.getCharacterEliteCount(name, 'elite2', bid);
+					if (n1 > 0 || n2 > 0) any = true;
+					if (n2 > 0) e2 = true;
+				}
+				if (any) state[name] = { elite2: e2 };
+			}
+
+			const out = [];
+			const seen = {};
+			const push = (name, st) => {
+				if (!name || seen[name] || !st) return;
+				seen[name] = true;
+				out.push({ name: name, elite2: !!st.elite2 });
+			};
+
+			// 先按盒子顺序走，名单顺序和展柜一致；
+			// 用 getBoxCharacters 的原始角色表，不套 eliteLevel 筛选
+			const boxes = Array.isArray(this.characterData) ? this.characterData : [];
+			for (let i = 0; i < boxes.length; i++) {
+				const chars = this.getBoxCharacters(boxes[i]) || [];
+				for (let j = 0; j < chars.length; j++) {
+					const n = chars[j] && chars[j].name;
+					if (n && !seen[n]) push(n, state[n]);
+				}
+			}
+			// 兜底：点亮记录里有、但当前盒子数据里找不到的干员（活动下线/数据更新），
+			// 不补进来的话「点亮数」和名单长度还是会差
+			for (const name in state) {
+				if (!seen[name]) push(name, state[name]);
+			}
+			return out;
+		},
+		shareNameList() {
+			// 分享图是拿来看的，精二优先展示；截断 32 个时也不会把精二挤出画面。
+			// 不用 sort，避免依赖排序稳定性，直接分组拼。
+			const list = this.shareOwnedList;
+			const gold = [];
+			const plain = [];
+			for (let i = 0; i < list.length; i++) {
+				(list[i].elite2 ? gold : plain).push(list[i]);
+			}
+			return gold.concat(plain).slice(0, 20);
+		},
+		shareNameRest() {
+			// 与 shareNameList 的 20 个上限保持一致
+			return Math.max(0, this.shareOwnedList.length - 20);
+		},
+		shareElite2Count() {
+			return this.shareOwnedList.filter(item => item.elite2).length;
+		},
+
+		posterHint() {
+			// #ifdef APP-PLUS
+			return '点「保存图片」会把这张卡片存进相册';
+			// #endif
+			// #ifdef MP-WEIXIN
+			return '点「保存图片」会调用 Skyline 截图生成图片，需微信 8.0.33 以上';
+			// #endif
+			// #ifdef H5
+			return '用系统截图保存这张卡片，或复制文案分享';
+			// #endif
+			return '';
+		},
 		pairCount() {
-
+			// 与 getCharacterPairCount 同源：对数 = min(精一件数, 精二件数)
 			let count = 0;
-
 			Object.values(this.ownedCharacters).forEach(charData => {
-
+				if (!charData) return;
 				Object.values(charData).forEach(boxData => {
-
-					// 显式设置的一对
-
-					if (boxData.pair?.owned) count += boxData.pair.count || 1;
-
-					// 或者同时拥有精一和精二（但排除已显式设置一对的情况）
-
-					else if (boxData.elite1?.owned && boxData.elite2?.owned) count++;
-
+					if (!boxData) return;
+					const p = (boxData.pair && boxData.pair.count) || 0;
+					const e1 = boxData.elite1 && typeof boxData.elite1.count === 'number' ? boxData.elite1.count : p;
+					const e2 = boxData.elite2 && typeof boxData.elite2.count === 'number' ? boxData.elite2.count : p;
+					count += Math.min(e1, e2);
 				});
-
 			});
-
 			return count;
-
 		},
 
 		
@@ -962,6 +1287,13 @@ export default {
 
 
 
+		// 精一/精二显示偏好
+
+		this.loadAvatarPref();
+
+		// 数量步进控件的显示偏好
+		this.loadQuantityStepper();
+
 		// 初始化系统
 
 		this.initAchievements();
@@ -976,6 +1308,14 @@ export default {
 
 	onShow() {
 
+		this.loadTopCollapsed();
+		this.loadTopRegionMode();
+
+		this.loadThemeSetting();
+
+		this.refreshBoxesHeight(120);
+
+		setTimeout(() => this.refreshBoxesHeight(0), 700);
 		// 页面显示重新加载用户数据		this.loadUserData();
 
 	},
@@ -984,7 +1324,7 @@ export default {
 
 		return {
 
-			title: '明日方舟通行证胶子查询工具分享',
+			title: this.posterShareTitle(),
 
 			path: '/pages/card_share/card_share',
 
@@ -998,7 +1338,7 @@ export default {
 
 		return {
 
-			title: '明日方舟通行证胶子查询工具分享',
+			title: this.posterShareTitle(),
 
 			imageUrl: ''
 
@@ -1007,6 +1347,382 @@ export default {
 	},
 
 	methods: {
+	/* ================= 分享展柜 ================= */
+	openSharePoster() {
+		this.leftDrawerOpen = false;
+		// #ifdef MP-WEIXIN
+		openMpShareShot(this.buildShotPayload());
+		return;
+		// #endif
+		this.sharePosterOpen = true;
+	},
+
+	// 传给 Skyline 截图页的数据
+	buildShotPayload() {
+		const total = this.totalCharacters > 0 ? (' / ' + this.totalCharacters) : '';
+		return {
+			type: 'gallery',
+			sub: '点亮 ' + this.ownedCount + total + ' · 想要 ' + this.wantedCount + ' · 出物 ' + this.tradeCount,
+			// 结构化字段：画布顶部要突出「已点亮 / 总数」大数字 + 进度条，
+			// 不能再从 sub 那串文字里抠数字
+			owned: this.ownedCount,
+			totalChars: this.totalCharacters || 0,
+			wanted: this.wantedCount,
+			trade: this.tradeCount,
+			names: this.shareNameList,
+			rest: this.shareNameRest,
+			total: this.shareOwnedList.length,
+			elite2Count: this.shareElite2Count,
+			qrTitle: '微信扫码 · 记录你的每一张通行证',
+			shareTitle: this.posterShareTitle(),
+			sharePath: '/pages/card_share/card_share'
+		};
+	},
+
+	/* ================= 每盒进度长图 =================
+	 * 小程序走 share_shot 整屏页（和「分享卡片」同一套：保存 / 发送 / 分享小程序卡片），
+	 * 这样两个分享入口的体验才一致；非小程序没有那个页面，仍用页内 canvas 生成。
+	 */
+	openBoxesPoster() {
+		// #ifdef MP-WEIXIN
+		openMpShareShot(this.buildBoxesPayload());
+		return;
+		// #endif
+		this.generateShareImageFromOverview();
+	},
+
+		buildBoxesPayload() {
+			const allBoxes = (this.getFilteredBoxesForOverview ? this.getFilteredBoxesForOverview() : (this.filteredBoxes || [])) || [];
+			const isTrade = this.currentMode === 'trade';
+			let sumOwned = 0;
+			let sumTotal = 0;
+			let opened = 0;
+			allBoxes.forEach((box) => {
+				const total = this.getBoxTotalCount(box);
+				const owned = this.getBoxOwnedCount(box);
+				sumTotal += total;
+				sumOwned += owned;
+				if (owned > 0) opened++;
+			});
+
+			// 点亮模式：按收集进度筛；出物模式：只保留有出/换/要标记的盒
+			let src = allBoxes;
+			if (isTrade) {
+				src = allBoxes.filter((box) => this.boxTradeMarks(box).length > 0);
+			} else if (this.onlyShowProgressBoxes) {
+				src = allBoxes.filter((box) => this.getBoxOwnedCount(box) > 0);
+			}
+
+			const list = [];
+			const seenMark = {}; // 出物模式下角色级标记去重（跨盒）
+			src.forEach((box) => {
+				const boxId = box.Box_id || box.box_id;
+				const owned = this.getBoxOwnedCount(box);
+				const total = this.getBoxTotalCount(box);
+				const chars = this.getBoxCharacters(box) || [];
+				const seen = {};
+				const chips = [];
+				let hidden = 0;
+				let outN = 0;
+				let swapN = 0;
+				let needN = 0;
+
+				chars.forEach((ch) => {
+					if (!ch || !ch.name || seen[ch.name]) return;
+					seen[ch.name] = 1;
+
+					if (isTrade) {
+						// 标记是角色级的（不区分盒），同一个干员的标记只挂在他出现的第一个盒里
+						if (seenMark[ch.name]) return;
+						const marks = this.getTradeMarks(ch.name);
+						if (!marks.length) { hidden++; return; }
+						seenMark[ch.name] = 1;
+						for (let i = 0; i < marks.length; i++) {
+							const m = marks[i];
+							const priceTxt = (m.status === 'out' && m.price > 0) ? (' ¥' + m.price) : '';
+							chips.push({ name: ch.name + ' ' + m.text + priceTxt, st: m.status });
+							if (m.status === 'out') outN++;
+							else if (m.status === 'swap') swapN++;
+							else needN++;
+						}
+						return;
+					}
+
+					const e1 = this.isCharacterOwnedAtLevel ? this.isCharacterOwnedAtLevel(ch.name, 'elite1', boxId) : false;
+					const e2 = this.isCharacterOwnedAtLevel ? this.isCharacterOwnedAtLevel(ch.name, 'elite2', boxId) : false;
+					const pr = this.isCharacterOwnedAtLevel ? this.isCharacterOwnedAtLevel(ch.name, 'pair', boxId) : false;
+					let st = 'none';
+					if (pr || (e1 && e2)) st = 'pair';
+					else if (e2) st = 'e2';
+					else if (e1) st = 'e1';
+					// 未点亮的只计数，画成末尾一个「+N」灰片
+					if (st === 'none') { hidden++; return; }
+					chips.push({ name: ch.name, st: st });
+				});
+
+				list.push({
+					name: box.Box_name || box.Box_id || box.box_id || '?',
+					owned: owned,
+					total: total,
+					pct: total > 0 ? Math.round(owned / total * 100) : 0,
+					chips: chips,
+					hidden: hidden,
+					active: chips.length > 0,
+					outN: outN,
+					swapN: swapN,
+					needN: needN
+				});
+			});
+
+			// 出物模式下，去重后可能剩下空壳盒，直接不列
+			const finalBoxes = isTrade ? list.filter((b) => b.active) : list;
+
+			return {
+				type: 'boxes',
+				mode: isTrade ? 'trade' : 'show',
+				ownedCount: this.ownedCount,
+				opened: opened,
+				boxCount: allBoxes.length,
+				emptyCount: isTrade ? Math.max(0, allBoxes.length - finalBoxes.length) : Math.max(0, allBoxes.length - opened),
+				sumOwned: sumOwned,
+				sumTotal: sumTotal,
+				tradeOut: this.tradeOutCount || 0,
+				tradeSwap: this.tradeSwapCount || 0,
+				tradeWant: this.tradeNeedCount || 0,
+				boxes: finalBoxes,
+				qrTitle: '微信扫码 · 记录你的每一张通行证',
+				shareTitle: this.posterShareTitle(),
+				sharePath: '/pages/card_share/card_share'
+			};
+		},
+
+		// 一个盒里所有角色的出/换/要标记（按角色去重）
+		boxTradeMarks(box) {
+			const chars = this.getBoxCharacters(box) || [];
+			const seen = {};
+			const out = [];
+			for (let i = 0; i < chars.length; i++) {
+				const ch = chars[i];
+				if (!ch || !ch.name || seen[ch.name]) continue;
+				seen[ch.name] = 1;
+				const marks = this.getTradeMarks(ch.name);
+				for (let k = 0; k < marks.length; k++) {
+					out.push({ name: ch.name, mark: marks[k] });
+				}
+			}
+			return out;
+		},
+
+
+	closeSharePoster() {
+		this.sharePosterOpen = false;
+	},
+
+	posterShareTitle() {
+		if (this.totalCharacters > 0) {
+			return '我的明日方舟通行证点亮了 ' + this.ownedCount + '/' + this.totalCharacters + ' 个，你收了多少？';
+		}
+		return '明日方舟通行证谷子查询工具 · 记录你的每一张通行证';
+	},
+
+	posterShareText() {
+		const lines = ['【通行证展柜】'];
+		if (this.totalCharacters > 0) lines.push('已点亮 ' + this.ownedCount + '/' + this.totalCharacters + '（' + this.completionRate + '%）');
+		else lines.push('已点亮 ' + this.ownedCount);
+		lines.push('想要 ' + this.wantedCount + ' · 出物 ' + this.tradeCount);
+		lines.push('来「方舟通行证谷子查询工具」记录你的通行证');
+		return lines.join('\n');
+	},
+
+	copyPosterText() {
+		uni.setClipboardData({
+			data: this.posterShareText(),
+			success: () => { uni.showToast({ title: '分享文案已复制', icon: 'none' }); }
+		});
+	},
+
+	// App 端不再截屏：canvas 重绘成图（utils/posterCanvas.js）
+	// 整段只在 App 端存在 —— 小程序端没有 renderGalleryPoster，留着是死代码
+	// #ifdef APP-PLUS
+	async capturePoster() {
+		this.capturing = true;
+		try {
+			const path = await renderGalleryPoster(this.buildShotPayload(), 'posterCanvas', this);
+			this.capturing = false;
+			return path;
+		} catch (e) {
+			this.capturing = false;
+			throw e;
+		}
+	},
+	// #endif
+
+	async savePoster() {
+		// #ifdef APP-PLUS
+		try {
+			const path = await this.capturePoster();
+			uni.saveImageToPhotosAlbum({
+				filePath: path,
+				success: () => { uni.showToast({ title: '已保存到相册', icon: 'none' }); },
+				fail: (err) => {
+					const msg = (err && err.errMsg) || '';
+					if (msg.indexOf('auth') > -1 || msg.indexOf('authorize') > -1) {
+						uni.showModal({
+							title: '需要相册权限',
+							content: '请在设置里允许保存图片到相册，然后再试一次',
+							confirmText: '去设置',
+							success: (r) => { if (r.confirm && uni.openSetting) uni.openSetting({}); }
+						});
+						return;
+					}
+					if (msg.indexOf('cancel') === -1) uni.showToast({ title: '保存失败，请用系统截图', icon: 'none' });
+				}
+			});
+		} catch (e) {
+			this.logError(e, 'card_share.share.capture');
+			uni.showToast({ title: '截图失败，请用系统截图', icon: 'none' });
+		}
+		// #endif
+		// #ifndef APP-PLUS
+		this.copyPosterText();
+		// #endif
+	},
+
+	async sendPoster() {
+		// #ifdef APP-PLUS
+		try {
+			const path = await this.capturePoster();
+			uni.shareWithSystem({
+				type: 2,
+				imageUrl: path,
+				fail: () => { uni.showToast({ title: '分享失败，可先保存图片', icon: 'none' }); }
+			});
+		} catch (e) {
+			this.logError(e, 'card_share.share.capture');
+			uni.showToast({ title: '截图失败，请用系统截图', icon: 'none' });
+		}
+		// #endif
+		// #ifndef APP-PLUS
+		this.copyPosterText();
+		// #endif
+	},
+
+toggleLeftDrawer() {
+		this.leftDrawerOpen = !this.leftDrawerOpen;
+},
+
+closeLeftDrawer() {
+		this.leftDrawerOpen = false;
+},
+
+drawerAction(kind) {
+		this.leftDrawerOpen = false;
+		if (kind === 'overview') this.openSharePreview();
+		else if (kind === 'want') this.toggleWantMode();
+		else if (kind === 'scan') this.startScan();
+},
+
+loadTopCollapsed() {
+		try { this.topCollapsed = uni.getStorageSync('cardShareTopCollapsed') === 'true'; } catch (e) { this.topCollapsed = false; }
+},
+
+toggleTopCollapsed() {
+		this.topCollapsed = !this.topCollapsed;
+		try { uni.setStorageSync('cardShareTopCollapsed', this.topCollapsed ? 'true' : 'false'); } catch (e) {}
+		// 收起时顺带关掉搜索结果，避免下次展开残留
+		if (this.topCollapsed) this.showSearchResults = false;
+		this.refreshBoxesHeight(80);
+},
+
+openLeftDrawer() {
+		this.leftDrawerOpen = true;
+},
+
+loadTopRegionMode() {
+		try { this.topRegionInDrawer = uni.getStorageSync('cardShareTopRegionInDrawer') === 'true'; } catch (e) { this.topRegionInDrawer = false; }
+},
+
+setTopRegionInDrawer(v) {
+		const next = !!v;
+		this.topRegionInDrawer = next;
+		try { uni.setStorageSync('cardShareTopRegionInDrawer', next ? 'true' : 'false'); } catch (e) {}
+		if (next) {
+			this.showSearchResults = false;
+			this.leftDrawerOpen = true; // 收进抽屉后直接打开，功能位置一眼可见
+		} else {
+			this.leftDrawerOpen = false;
+		}
+		this.refreshBoxesHeight(60);
+		uni.showToast({ title: next ? '已收进左侧抽屉' : '已放回页面顶部', icon: 'none' });
+},
+
+// 列表高度实测：顶区 + 底部操作栏都是固定的，折起来后列表自动补满
+refreshBoxesHeight(delay) {
+		if (this.boxHeightTimer) { clearTimeout(this.boxHeightTimer); this.boxHeightTimer = null; }
+		const run = () => {
+			this.$nextTick(() => {
+				try {
+					const winH = (uni.getSystemInfoSync() || {}).windowHeight || 0;
+					if (!winH) return;
+					const q = uni.createSelectorQuery().in(this);
+					q.select('.top-region').boundingClientRect();
+					q.select('.bottom-action-bar').boundingClientRect();
+					q.exec((res) => {
+						const region = res && res[0];
+						const bar = res && res[1];
+						if (!region || !region.height || typeof region.bottom !== 'number') return;
+						const barH = (bar && bar.height) ? bar.height : 0;
+						const avail = winH - region.bottom - barH - 14;
+						this.boxesScrollHeight = Math.max(280, Math.floor(avail));
+					});
+				} catch (e) { /* 量不到就退回 CSS 高度 */ }
+			});
+		};
+		if (delay) this.boxHeightTimer = setTimeout(run, delay);
+		else run();
+},
+
+onFoldBarClick() {
+		// 刚做过上下滑动，忽略随之而来的 click，避免连环折叠
+		if (Date.now() - this.foldSwipeAt < 400) return;
+		this.toggleTopCollapsed();
+},
+
+onFoldTouchStart(e) {
+		const t = (e && e.touches && e.touches[0]) || null;
+		this.foldTouchY = t ? t.clientY : 0;
+},
+
+onFoldTouchEnd(e) {
+		const t = (e && e.changedTouches && e.changedTouches[0]) || null;
+		const startY = this.foldTouchY;
+		this.foldTouchY = 0;
+		if (!t || !startY) return;
+		const dy = t.clientY - startY;
+		if (dy < -30 && !this.topCollapsed) { this.foldSwipeAt = Date.now(); this.toggleTopCollapsed(); }
+		else if (dy > 30 && this.topCollapsed) { this.foldSwipeAt = Date.now(); this.toggleTopCollapsed(); }
+},
+
+onSearchResultClick(result) {
+		if (!result || !result.character) return;
+		this.showSearchResults = false;
+		if (this.leftDrawerOpen) this.leftDrawerOpen = false;
+		if (result.boxId) this.scrollToBox(result.boxId);
+},
+
+onSearchResultToggle(result) {
+		if (!result || !result.character) return;
+		this.toggleCharacterOwnership(result.character, result.boxId);
+},
+
+loadThemeSetting() {
+			try {
+				const t = uni.getStorageSync('themeMode');
+				this.themeMode = (t && ['simple', 'ak', 'ark', 'jieyuan', 'liquid', 'liquidDark'].indexOf(t) > -1) ? t : 'simple';
+			} catch (e) {
+				this.themeMode = 'simple';
+			}
+		},
 		logError(e, ctx) {
 				try {
 					errorLog.logError(e, ctx);
@@ -1406,7 +2122,7 @@ export default {
 
 					console.log('合并预测数据，数量', this.localStorage.guessData.length);
 
-					data = [...data, ...this.localStorage.guessData];
+					data = mergeGuessData(data, this.localStorage.guessData).data;
 
 				}
 
@@ -1452,15 +2168,18 @@ export default {
 
 
 
-					uni.showToast({
+					// Windows 壳：展柜数据进入页面就自动加载，这条「加载成功」纯打扰，不弹（其它端保持原样，方便确认条数）
+					if (!isShell()) {
+						uni.showToast({
 
-						title: `加载成功 (${validatedData.length}个盒号`,
+							title: `加载成功 (${validatedData.length}个盒号`,
 
-						icon: 'success',
+							icon: 'success',
 
-						duration: 1500
+							duration: 1500
 
-					});
+						});
+					}
 
 				} else {
 
@@ -1586,13 +2305,16 @@ export default {
 
 
 
-						uni.showToast({
+						// Windows 壳：展柜数据进入页面就自动加载，这条「加载成功」纯打扰，不弹（其它端保持原样，方便确认条数）
+						if (!isShell()) {
+							uni.showToast({
 
-							title: `网络加载成功 (${data.length}个盒号`,
+								title: `网络加载成功 (${data.length}个盒号`,
 
-							icon: 'success',
+								icon: 'success',
 
-						});
+							});
+						}
 
 
 
@@ -2206,6 +2928,10 @@ export default {
 
 					avatar: avatarUrl || this.defaultAvatar,
 
+					avatarElite1: avatarUrl || '',
+
+					avatarElite2: '',
+
 					nolyELITE1: nolyELITE1,
 
 					hotcharacter: hotcharacter,
@@ -2237,6 +2963,24 @@ export default {
 				});
 
 			}
+
+			// 精二头像：仅当该角色确实有精二（不是「仅精一」、不是无精二盒型、且有精二市价）时才准备
+
+			characters.forEach(char => {
+
+				const mp = char.market_price;
+
+				const hasPrice2 = !mp || mp.ELITE2 !== undefined;
+
+				char.avatarElite2 = (char.nolyELITE1 || !hasPrice2)
+
+					? ''
+
+					: (elite2Url(char.avatarElite1) || '');
+
+			});
+
+
 
 
 
@@ -2616,11 +3360,11 @@ export default {
 			uni.showModal({
 				title: '条码未收录',
 				content: '条码 ' + barcode + ' 暂未录入数据库。\n欢迎填写问卷补充：\n' + url,
-				confirmText: '复制链接',
+				confirmText: linkActionText(),
 				cancelText: '关闭',
 				success: (res) => {
 					if (res.confirm) {
-						uni.setClipboardData({ data: url, success: () => { uni.showToast({ title: '链接已复制', icon: 'none' }); } });
+						openLink(url);
 					}
 				}
 			});
@@ -2912,13 +3656,165 @@ export default {
 
 		// 角色头像错误处理
 
-		onAvatarError(character) {
+		onAvatarError(character, box) {
 
-			if (character) {
+			// 记下失败的地址，displayAvatar 会自动回退（精二 → 精一 → 默认图）
 
-				character.avatar = this.defaultAvatar;
+			const url = character ? (this.displayAvatar(character, box) || '') : '';
+
+			if (url) this.avatarFailed[url] = true;
+
+		},
+
+
+
+		// ===== 精二头像 =====
+
+		// 一个格子只显示一张图：只点亮精一 → 精一图；只点亮精二 → 精二图；
+
+		// 点亮一对（或精一精二都在）→ 用头像左下角的小胶囊自行切换。
+
+		avatarPrefKey(name, boxId) {
+
+			return (name || '') + '@' + (boxId || '');
+
+		},
+
+
+
+		loadAvatarPref() {
+
+			try {
+
+				const raw = uni.getStorageSync('card_avatar_pref');
+
+				if (raw && typeof raw === 'object') this.avatarPref = raw;
+
+			} catch (e) {}
+
+		},
+
+
+
+		loadQuantityStepper() {
+			try {
+				const v = uni.getStorageSync('card_show_qty');
+				this.showQuantityStepper = v === true || v === 1 || v === '1';
+			} catch (e) {}
+		},
+
+		toggleQuantityStepper() {
+			this.showQuantityStepper = !this.showQuantityStepper;
+			try { uni.setStorageSync('card_show_qty', this.showQuantityStepper); } catch (e) {}
+			if (this.showQuantityStepper) {
+				uni.showToast({ title: '对 = 一对 · 一 = 单精一 · 二 = 单精二', icon: 'none', duration: 2600 });
+			}
+		},
+
+		// 这个角色在某个盒里是否已经有任何件数（有才显示步进器）
+		charHasAnyCount(characterName, boxId) {
+			const e1 = this.getCharacterEliteCount(characterName, 'elite1', boxId);
+			const e2 = this.getCharacterEliteCount(characterName, 'elite2', boxId);
+			return e1 + e2 > 0;
+		},
+
+		saveAvatarPref() {
+
+			try { uni.setStorageSync('card_avatar_pref', this.avatarPref); } catch (e) {}
+
+		},
+
+
+
+		canSwitchAvatar(character, box) {
+
+			if (!character || !character.avatarElite2) return false;
+
+			const name = character.name;
+
+			const boxId = box && box.Box_id;
+
+			const pair = this.getCharacterPairCount(name, boxId) > 0;
+
+			return pair || (this.isCharacterOwnedAtLevel(name, 'elite1', boxId) &&
+
+				this.isCharacterOwnedAtLevel(name, 'elite2', boxId));
+
+		},
+
+
+
+		avatarLevelOf(character, box) {
+
+			if (!character || !character.avatarElite2) return 1;
+
+			const pref = this.avatarPref[this.avatarPrefKey(character.name, box && box.Box_id)];
+
+			return (pref === 2 || pref === '2') ? 2 : 1;
+
+		},
+
+
+
+		toggleAvatarLevel(character, box) {
+
+			if (!this.canSwitchAvatar(character, box)) return;
+
+			const key = this.avatarPrefKey(character.name, box && box.Box_id);
+
+			this.avatarPref[key] = this.avatarLevelOf(character, box) === 2 ? 1 : 2;
+
+			this.saveAvatarPref();
+
+		},
+
+
+
+		displayAvatar(character, box) {
+
+			if (!character) return this.defaultAvatar;
+
+			const e1 = character.avatarElite1 || character.avatar || '';
+
+			const e2 = character.avatarElite2 || '';
+
+			if (!e2) return e1 || this.defaultAvatar;
+
+
+
+			const name = character.name;
+
+			const boxId = box && box.Box_id;
+
+			const owned1 = this.isCharacterOwnedAtLevel(name, 'elite1', boxId);
+
+			const owned2 = this.isCharacterOwnedAtLevel(name, 'elite2', boxId);
+
+			const pair = this.getCharacterPairCount(name, boxId) > 0;
+
+
+
+			let url = e1;
+
+			if (owned2 && !owned1 && !pair) {
+
+				url = e2; // 只点亮精二
+
+			} else if (pair || (owned1 && owned2)) {
+
+				url = this.avatarLevelOf(character, box) === 2 ? e2 : e1; // 一对 → 可切换
 
 			}
+
+
+
+			if (url && this.avatarFailed[url]) {
+
+				return this.avatarFailed[e1] ? this.defaultAvatar : (e1 || this.defaultAvatar);
+
+			}
+
+			return url || this.defaultAvatar;
 
 		},
 
@@ -2927,33 +3823,21 @@ export default {
 		// 检查角色是否拥有（任意级别）
 
 		isCharacterOwned(characterName, boxId) {
-
 			if (!characterName) return false;
-
 			const owned = this.ownedCharacters;
-
 			if (!owned || typeof owned !== 'object') return false;
-
 			const charBoxData = owned[characterName];
-
 			if (!charBoxData) return false;
-
+			// 按件数判断（一对 = 精一 + 精二 各一件），不用旧的 pair.owned 标记，
+			// 免得取消精一后残留的 pair.owned 让角色看起来还拥有着
 			if (boxId) {
-
-				const data = charBoxData[boxId];
-
-				if (!data) return false;
-
-				return (data.elite1?.owned) || (data.elite2?.owned) || (data.pair?.owned);
-
+				return this.getCharacterEliteCount(characterName, 'elite1', boxId) > 0 ||
+					this.getCharacterEliteCount(characterName, 'elite2', boxId) > 0;
 			}
-
-			return Object.values(charBoxData).some(d =>
-
-				(d.elite1?.owned) || (d.elite2?.owned) || (d.pair?.owned)
-
+			return Object.keys(charBoxData).some((bid) =>
+				this.getCharacterEliteCount(characterName, 'elite1', bid) > 0 ||
+				this.getCharacterEliteCount(characterName, 'elite2', bid) > 0
 			);
-
 		},
 
 
@@ -2982,19 +3866,19 @@ export default {
 
 				if (level === 'elite2') return data.elite2?.owned || false;
 
-				if (level === 'pair') return data.pair?.owned || false;
+				if (level === 'pair') return this.getCharacterPairCount(characterName, boxId) > 0;
 
 				return false;
 
 			}
+
+			if (level === 'pair') return this.getCharacterPairCount(characterName) > 0;
 
 			return Object.values(charBoxData).some(d => {
 
 				if (level === 'elite1') return d.elite1?.owned;
 
 				if (level === 'elite2') return d.elite2?.owned;
-
-				if (level === 'pair') return d.pair?.owned;
 
 				return false;
 
@@ -3007,85 +3891,65 @@ export default {
 		// 获得角色特定级别的数量
 
 		getCharacterEliteCount(characterName, level, boxId) {
-
 			if (!characterName) return 0;
-
+			if (level !== 'elite1' && level !== 'elite2') return 0;
 			const charBoxData = this.ownedCharacters[characterName];
-
 			if (!charBoxData) return 0;
-
-			if (boxId) {
-
-				const data = charBoxData[boxId];
-
-				if (!data) return 0;
-
-				if (level === 'elite1') return data.elite1?.count || 0;
-
-				if (level === 'elite2') return data.elite2?.count || 0;
-
-				return 0;
-
-			}
-
+			// 一件「一对」= 精一 1 件 + 精二 1 件。
+			// 历史数据可能只写了 pair.count 没写 elite*.count，这里取 max 兜住。
+			// 有 count 字段就以它为准（写操作会同步维护）；
+			// 只有老数据缺 count 时才退回 pair.count
+			const countOfBox = (d) => {
+				if (!d) return 0;
+				if (d[level] && typeof d[level].count === 'number') return d[level].count;
+				return (d.pair && d.pair.count) || 0;
+			};
+			if (boxId) return countOfBox(charBoxData[boxId]);
 			let total = 0;
-
-			for (const d of Object.values(charBoxData)) {
-
-				if (level === 'elite1') total += d.elite1?.count || 0;
-
-				if (level === 'elite2') total += d.elite2?.count || 0;
-
-			}
-
+			Object.values(charBoxData).forEach((d) => { total += countOfBox(d); });
 			return total;
-
 		},
 
 
 
 		// 获得角色一对的数量（同时拥有精一和精二也算一对）
 
+		// 一对的数量 = 精一件数与精二件数的较小值。
+		// 「一对凯尔希 + 单精一凯尔希」(精一2 / 精二1) => 1 对 + 1 件散精一，
+		// 不会再像旧逻辑那样只要两者都点亮就固定算 1 对、多出来的那件凭空消失。
 		getCharacterPairCount(characterName, boxId) {
-
 			if (!characterName) return 0;
-
 			const charBoxData = this.ownedCharacters[characterName];
-
 			if (!charBoxData) return 0;
-
-			if (boxId) {
-
-				const data = charBoxData[boxId];
-
-				if (!data) return 0;
-
-				// 如果显式设置了一对，返回一对数量
-
-				if (data.pair?.count > 0) return data.pair.count;
-
-				// 否则，如果同时拥有精一和精二，算作1对
-
-				if (data.elite1?.owned && data.elite2?.owned) return 1;
-
-				return 0;
-
-			}
-
+			const pairOfBox = (d) => {
+				if (!d) return 0;
+				const p = (d.pair && d.pair.count) || 0;
+				const e1 = d.elite1 && typeof d.elite1.count === 'number' ? d.elite1.count : p;
+				const e2 = d.elite2 && typeof d.elite2.count === 'number' ? d.elite2.count : p;
+				return Math.min(e1, e2);
+			};
+			if (boxId) return pairOfBox(charBoxData[boxId]);
 			let total = 0;
-
-			for (const d of Object.values(charBoxData)) {
-
-				total += d.pair?.count || 0;
-
-				// 如果同时拥有精一和精二，也算一对
-
-				if (d.elite1?.owned && d.elite2?.owned && !d.pair?.count) total += 1;
-
-			}
-
+			Object.values(charBoxData).forEach((d) => { total += pairOfBox(d); });
 			return total;
+		},
 
+		// 散件数量：精一 = 精一件数 - 对数
+		getCharacterLooseCount(characterName, level, boxId) {
+			if (level !== 'elite1' && level !== 'elite2') return 0;
+			const own = this.getCharacterEliteCount(characterName, level, boxId);
+			const pair = this.getCharacterPairCount(characterName, boxId);
+			return Math.max(0, own - pair);
+		},
+
+		// 角标上的散件摘要，例如「精一×1 · 精二×2」；没有散件返回空串
+		looseSummary(characterName, boxId) {
+			const l1 = this.getCharacterLooseCount(characterName, 'elite1', boxId);
+			const l2 = this.getCharacterLooseCount(characterName, 'elite2', boxId);
+			const parts = [];
+			if (l1 > 0) parts.push('精一×' + l1);
+			if (l2 > 0) parts.push('精二×' + l2);
+			return parts.join(' · ');
 		},
 
 
@@ -3102,139 +3966,200 @@ export default {
 
 
 
-		// 检查角色是否标记为出物（高级操作）
-
-		isCharacterForTrade(characterName) {
-
-			if (!characterName) return false;
-
-			const tradeData = this.tradeCharacters[characterName];
-
-			return tradeData && (tradeData.elite1 || tradeData.elite2);
-
+		// ===== 出物标记：出 / 换 / 要 × 精一 / 精二 / 一对 =====
+		tradeLevelText(level) {
+			if (level === 'elite1') return '精一';
+			if (level === 'elite2') return '精二';
+			if (level === 'pair') return '一对';
+			return '';
 		},
 
-
-
-		// 获得出物价格
-
-		getTradePrice(characterName, level) {
-
-			if (!characterName) return '';
-
-			const tradeData = this.tradeCharacters[characterName];
-
-			if (!tradeData || !tradeData[level]) return '';
-
-			return tradeData[level].price || '';
-
+		tradeStatusText(status) {
+			if (status === 'out') return '出';
+			if (status === 'swap') return '换';
+			if (status === 'want') return '要';
+			return '';
 		},
 
-
-
-		// 设置出物价格
-
-		setTradePrice(characterName, level, price) {
-
-			if (!characterName) return;
-
-
-
-			// 确保拥有该等级的角色才能设置价格
-
-			if (!this.isCharacterOwnedAtLevel(characterName, level)) {
-
-				uni.showToast({
-
-					title: `请先点亮角色的${level === 'elite1' ? '精一' : '精二'}`,
-
-					icon: 'none'
-
-				});
-
-				return;
-
-			}
-
-
-
-			const priceNum = parseFloat(price);
-
-			if (price && isNaN(priceNum)) {
-
-				uni.showToast({
-
-					title: '请输入拥有的价格',
-
-					icon: 'none'
-
-				});
-
-				return;
-
-			}
-
-
-
-			this.tradeCharacters = {
-
-				...this.tradeCharacters,
-
-				[characterName]: {
-
-					...(this.tradeCharacters[characterName] || {}),
-
-					[level]: {
-
-						price: priceNum || 0,
-
-						note: ''
-
-					}
-
-				}
-
+		// 读一条标记。老数据 {price, note} 没有 status，按「出」处理，
+		// 否则升级后原有出物记录会全部消失。
+		getTradeEntry(characterName, level) {
+			const data = characterName ? this.tradeCharacters[characterName] : null;
+			const raw = data ? data[level] : null;
+			if (!raw) return { status: '', price: 0 };
+			return {
+				status: raw.status || 'out',
+				price: Number(raw.price) || 0
 			};
-
-
-
-			// 如果价格为空，则清除该等级的出物标记
-
-			if (!priceNum) {
-
-				const updatedTrade = { ...this.tradeCharacters };
-
-				if (updatedTrade[characterName]) {
-
-					delete updatedTrade[characterName][level];
-
-					// 如果两个级别都没有拥有，则删除整个角色
-
-					if (!updatedTrade[characterName].elite1 && !updatedTrade[characterName].elite2) {
-
-						delete updatedTrade[characterName];
-
-					}
-
-				}
-
-				this.tradeCharacters = updatedTrade;
-
-			}
-
-
-
-			this.saveUserData();
-
-			this.calculateStatistics();
-
 		},
 
+		// 某等级是否算「已点亮」：一对除了显式标记，精一 + 精二都在也算
+		// （与卡片上的「一对」角标保持同一口径，否则编辑层会出现「头像是橙色但一对是灰的」）
+		isTradeLevelOwned(characterName, level, boxId) {
+			if (!characterName) return false;
+			if (level !== 'pair') return this.isCharacterOwnedAtLevel(characterName, level, boxId);
+			if (this.isCharacterOwnedAtLevel(characterName, 'pair', boxId)) return true;
+			return this.isCharacterOwnedAtLevel(characterName, 'elite1', boxId)
+				&& this.isCharacterOwnedAtLevel(characterName, 'elite2', boxId);
+		},
+
+		getTradeStatus(characterName, level) {
+			return this.getTradeEntry(characterName, level).status;
+		},
+
+		// 卡片上的小标签：[{ level, status, price, text:'出·精一', short:'出精一 ¥25' }]
+		getTradeMarks(characterName) {
+			if (!characterName) return [];
+			const data = this.tradeCharacters[characterName];
+			if (!data) return [];
+			const marks = [];
+			const levels = ['elite1', 'elite2', 'pair'];
+			for (let i = 0; i < levels.length; i++) {
+				const level = levels[i];
+				const raw = data[level];
+				if (!raw) continue;
+				const status = raw.status || 'out';
+				const price = Number(raw.price) || 0;
+				const stText = this.tradeStatusText(status);
+				const lvText = this.tradeLevelText(level);
+				marks.push({
+					level: level,
+					status: status,
+					price: price,
+					text: stText + '·' + lvText,
+					short: stText + lvText + (status === 'out' && price > 0 ? ' ¥' + price : '')
+				});
+			}
+			return marks;
+		},
+
+		// 检查角色是否「出货 / 换货」中（只有「要」不算，头像不该亮成出物色）
+		isCharacterForTrade(characterName) {
+			return this.getTradeMarks(characterName).some((m) => m.status !== 'want');
+		},
+
+		// 兼容旧接口：取某等级价格（0 视作未定价）
+		getTradePrice(characterName, level) {
+			const price = this.getTradeEntry(characterName, level).price;
+			return price > 0 ? price : '';
+		},
+
+		writeTradeMark(characterName, level, status, price) {
+			if (!characterName || !level || !status) return;
+			const prev = this.tradeCharacters[characterName] || {};
+			const entry = {
+				status: status,
+				price: status === 'out' ? (Number(price) || 0) : 0,
+				note: (prev[level] && prev[level].note) || ''
+			};
+			this.tradeCharacters = {
+				...this.tradeCharacters,
+				[characterName]: { ...prev, [level]: entry }
+			};
+		},
+
+		removeTradeMark(characterName, level) {
+			const prev = this.tradeCharacters[characterName];
+			if (!prev) return;
+			const next = { ...prev };
+			delete next[level];
+			const all = { ...this.tradeCharacters };
+			if (Object.keys(next).length > 0) all[characterName] = next;
+			else delete all[characterName];
+			this.tradeCharacters = all;
+		},
+
+		// 兼容旧接口：直接设价格（价格只挂在「出」上）
+		setTradePrice(characterName, level, price) {
+			const entry = this.getTradeEntry(characterName, level);
+			const num = parseFloat(price);
+			this.writeTradeMark(characterName, level, entry.status || 'out', isNaN(num) ? 0 : num);
+			this.saveUserData();
+			this.calculateStatistics();
+		},
+
+		// ---------- 出物编辑层 ----------
+		openTradeSheet(character, boxId) {
+			if (!character || !character.name) return;
+			const boxes = this.displayBoxes || [];
+			let box = null;
+			for (let i = 0; i < boxes.length; i++) {
+				const b = boxes[i];
+				if (b && (b.Box_id || b.box_id) === boxId) { box = b; break; }
+			}
+			this.tradeSheetName = character.name;
+			this.tradeSheetBoxId = boxId || '';
+			this.tradeSheetAvatar = this.displayAvatar(character, box);
+			this.tradeSheetBoxLabel = boxId ? ('盒号 ' + boxId) : '';
+			this.tradeSheetPairOk = this.canHavePair(character);
+			this.tradeSheetCharacter = character;
+			this.tradeSheetOpen = true;
+		},
+
+		closeTradeSheet() {
+			this.tradeSheetOpen = false;
+			this.saveUserData();
+			this.calculateStatistics();
+		},
+
+		pickTradeStatus(level, status) {
+			const name = this.tradeSheetName;
+			if (!name) return;
+			const entry = this.getTradeEntry(name, level);
+			// 再点一次同状态 = 取消
+			if (entry.status === status) {
+				this.removeTradeMark(name, level);
+				this.saveUserData();
+				this.calculateStatistics();
+				return;
+			}
+			// 「出 / 换」得先有这个等级，「要」不受点亮限制
+			if (status !== 'want' && !this.isTradeLevelOwned(name, level, this.tradeSheetBoxId)) {
+				uni.showToast({
+					title: '先点亮「' + this.tradeLevelText(level) + '」才能标' + this.tradeStatusText(status),
+					icon: 'none'
+				});
+				return;
+			}
+			this.writeTradeMark(name, level, status, entry.price);
+			this.saveUserData();
+			this.calculateStatistics();
+		},
+
+		toggleTradeRowOwned(row) {
+			const name = this.tradeSheetName;
+			if (!name || !row) return;
+			const ch = this.tradeSheetCharacter || this.findCharacterByName(name);
+			if (!ch) return;
+			const boxId = this.tradeSheetBoxId;
+			// 熄灭前先把该等级的出物标记清掉，避免「没点亮还在出」
+			if (row.owned && this.tradeCharacters[name] && this.tradeCharacters[name][row.level]) {
+				this.removeTradeMark(name, row.level);
+			}
+			if (row.level === 'elite1') this.toggleElite1(ch, boxId);
+			else if (row.level === 'elite2') this.toggleElite2(ch, boxId);
+			else this.togglePair(ch, boxId);
+			this.saveUserData();
+			this.calculateStatistics();
+		},
+
+		onTradeSheetPrice(level, e) {
+			const name = this.tradeSheetName;
+			if (!name) return;
+			const raw = e && e.detail ? e.detail.value : '';
+			const num = parseFloat(raw);
+			const entry = this.getTradeEntry(name, level);
+			this.writeTradeMark(name, level, entry.status || 'out', isNaN(num) ? 0 : num);
+			this.saveUserData();
+			this.calculateStatistics();
+		},
 
 
 		// 切换角色拥有状态
 
 		toggleCharacterOwnership(character, boxId) {
+		// 每日任务打点
+		markDailyTask('star_try');
 
 			if (!character || !character.name || !boxId) {
 
@@ -3257,6 +4182,12 @@ export default {
 				this.toggleCharacterWant(characterName);
 
 				return;
+
+			// 出物模式：点角色不再是点亮，而是编辑「出 / 换 / 要」
+			if (this.currentMode === 'trade') {
+				this.openTradeSheet(character, boxId);
+				return;
+			}
 
 			}
 
@@ -3440,13 +4371,22 @@ export default {
 
 				const newCharBoxData = { ...charBoxData };
 
-				newCharBoxData[boxId] = { ...boxData, elite1: { owned: false, count: 0, paired: false } };
+				// 精一归零 -> 一对必然不存在；剩下的散精二保留
+				const nE2 = this.getCharacterEliteCount(characterName, 'elite2', boxId);
 
-				if (!newCharBoxData[boxId].elite1?.owned &&
+				newCharBoxData[boxId] = {
 
-					!newCharBoxData[boxId].elite2?.owned &&
+					...boxData,
 
-					!newCharBoxData[boxId].pair?.owned) {
+					elite1: { owned: false, count: 0, paired: false },
+
+					elite2: { owned: nE2 > 0, count: nE2, paired: false },
+
+					pair: { owned: false, count: 0 }
+
+				};
+
+				if (nE2 <= 0) {
 
 					delete newCharBoxData[boxId];
 
@@ -3511,113 +4451,27 @@ export default {
 		// 切换一对状态
 
 		togglePair(character, boxId) {
-
 			if (!character || !character.name || !boxId) return;
-
-
-
-			const characterName = character.name;
-
-			const charBoxData = this.ownedCharacters[characterName] || {};
-
-			const boxData = charBoxData[boxId] || {};
-
-			const pairData = boxData.pair || { owned: false, count: 0 };
-
-
-
 			if (!this.canHavePair(character)) {
-
-				uni.showToast({ title: `${characterName}可能无精二可点亮`, icon: 'none' });
-
+				uni.showToast({ title: `${character.name}可能无精二可点亮`, icon: 'none' });
 				return;
-
 			}
-
-
-
-			// 判断当前是否显示一对状态（精一+精二 或 显式设置了一对）
-
-			const hasBothElite1AndElite2 = boxData.elite1?.owned && boxData.elite2?.owned;
-
-			const hasExplicitPair = pairData.owned;
-
-			const showPairStatus = hasBothElite1AndElite2 || hasExplicitPair;
-
-
-
-			if (showPairStatus) {
-
-				// 取消一对：同时取消精一、精二和一对
-
-				this.ownedCharacters = {
-
-					...this.ownedCharacters,
-
-					[characterName]: {
-
-						...charBoxData,
-
-						[boxId]: {
-
-							...boxData,
-
-							elite1: { owned: false, count: 0, paired: false },
-
-							elite2: { owned: false, count: 0, paired: false },
-
-							pair: { owned: false, count: 0 }
-
-						}
-
-					}
-
-				};
-
-				uni.showToast({ title: `已取消${characterName}一对`, icon: 'success', duration: 1500 });
-
-			} else {
-
-				// 点亮一对：同时设置精一、精二和一对
-
-				this.ownedCharacters = {
-
-					...this.ownedCharacters,
-
-					[characterName]: {
-
-						...charBoxData,
-
-						[boxId]: {
-
-							...boxData,
-
-							elite1: { owned: true, count: 1, paired: true },
-
-							elite2: { owned: true, count: 1, paired: true },
-
-							pair: { owned: true, count: 1 }
-
-						}
-
-					}
-
-				};
-
-				uni.showToast({ title: `已点亮${characterName}一对`, icon: 'success', duration: 1500 });
-
+			const characterName = character.name;
+			const pair = this.getCharacterPairCount(characterName, boxId);
+			const loose1 = this.getCharacterLooseCount(characterName, 'elite1', boxId);
+			const loose2 = this.getCharacterLooseCount(characterName, 'elite2', boxId);
+			// 有对就减一对，没对就加一对；散件始终保留（一对凯尔希 + 单精一凯尔希 不会被清掉）
+			this.adjustQuantity(characterName, 'pair', pair > 0 ? -1 : 1, boxId);
+			uni.showToast({
+				title: pair > 0 ? `已取消${characterName}一对` : `已点亮${characterName}一对`,
+				icon: 'success',
+				duration: 1500
+			});
+			if (pair > 0 && loose1 + loose2 > 0) {
+				uni.showToast({ title: `保留散件 ${loose1} 精一 / ${loose2} 精二`, icon: 'none', duration: 1800 });
 			}
-
-
-
-			this.saveUserData();
-
-			this.calculateStatistics();
-
 			this.displayBoxes = [...this.displayBoxes];
-
 			this.$forceUpdate();
-
 		},
 
 		toggleElite2(character, boxId) {
@@ -3677,167 +4531,53 @@ export default {
 		},
 
 		selectCharacterPair(characterName, boxId, characterData) {
-
 			if (!characterName || !boxId) return;
-
-
-
 			const character = characterData || this.findCharacterByName(characterName);
-
 			const canPair = character ? this.canHavePair(character) : false;
-
 			if (!canPair) {
-
 				uni.showToast({ title: '该角色不能拥有一对', icon: 'none' });
-
 				return;
-
 			}
-
-
-
-			const charBoxData = this.ownedCharacters[characterName] || {};
-
-			const boxData = charBoxData[boxId] || {};
-
-
-
-			if (boxData.pair?.owned) {
-
-				const newCharBoxData = { ...charBoxData };
-
-				newCharBoxData[boxId] = { ...boxData, pair: { owned: false, count: 0 }, elite2: { owned: false, count: 0, paired: false } };
-
-				if (!newCharBoxData[boxId].elite1?.owned && !newCharBoxData[boxId].pair?.owned) {
-
-					delete newCharBoxData[boxId];
-
-				}
-
-				const newOwned = { ...this.ownedCharacters };
-
-				if (Object.keys(newCharBoxData).length === 0) {
-
-					delete newOwned[characterName];
-
-				} else {
-
-					newOwned[characterName] = newCharBoxData;
-
-				}
-
-				this.ownedCharacters = newOwned;
-
-				uni.showToast({ title: '已取消' + characterName + '一对', icon: 'success', duration: 1500 });
-
-			} else {
-
-				this.ownedCharacters = {
-
-					...this.ownedCharacters,
-
-					[characterName]: {
-
-						...charBoxData,
-
-						[boxId]: {
-
-							...boxData,
-
-							elite1: { owned: true, count: 1, paired: true },
-
-							elite2: { owned: true, count: 1, paired: true },
-
-							pair: { owned: true, count: 1 }
-
-						}
-
-					}
-
-				};
-
-				uni.showToast({ title: '已选择' + characterName + '一对', icon: 'success', duration: 1500 });
-
-			}
-
-
-
-			this.saveUserData();
-
-			this.calculateStatistics();
-
+			const pair = this.getCharacterPairCount(characterName, boxId);
+			// 加减一对都只动「对数」，散件保留
+			this.adjustQuantity(characterName, 'pair', pair > 0 ? -1 : 1, boxId);
+			uni.showToast({ title: (pair > 0 ? '已取消' : '已选择') + characterName + '一对', icon: 'success', duration: 1500 });
 			this.displayBoxes = [...this.displayBoxes];
-
 			this.$forceUpdate();
-
-			},
+		},
 
 		cancelCharacterElite1(characterName, boxId) {
-
 			if (!characterName || !boxId) return;
-
-
-
 			const charBoxData = this.ownedCharacters[characterName];
-
 			if (!charBoxData) return;
-
 			const boxData = charBoxData[boxId];
-
 			if (!boxData || !boxData.elite1?.owned) {
-
 				uni.showToast({ title: '该角色未拥有精一', icon: 'none' });
-
 				return;
-
 			}
-
-			// 取消精一时同时取消一对
-
+			// 精一归零后一对必然不存在（一对需要精一 + 精二各一件）；
+			// 剩下的散精二保留，不会被一起清掉
+			const nE2 = this.getCharacterEliteCount(characterName, 'elite2', boxId);
 			const newCharBoxData = { ...charBoxData };
-
 			newCharBoxData[boxId] = {
-
 				...boxData,
-
 				elite1: { owned: false, count: 0, paired: false },
-
-				elite2: { owned: false, count: 0, paired: false },
-
+				elite2: { owned: nE2 > 0, count: nE2, paired: false },
 				pair: { owned: false, count: 0 }
-
 			};
-
-			if (!newCharBoxData[boxId].elite1?.owned && !newCharBoxData[boxId].pair?.owned) {
-
-				delete newCharBoxData[boxId];
-
-			}
-
+			if (nE2 <= 0) delete newCharBoxData[boxId];
 			const newOwned = { ...this.ownedCharacters };
-
 			if (Object.keys(newCharBoxData).length === 0) {
-
 				delete newOwned[characterName];
-
 			} else {
-
 				newOwned[characterName] = newCharBoxData;
-
 			}
-
 			this.ownedCharacters = newOwned;
-
 			this.saveUserData();
-
 			this.calculateStatistics();
-
 			this.displayBoxes = [...this.displayBoxes];
-
 			this.$forceUpdate();
-
 			uni.showToast({ title: '已取消' + characterName + '精一', icon: 'success', duration: 1500 });
-
 		},
 
 		// 取消角色一对
@@ -4194,7 +4934,7 @@ export default {
 
 						case '修改数量':
 
-							this.showQuantityModifyModal(character);
+							this.showQuantityModifyModal(character, boxId);
 
 							break;
 
@@ -4228,246 +4968,97 @@ export default {
 
 		// 显示数量修改模式
 
-		showQuantityModifyModal(character) {
-
-			if (!character || !character.name) return;
-
-
-
-			const characterName = character.name;
-
-			const charData = this.ownedCharacters[characterName] || {};
-
-			const elite1Count = charData.elite1?.count || 0;
-
-			const elite2Count = charData.elite2?.count || 0;
-
-			const pairCount = charData.pair?.count || 0;
-
-
-
-			// 检勫缓提示信息
-
-			let message = `${characterName} 当前数量)歕n`;
-
-			if (elite1Count > 0) message += `精一：${elite1Count}个\n`;
-
-			if (elite2Count > 0) message += `精二：${elite2Count}个\n`;
-
-			if (pairCount > 0) message += `一对：${pairCount}个\n`;
-
-
-
-			message += '\n请选择要修改的类型)';
-
-
-
-			const options = [];
-
-			if (elite1Count > 0) options.push('修改精一数量');
-
-			if (elite2Count > 0) options.push('修改精二数量');
-
-			if (pairCount > 0) options.push('修改一对数量');
-
-
-
-			if (options.length === 0) {
-
-				uni.showToast({
-
-					title: '该角色未拥有任何等级',
-
-					icon: 'none'
-
-				});
-
+		showQuantityModifyModal(character, boxId) {
+			if (!character || !character.name || !boxId) return;
+			const n = character.name;
+			const pair = this.getCharacterPairCount(n, boxId);
+			const l1 = this.getCharacterLooseCount(n, 'elite1', boxId);
+			const l2 = this.getCharacterLooseCount(n, 'elite2', boxId);
+			if (pair + l1 + l2 <= 0) {
+				uni.showToast({ title: '该角色还没有数量，先点亮再说', icon: 'none' });
 				return;
-
 			}
-
-
-
+			// 一对 / 单精一 / 单精二 分开改，混搭不会被互相覆盖
+			const options = ['一对 ×' + pair, '单精一 ×' + l1, '单精二 ×' + l2];
 			uni.showActionSheet({
-
 				itemList: options,
-
 				success: (res) => {
-
-					const action = options[res.tapIndex];
-
-
-
-					if (action === '修改精一数量') {
-
-						this.showQuantityInput(characterName, 'elite1', elite1Count);
-
-					} else if (action === '修改精二数量') {
-
-						this.showQuantityInput(characterName, 'elite2', elite2Count);
-
-					} else if (action === '修改一对数量') {
-
-						this.showQuantityInput(characterName, 'pair', pairCount);
-
-					}
-
+					if (res.tapIndex === 0) this.showQuantityInput(n, 'pair', pair, boxId);
+					else if (res.tapIndex === 1) this.showQuantityInput(n, 'elite1', l1, boxId);
+					else this.showQuantityInput(n, 'elite2', l2, boxId);
 				}
-
 			});
-
 		},
 
 
 
 		// 显示数量输入框
 
-		showQuantityInput(characterName, level, currentCount) {
-
+		showQuantityInput(characterName, level, currentCount, boxId) {
+			const label = level === 'elite1' ? '单精一' : level === 'elite2' ? '单精二' : '一对';
 			uni.showModal({
-
-				title: `修改${characterName}的${level === 'elite1' ? '精一' : level === 'elite2' ? '精二' : '一对'}数量`,
-
-				content: `当前数量）{currentCount}`,
-
+				title: '修改' + characterName + '的' + label + '数量',
+				content: '当前 ' + currentCount + '，请输入新数量',
 				editable: true,
-
-				placeholderText: '请输入新的价格',
-
+				placeholderText: '请输入新的数量',
 				success: (res) => {
-
-					if (res.confirm) {
-
-						const newCount = parseInt(res.content) || 0;
-
-
-
-						if (newCount < 0) {
-
-							uni.showToast({
-
-								title: '数量不能为负数',
-
-								icon: 'none'
-
-							});
-
-							return;
-
-						}
-
-
-
-						if (newCount === 0) {
-
-							uni.showModal({
-
-								title: '确',
-
-								content: `确定要取消角色的${level === 'elite1' ? '精一' : level === 'elite2' ? '精二' : '一对'}吗？`,
-
-								success: (res2) => {
-
-									if (res2.confirm) {
-
-										this.adjustQuantity(characterName, level, -currentCount);
-
-									}
-
-								}
-
-							});
-
-						} else {
-
-							const delta = newCount - currentCount;
-
-							this.adjustQuantity(characterName, level, delta);
-
-						}
-
+					if (!res.confirm) return;
+					const newCount = parseInt(res.content, 10);
+					if (isNaN(newCount) || newCount < 0) {
+						uni.showToast({ title: '请输入 0 或正整数', icon: 'none' });
+						return;
 					}
-
+					this.adjustQuantity(characterName, level, newCount - currentCount, boxId);
+					this.displayBoxes = [...this.displayBoxes];
+					this.$forceUpdate();
 				}
-
 			});
-
 		},
 
 
 
 		// 调整数量
 
+		// 调整数量。level: pair / elite1 / elite2
+		// pair 只改「对数」，散件保持不动；elite1/elite2 只改散件，且减不穿已有的对
 		adjustQuantity(characterName, level, delta, boxId) {
-
-			if (!characterName || delta === 0) return;
-
-
-
+			if (!characterName || !boxId || !delta) return;
 			const charBoxData = this.ownedCharacters[characterName] || {};
-
 			const boxData = charBoxData[boxId] || {};
-
-			const levelData = boxData[level] || { owned: false, count: 0, paired: false };
-
-
-
-			const newCount = Math.max(0, levelData.count + delta);
-
-
-
-			const newBoxData = { ...boxData };
-
-			if (newCount === 0) {
-
-				newBoxData[level] = { owned: false, count: 0, paired: false };
-
-				// 如果该盒子没有任何等级，删除盒子
-
-				if (!newBoxData.elite1?.owned && !newBoxData.elite2?.owned && !newBoxData.pair?.owned) {
-
-					const newCharBoxData = { ...charBoxData };
-
-					delete newCharBoxData[boxId];
-
-					if (Object.keys(newCharBoxData).length === 0) {
-
-						const newOwned = { ...this.ownedCharacters };
-
-						delete newOwned[characterName];
-
-						this.ownedCharacters = newOwned;
-
-					} else {
-
-						this.ownedCharacters = { ...this.ownedCharacters, [characterName]: newCharBoxData };
-
-					}
-
-				} else {
-
-					this.ownedCharacters = { ...this.ownedCharacters, [characterName]: { ...charBoxData, [boxId]: newBoxData } };
-
-				}
-
-				uni.showToast({ title: `已取消${characterName}的${level === 'elite1' ? '精一' : level === 'elite2' ? '精二' : '一对'}`, icon: 'success', duration: 1500 });
-
+			let e1 = this.getCharacterEliteCount(characterName, 'elite1', boxId);
+			let e2 = this.getCharacterEliteCount(characterName, 'elite2', boxId);
+			const pair0 = Math.min(e1, e2);
+			const loose1 = Math.max(0, e1 - pair0);
+			const loose2 = Math.max(0, e2 - pair0);
+			if (level === 'pair') {
+				const nextPair = Math.max(0, pair0 + delta);
+				e1 = nextPair + loose1;
+				e2 = nextPair + loose2;
+			} else if (level === 'elite1') {
+				e1 = Math.max(pair0, e1 + delta);
+			} else if (level === 'elite2') {
+				e2 = Math.max(pair0, e2 + delta);
 			} else {
-
-				newBoxData[level] = { owned: true, count: newCount, paired: levelData.paired };
-
-				this.ownedCharacters = { ...this.ownedCharacters, [characterName]: { ...charBoxData, [boxId]: newBoxData } };
-
-				uni.showToast({ title: `已更新${characterName}的${level === 'elite1' ? '精一' : level === 'elite2' ? '精二' : '一对'}数量为${newCount}`, icon: 'success', duration: 1500 });
-
+				return;
 			}
-
-
-
+			const nextPair = Math.min(e1, e2);
+			const mk = (n) => ({ owned: n > 0, count: n, paired: n > 0 && nextPair > 0 });
+			const newBoxData = { ...boxData, elite1: mk(e1), elite2: mk(e2), pair: { owned: nextPair > 0, count: nextPair } };
+			const newCharBoxData = { ...charBoxData };
+			if (e1 === 0 && e2 === 0) {
+				delete newCharBoxData[boxId];
+			} else {
+				newCharBoxData[boxId] = newBoxData;
+			}
+			const newOwned = { ...this.ownedCharacters };
+			if (Object.keys(newCharBoxData).length === 0) {
+				delete newOwned[characterName];
+			} else {
+				newOwned[characterName] = newCharBoxData;
+			}
+			this.ownedCharacters = newOwned;
 			this.saveUserData();
-
 			this.calculateStatistics();
-
 		},
 
 
@@ -4568,6 +5159,8 @@ export default {
 
 				this.showSearchResults = false;
 
+				this.refreshBoxesHeight(80);
+
 				return;
 
 			}
@@ -4646,6 +5239,8 @@ export default {
 
 			this.showSearchResults = true;
 
+			this.refreshBoxesHeight(80);
+
 		},
 
 
@@ -4692,6 +5287,8 @@ export default {
 
 			this.showSearchResults = false;
 
+			this.refreshBoxesHeight(80);
+
 		},
 
 
@@ -4712,15 +5309,20 @@ export default {
 
 				let totalElite1 = 0, totalElite2 = 0, totalPair = 0;
 
-				for (const [boxId, data] of Object.entries(charBoxData)) {
+				for (const boxId of Object.keys(charBoxData)) {
 
-					if (!data) continue;
+					// 一对 = 精一 + 精二各一件，剩下的才是散件
+					const n1 = this.getCharacterEliteCount(name, 'elite1', boxId);
 
-					if (data.elite1?.owned) totalElite1 += data.elite1.count || 1;
+					const n2 = this.getCharacterEliteCount(name, 'elite2', boxId);
 
-					if (data.elite2?.owned) totalElite2 += data.elite2.count || 1;
+					const p = Math.min(n1, n2);
 
-					if (data.pair?.owned) totalPair += data.pair.count || 1;
+					totalPair += p;
+
+					totalElite1 += Math.max(0, n1 - p);
+
+					totalElite2 += Math.max(0, n2 - p);
 
 				}
 
@@ -4826,54 +5428,23 @@ export default {
 
 
 
-		// 获得出物的角色列表
-
+		// 获得出物的角色列表（出 / 换 / 要 全部列出）
 		getTradeList() {
-
 			const list = [];
-
-			for (const [name, data] of Object.entries(this.tradeCharacters)) {
-
-				if (!data) continue;
-
-
-
-				if (data.elite1 || data.elite2) {
-
-					const character = this.findCharacterByName(name);
-
-					const elite1Price = data.elite1?.price || 0;
-
-					const elite2Price = data.elite2?.price || 0;
-
-					const maxPrice = Math.max(elite1Price, elite2Price);
-
-
-
-					list.push({
-
-						name,
-
-						avatar: character?.avatar || this.defaultAvatar,
-
-						elite1Count: data.elite1 ? 1 : 0,
-
-						elite2Count: data.elite2 ? 1 : 0,
-
-						pairCount: 0,
-
-						price: maxPrice > 0 ? maxPrice : '',
-
-					});
-
-				}
-
+			const names = Object.keys(this.tradeCharacters || {});
+			for (let i = 0; i < names.length; i++) {
+				const name = names[i];
+				const marks = this.getTradeMarks(name);
+				if (!marks.length) continue;
+				const character = this.findCharacterByName(name);
+				list.push({
+					name: name,
+					avatar: (character && character.avatar) || this.defaultAvatar,
+					marks: marks
+				});
 			}
-
 			return list.sort((a, b) => a.name.localeCompare(b.name));
-
 		},
-
 
 
 		// 切换全选
@@ -5345,149 +5916,42 @@ export default {
 				const seenNames = new Set();
 
 				let pairCount = 0;
-
-				let elite1Count = 0;
-
-				let elite2Count = 0; // 单精二
-
-
+				let elite1Count = 0; // 散精一件数
+				let elite2Count = 0; // 散精二件数
 
 				for (const charName in this.ownedCharacters) {
-
 					const charBoxData = this.ownedCharacters[charName];
-
 					if (!charBoxData) continue;
-
-
-
 					let hasAny = false;
-
-					let hasPair = false;
-
-					let hasElite1 = false;
-
-
-
-					// 遍历该角色在所有盒中的状态
-
 					for (const boxId in charBoxData) {
-
-						const data = charBoxData[boxId];
-
-						if (!data) continue;
-
-						if (data.pair?.owned) { hasAny = true; hasPair = true; }
-
-						if (data.elite1?.owned) { hasAny = true; hasElite1 = true; }
-
-						if (data.elite2?.owned) { hasAny = true; }
-
+						const e1 = this.getCharacterEliteCount(charName, 'elite1', boxId);
+						const e2 = this.getCharacterEliteCount(charName, 'elite2', boxId);
+						if (e1 > 0 || e2 > 0) hasAny = true;
+						const p = Math.min(e1, e2);
+						pairCount += p;
+						elite1Count += Math.max(0, e1 - p);
+						elite2Count += Math.max(0, e2 - p);
 					}
-
-
-
 					if (hasAny) seenNames.add(charName);
-
-
-
-					// 找角色信息判断是否能配对
-
-					const allChars = this.getAllCharactersList();
-
-					const found = allChars.find(c => c && c.name === charName);
-
-					const canPair = found ? this.canHavePair(found) : false;
-
-
-
-					if (hasPair) {
-
-						pairCount += charBoxData[Object.keys(charBoxData)[0]].pair?.count || 1;
-
-					} else if (hasElite1 && canPair) {
-
-						// 有精一且可配对但没有一对 = 单精二
-
-						elite2Count++;
-
-					} else if (hasElite1) {
-
-						elite1Count++;
-
-					}
-
 				}
 
-
-
 				this.ownedCount = seenNames.size;
-
 				// pairCount 由 computed 属性计算，不再手动设置
-
 				this.singleElite1Count = elite1Count;
-
 				this.singleElite2Count = elite2Count;
 
 
 
-				// 计算已拥有的总数量（可精二×2，仅精一×1）
-
+				// 计算已拥有的总件数（一对算 2 件，散件按实际数量累加）
 				let ownedItemCount = 0;
-
 				for (const charName in this.ownedCharacters) {
-
 					const charBoxData = this.ownedCharacters[charName];
-
 					if (!charBoxData) continue;
-
-
-
-					const allChars = this.getAllCharactersList();
-
-					const found = allChars.find(c => c && c.name === charName);
-
-					const canPair = found ? this.canHavePair(found) : false;
-
-
-
-					let hasPair = false;
-
-					let hasElite1 = false;
-
-					let hasElite2 = false;
-
 					for (const boxId in charBoxData) {
-
-						const data = charBoxData[boxId];
-
-						if (!data) continue;
-
-						if (data.pair?.owned) hasPair = true;
-
-						if (data.elite1?.owned) hasElite1 = true;
-
-						if (data.elite2?.owned) hasElite2 = true;
-
+						ownedItemCount += this.getCharacterEliteCount(charName, 'elite1', boxId);
+						ownedItemCount += this.getCharacterEliteCount(charName, 'elite2', boxId);
 					}
-
-
-
-					if (hasPair) {
-
-						ownedItemCount += 2;
-
-					} else if (hasElite2 && canPair) {
-
-						ownedItemCount += 2; // 单精二算2
-
-					} else if (hasElite1) {
-
-						ownedItemCount += 1;
-
-					}
-
 				}
-
 				this.ownedItems = ownedItemCount;
 
 
@@ -5500,7 +5964,32 @@ export default {
 
 				// 计算出物的角色数（去重）
 
-				this.tradeCount = Object.keys(this.tradeCharacters).length;
+				// 出 / 换 / 要 分开计数（精一 / 精二 / 一对 各算一项），三个数加起来才是总项数
+				let tradeOut = 0;
+				let tradeSwap = 0;
+				let tradeNeed = 0;
+				let tradeChars = 0;
+				const tradeNames = Object.keys(this.tradeCharacters || {});
+				for (let i = 0; i < tradeNames.length; i++) {
+					const raw = this.tradeCharacters[tradeNames[i]];
+					if (!raw) continue;
+					const levels = ['elite1', 'elite2', 'pair'];
+					let hit = false;
+					for (let k = 0; k < levels.length; k++) {
+						const item = raw[levels[k]];
+						if (!item) continue;
+						hit = true;
+						const st = item.status || 'out';
+						if (st === 'out') tradeOut++;
+						else if (st === 'swap') tradeSwap++;
+						else if (st === 'want') tradeNeed++;
+					}
+					if (hit) tradeChars++;
+				}
+				this.tradeCount = tradeChars;
+				this.tradeOutCount = tradeOut;
+				this.tradeSwapCount = tradeSwap;
+				this.tradeNeedCount = tradeNeed;
 
 
 
@@ -6175,13 +6664,12 @@ export default {
 			for (const char of characters) {
 				if (!char || !char.name) continue;
 
-				const hasPair = this.isCharacterOwnedAtLevel(char.name, 'pair', boxId);
-				const hasElite2 = this.isCharacterOwnedAtLevel(char.name, 'elite2', boxId);
-				const hasElite1 = this.isCharacterOwnedAtLevel(char.name, 'elite1', boxId);
-
-				if (!hasPair && !hasElite2 && !hasElite1) continue;
-
-				count += this.canHavePair(char) ? 2 : 1;
+				// 按「精一槽 / 精二槽」计，每角色最多 2，混搭数量不会把进度顶超 100%
+				const e1 = this.getCharacterEliteCount(char.name, 'elite1', boxId);
+				const e2 = this.getCharacterEliteCount(char.name, 'elite2', boxId);
+				if (e1 <= 0 && e2 <= 0) continue;
+				if (e1 > 0) count += 1;
+				if (e2 > 0 && this.canHavePair(char)) count += 1;
 			}
 
 			return count;
@@ -6214,255 +6702,433 @@ export default {
 			return Math.round(owned / total * 100);
 		},
 
-		// 从概览生成分享图（使用 uni.createCanvasContext，简单可靠）
+		// ===== 展柜概览长图（canvas 重绘，2026-10-26 重做）=====
+		// 旧实现的三处硬伤：
+		//   ① 视觉是 #409EFF 蓝色横幅 + 12px 细字的老后台风格，和现在的卡片完全两套语言；
+		//   ② 口径打架：顶部「总收藏 2」是「位」（角色去重），每盒「2/14」是「件」
+		//      （可配对角色算 2 件），两个数字相加对不上，用户一眼就觉得数据错了；
+		//   ③ 每片固定 40 盒，盒子多、标签多时会超出画布元素（4000rpx = 2000px）被截断。
+		// 现在：顶部主数字统一用「件」，与每盒数字可直接相加；分片按内容高度动态切。
 		generateShareImageFromOverview() {
+			const self = this;
 			this.isGeneratingShareImage = true;
 			this.shareImagePaths = [];
 			this.shareImageReady = false;
+			this.currentShareIndex = 0;
 
-			var self = this;
+			// ---------- 排版常量（逻辑像素，导出统一 2 倍）----------
+			const W = 375;
+			const CANVAS_H = 2000;        // 画布元素 750rpx x 4000rpx，375pt 屏 = 375x2000
+			const MAX_H = 1700;           // 单片上限，留出余量避免截断
+			const CARD_X = 12;
+			const CARD_W = W - CARD_X * 2;
+			const CARD_TOP = 12;
+			const PAD = 15;
+			const CX = CARD_X + PAD;      // 内容左边界 27
+			const CW = CARD_W - PAD * 2;  // 内容宽 321
+			const HEAD_REL = 157;         // 卡片顶 -> 第一个盒块（含标题区）
+			const FOOT_REL = 30;          // 最后一个盒块 -> 卡片底
+			const BASE_H = CARD_TOP + HEAD_REL + FOOT_REL + 44; // 无盒子时的整图高
 
-			function hexToRgba(hex, alpha) {
-				if (!hex || hex[0] !== '#') return hex;
-				var r = parseInt(hex.slice(1, 3), 16);
-				var g = parseInt(hex.slice(3, 5), 16);
-				var b = parseInt(hex.slice(5, 7), 16);
-				return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+			const C = {
+				page: '#f2f3f5',
+				card: '#ffffff',
+				border: '#ececef',
+				ink: '#1c1c1e',
+				sub: '#3a3a40',
+				faint: '#9a9aa0',
+				faint2: '#b0b0b8',
+				barBg: '#eceef0',
+				blue: '#2f7ed8',
+				pairText: '#3f9c5a', pairBg: '#eaf7ee', pairBd: '#cfe9d8',
+				e2Text: '#2f7ed8', e2Bg: '#eef4fd', e2Bd: '#d5e4f7',
+				e1Text: '#b07a1a', e1Bg: '#fdf3e2', e1Bd: '#f0e0c0',
+				noneText: '#9a9aa0', noneBg: '#f4f5f7', noneBd: '#e8e9ec'
+			};
+
+			function roundRect(ctx, x, y, w, h, r) {
+				const rad = Math.min(r, w / 2, h / 2);
+				ctx.beginPath();
+				ctx.moveTo(x + rad, y);
+				ctx.lineTo(x + w - rad, y);
+				ctx.arc(x + w - rad, y + rad, rad, -Math.PI / 2, 0);
+				ctx.lineTo(x + w, y + h - rad);
+				ctx.arc(x + w - rad, y + h - rad, rad, 0, Math.PI / 2);
+				ctx.lineTo(x + rad, y + h);
+				ctx.arc(x + rad, y + h - rad, rad, Math.PI / 2, Math.PI);
+				ctx.lineTo(x, y + rad);
+				ctx.arc(x + rad, y + rad, rad, Math.PI, Math.PI * 1.5);
+				ctx.closePath();
 			}
 
-			function drawSlice(sliceInfo, boxesData) {
-				return new Promise(function(resolve, reject) {
-					var start = sliceInfo.start;
-					var end = sliceInfo.end;
-					var sliceIndex = sliceInfo.index;
-					var totalSlices = sliceInfo.total;
+			// 旧 CanvasContext 没有 measureText 的可靠实现，按字宽估算（中文 1em，英文 0.55em）
+			function textW(str, size) {
+				const s = String(str == null ? '' : str);
+				let w = 0;
+				for (let i = 0; i < s.length; i++) {
+					w += s.charCodeAt(i) < 256 ? size * 0.56 : size;
+				}
+				return w;
+			}
 
-					var sliceCtx = uni.createCanvasContext('shareCanvas', self);
-					var sliceCanvasWidth = 375;
-					var sliceY = 70;
-					var boxBarH = 22;
+			function chipStyle(st) {
+				if (st === 'pair') return { text: C.pairText, bg: C.pairBg, bd: C.pairBd };
+				if (st === 'e2') return { text: C.e2Text, bg: C.e2Bg, bd: C.e2Bd };
+				if (st === 'e1') return { text: C.e1Text, bg: C.e1Bg, bd: C.e1Bd };
+				return { text: C.noneText, bg: C.noneBg, bd: C.noneBd };
+			}
 
-					sliceCtx.fillStyle = '#ffffff';
-					sliceCtx.fillRect(0, 0, sliceCanvasWidth, 4096);
+			// ---------- 单个盒子的数据 ----------
+			function buildInfo(box) {
+				const boxId = box && (box.Box_id || box.box_id);
+				const name = (box && (box.Box_name || box.Box_id || box.box_id)) || '?';
+				const owned = self.getBoxOwnedCount ? self.getBoxOwnedCount(box) : 0;
+				const total = self.getBoxTotalCount ? self.getBoxTotalCount(box) : 0;
+				const chars = (self.getBoxCharacters ? self.getBoxCharacters(box) : []) || [];
+				const seen = {};
+				const list = [];
+				chars.forEach(function (ch) {
+					if (!ch || !ch.name || seen[ch.name]) return;
+					seen[ch.name] = 1;
+					const e1 = self.isCharacterOwnedAtLevel ? self.isCharacterOwnedAtLevel(ch.name, 'elite1', boxId) : false;
+					const e2 = self.isCharacterOwnedAtLevel ? self.isCharacterOwnedAtLevel(ch.name, 'elite2', boxId) : false;
+					const pr = self.isCharacterOwnedAtLevel ? self.isCharacterOwnedAtLevel(ch.name, 'pair', boxId) : false;
+					let st = 'none';
+					if (pr || (e1 && e2)) st = 'pair';
+					else if (e2) st = 'e2';
+					else if (e1) st = 'e1';
+					list.push({ name: ch.name, st: st });
+				});
+				return {
+					box: box,
+					name: name,
+					owned: owned,
+					total: total,
+					pct: total > 0 ? Math.round(owned / total * 100) : 0,
+					list: list
+				};
+			}
 
-					sliceCtx.fillStyle = '#409EFF';
-					sliceCtx.fillRect(0, 0, sliceCanvasWidth, 70);
+			// 只把已点亮的干员排进 chip 墙，未点亮的收成一个「+N」灰片，
+			// 否则一盒 7 个角色全是灰片，图又长又没重点。
+			function chipRows(info) {
+				const items = [];
+				info.list.forEach(function (c) {
+					if (c.st !== 'none') items.push(c);
+				});
+				const hidden = info.list.length - items.length;
+				if (hidden > 0) items.push({ name: '+' + hidden, st: 'none' });
 
-					sliceCtx.fillStyle = '#ffffff';
-					sliceCtx.font = 'bold 18px -apple-system, sans-serif';
-					sliceCtx.textAlign = 'center';
-					sliceCtx.fillText('[收藏概览]', sliceCanvasWidth / 2, 50);
+				const rows = [];
+				let row = [];
+				let x = 0;
+				items.forEach(function (c) {
+					const w = textW(c.name, 10) + 12;
+					if (row.length && x + w > CW) {
+						rows.push(row);
+						row = [];
+						x = 0;
+					}
+					row.push({ name: c.name, st: c.st, w: w });
+					x += w + 5;
+				});
+				if (row.length) rows.push(row);
+				return rows;
+			}
 
-					sliceCtx.fillStyle = '#666666';
-					sliceCtx.font = '12px -apple-system, sans-serif';
-					sliceCtx.textAlign = 'center';
-					sliceCtx.fillText('总收藏 ' + self.ownedCount + ' | 精一 ' + (self.elite1Count || 0) + ' | 精二 ' + (self.elite2Count || 0) + ' | 一对 ' + (self.pairCount || 0), sliceCanvasWidth / 2, sliceY + 10);
-					sliceY += 30;
+			// 与下面 drawBlock 的推进量严格一致
+			function blockH(info) {
+				if (!info.owned) return 24;
+				return 44 + chipRows(info).length * 21;
+			}
 
-					sliceCtx.strokeStyle = '#e0e0e0';
-					sliceCtx.lineWidth = 1;
-					sliceCtx.beginPath();
-					sliceCtx.moveTo(15, sliceY);
-					sliceCtx.lineTo(sliceCanvasWidth - 15, sliceY);
-					sliceCtx.stroke();
-					sliceY += 20;
+			function drawChips(ctx, rows, x0, y0) {
+				let y = y0;
+				rows.forEach(function (row) {
+					let x = x0;
+					row.forEach(function (c) {
+						const cs = chipStyle(c.st);
+						roundRect(ctx, x, y, c.w, 16, 4);
+						ctx.fillStyle = cs.bg;
+						ctx.fill();
+						ctx.strokeStyle = cs.bd;
+						ctx.lineWidth = 1;
+						ctx.stroke();
+						ctx.fillStyle = cs.text;
+						ctx.font = '10px sans-serif';
+						ctx.textAlign = 'center';
+						ctx.fillText(c.name, x + c.w / 2, y + 11);
+						x += c.w + 5;
+					});
+					y += 21;
+				});
+				ctx.textAlign = 'left';
+				return y;
+			}
 
-					sliceCtx.fillStyle = '#333333';
-					sliceCtx.font = 'bold 13px -apple-system, sans-serif';
-					sliceCtx.textAlign = 'left';
-					sliceCtx.fillText('每盒进度 (' + (sliceIndex + 1) + '/' + totalSlices + ')', 15, sliceY + 12);
-					sliceY += 28;
+			// ---------- 数据准备 ----------
+			const allBoxes = (self.getFilteredBoxesForOverview ? self.getFilteredBoxesForOverview() : (self.filteredBoxes || [])) || [];
+			const infosAll = [];
+			for (let i = 0; i < allBoxes.length; i++) infosAll.push(buildInfo(allBoxes[i]));
 
-					var sliceBoxes = boxesData.slice(start, end);
-					sliceBoxes.forEach(function(box) {
-						if (!box) return;
+			let sumOwned = 0;
+			let sumTotal = 0;
+			let opened = 0;
+			infosAll.forEach(function (info) {
+				sumOwned += info.owned;
+				sumTotal += info.total;
+				if (info.owned > 0) opened++;
+			});
 
-						var owned = self.getBoxOwnedCount ? self.getBoxOwnedCount(box) : 0;
-						var total = self.getBoxTotalCount ? self.getBoxTotalCount(box) : 0;
-						var progress = total > 0 ? owned / total : 0;
-						var boxBarW = sliceCanvasWidth - 30;
-						var boxType = box.Box_type || 'normal';
-						var typeColors = {
-							normal: '#409EFF',
-							ambience: '#E6A23C',
-							special: '#F56C6C',
-							whitelist: '#67C23A',
-							crossover: '#909399'
-						};
-						var typeColor = typeColors[boxType] || '#409EFF';
+			let drawInfos = infosAll;
+			if (self.onlyShowProgressBoxes) {
+				drawInfos = infosAll.filter(function (info) { return info.owned > 0; });
+			}
 
-						var boxDisplayName = box.Box_name || box.Box_id || '?';
-						sliceCtx.fillStyle = '#555555';
-						sliceCtx.font = '11px -apple-system, sans-serif';
-						sliceCtx.textAlign = 'left';
-						sliceCtx.fillText('盒号 ' + boxDisplayName, 15, sliceY + 10);
+			// ---------- 动态分片 ----------
+			const pages = [];
+			let page = [];
+			let used = BASE_H;
+			drawInfos.forEach(function (info) {
+				const h = blockH(info);
+				if (page.length && used + h > MAX_H) {
+					pages.push(page);
+					page = [];
+					used = BASE_H;
+				}
+				page.push(info);
+				used += h;
+			});
+			pages.push(page);
 
-						sliceCtx.fillStyle = '#999999';
-						sliceCtx.font = '10px -apple-system, sans-serif';
-						sliceCtx.textAlign = 'right';
-						sliceCtx.fillText(owned + '/' + total + ' (' + Math.round(progress * 100) + '%)', sliceCanvasWidth - 15, sliceY + 10);
-						sliceY += 16;
+			const pageCount = pages.length;
+			console.log('[overview_shot] 盒子 ' + allBoxes.length + ' / 有进度 ' + opened + ' / 分片 ' + pageCount);
 
-						sliceCtx.fillStyle = '#e8e8e8';
-						sliceCtx.fillRect(15, sliceY, boxBarW, boxBarH);
-						if (progress > 0) {
-							sliceCtx.fillStyle = typeColor;
-							sliceCtx.fillRect(15, sliceY, boxBarW * Math.min(1, progress), boxBarH);
+			// ---------- 单页绘制 ----------
+			function drawPage(infos, pageIndex) {
+				return new Promise(function (resolve, reject) {
+					const contentH = infos.reduce(function (s, info) { return s + blockH(info); }, 0) + (infos.length ? 0 : 76);
+					const cardH = HEAD_REL + contentH + FOOT_REL;
+					const totalH = CARD_TOP + cardH + 52;
+
+					const ctx = uni.createCanvasContext('shareCanvas', self);
+					ctx.clearRect(0, 0, W, CANVAS_H);
+					ctx.fillStyle = C.page;
+					ctx.fillRect(0, 0, W, CANVAS_H);
+
+					// 卡片底板
+					roundRect(ctx, CARD_X, CARD_TOP, CARD_W, cardH, 12);
+					ctx.fillStyle = C.card;
+					ctx.fill();
+					ctx.strokeStyle = C.border;
+					ctx.lineWidth = 1;
+					ctx.stroke();
+
+					let y = CARD_TOP + PAD;
+					ctx.textAlign = 'left';
+
+					// eyebrow
+					ctx.fillStyle = C.faint;
+					ctx.font = '10px sans-serif';
+					ctx.fillText('通行证展柜', CX, y + 8);
+					y += 18;
+
+					// 大数字：件数（可与每盒数字直接相加）
+					const numStr = String(sumOwned);
+					ctx.fillStyle = C.ink;
+					ctx.font = 'bold 32px sans-serif';
+					ctx.fillText(numStr, CX, y + 28);
+					ctx.fillStyle = C.faint;
+					ctx.font = '12px sans-serif';
+					ctx.fillText('/ ' + sumTotal + ' 件', CX + textW(numStr, 32) + 7, y + 28);
+
+					const pct = sumTotal > 0 ? Math.round(sumOwned / sumTotal * 100) : 0;
+					ctx.textAlign = 'right';
+					ctx.fillStyle = C.blue;
+					ctx.font = 'bold 12px sans-serif';
+					ctx.fillText(pct + '%', CX + CW, y + 28);
+					ctx.textAlign = 'left';
+					y += 42;
+
+					// 总进度条
+					roundRect(ctx, CX, y, CW, 5, 2.5);
+					ctx.fillStyle = C.barBg;
+					ctx.fill();
+					if (sumTotal > 0) {
+						const fw = Math.max(4, CW * Math.min(1, sumOwned / sumTotal));
+						roundRect(ctx, CX, y, fw, 5, 2.5);
+						ctx.fillStyle = C.blue;
+						ctx.fill();
+					}
+					y += 15;
+
+					// meta 行
+					ctx.fillStyle = C.faint;
+					ctx.font = '10px sans-serif';
+					ctx.fillText(self.ownedCount + ' 位干员 · 有进度 ' + opened + '/' + allBoxes.length + ' 个盒', CX, y + 8);
+					y += 24;
+
+					// 分隔线
+					ctx.strokeStyle = C.border;
+					ctx.lineWidth = 1;
+					ctx.beginPath();
+					ctx.moveTo(CX, y);
+					ctx.lineTo(CX + CW, y);
+					ctx.stroke();
+					y += 14;
+
+					// 小节标题
+					ctx.fillStyle = C.ink;
+					ctx.font = 'bold 11px sans-serif';
+					ctx.fillText('每盒进度', CX, y + 9);
+					if (pageCount > 1) {
+						ctx.fillStyle = C.faint2;
+						ctx.font = '10px sans-serif';
+						ctx.textAlign = 'right';
+						ctx.fillText((pageIndex + 1) + ' / ' + pageCount, CX + CW, y + 9);
+						ctx.textAlign = 'left';
+					}
+					y += 28;
+
+					// 空展柜：至少给一句人话，别只留个「每盒进度」标题
+					if (!infos.length) {
+						roundRect(ctx, CX, y, CW, 64, 8);
+						ctx.fillStyle = '#f7f7f9';
+						ctx.fill();
+						ctx.textAlign = 'center';
+						ctx.fillStyle = C.faint;
+						ctx.font = '11px sans-serif';
+						ctx.fillText('还没有点亮任何通行证', W / 2, y + 28);
+						ctx.fillStyle = C.faint2;
+						ctx.font = '10px sans-serif';
+						ctx.fillText('去展柜勾选你已收集的干员', W / 2, y + 46);
+						ctx.textAlign = 'left';
+						y += 76;
+					}
+
+					// 盒块
+					infos.forEach(function (info) {
+						// 0 进度：压成一行，避免几十个空盒把图撑爆
+						if (!info.owned) {
+							ctx.fillStyle = C.sub;
+							ctx.font = '11px sans-serif';
+							ctx.textAlign = 'left';
+							ctx.fillText(info.name, CX, y + 10);
+							ctx.fillStyle = C.faint2;
+							ctx.font = '10px sans-serif';
+							ctx.textAlign = 'right';
+							ctx.fillText('0/' + info.total, CX + CW, y + 10);
+							ctx.textAlign = 'left';
+							y += 24;
+							return;
 						}
-						sliceY += 28;
 
-						var characters = self.getBoxCharacters ? self.getBoxCharacters(box) : [];
-						if (characters && characters.length > 0) {
-							var tagX = 15;
-							var tagY = sliceY;
-							var tagHeight = 20;
-							var tagPadding = 4;
-							var maxTagWidth = sliceCanvasWidth - 30;
+						// 盒名 + 件数 + 百分比
+						ctx.fillStyle = C.ink;
+						ctx.font = 'bold 11px sans-serif';
+						ctx.textAlign = 'left';
+						ctx.fillText(info.name, CX, y + 10);
 
-							characters.forEach(function(char) {
-								if (!char || !char.name) return;
+						ctx.textAlign = 'right';
+						ctx.fillStyle = C.blue;
+						ctx.font = 'bold 10px sans-serif';
+						ctx.fillText(info.pct + '%', CX + CW, y + 10);
+						ctx.fillStyle = C.sub;
+						ctx.font = '10px sans-serif';
+						ctx.fillText(info.owned + '/' + info.total, CX + CW - 36, y + 10);
+						ctx.textAlign = 'left';
 
-								var charName = char.name;
-								var hasElite1 = self.isCharacterOwnedAtLevel ? self.isCharacterOwnedAtLevel(char.name, 'elite1', box.Box_id) : false;
-								var hasElite2 = self.isCharacterOwnedAtLevel ? self.isCharacterOwnedAtLevel(char.name, 'elite2', box.Box_id) : false;
-								var hasPair = self.isCharacterOwnedAtLevel ? self.isCharacterOwnedAtLevel(char.name, 'pair', box.Box_id) : false;
-
-								var tagColor = '#909399';
-								if (hasPair || (hasElite1 && hasElite2)) {
-									tagColor = '#67C23A';
-								} else if (hasElite2) {
-									tagColor = '#409EFF';
-								} else if (hasElite1) {
-									tagColor = '#E6A23C';
-								}
-
-								var textWidth = charName.length * 12 + tagPadding * 2;
-								if (tagX + textWidth > maxTagWidth && tagX > 15) {
-									tagX = 15;
-									tagY += tagHeight + 6;
-								}
-
-								sliceCtx.fillStyle = hexToRgba(tagColor, 0.125);
-								sliceCtx.fillRect(tagX, tagY, textWidth, tagHeight);
-								sliceCtx.strokeStyle = tagColor;
-								sliceCtx.lineWidth = 1;
-								sliceCtx.strokeRect(tagX, tagY, textWidth, tagHeight);
-								sliceCtx.fillStyle = tagColor;
-								sliceCtx.font = '10px -apple-system, sans-serif';
-								sliceCtx.textAlign = 'left';
-								sliceCtx.fillText(charName, tagX + tagPadding, tagY + 14);
-								tagX += textWidth + 4;
-							});
-
-							sliceY = tagY + tagHeight + 8;
+						// 盒进度条
+						y += 16;
+						roundRect(ctx, CX, y, CW, 6, 3);
+						ctx.fillStyle = C.barBg;
+						ctx.fill();
+						const bw = info.total > 0 ? Math.max(4, CW * Math.min(1, info.owned / info.total)) : 0;
+						if (bw > 0) {
+							roundRect(ctx, CX, y, bw, 6, 3);
+							ctx.fillStyle = info.owned >= info.total && info.total > 0 ? C.pairText : C.blue;
+							ctx.fill();
 						}
+						y += 14;
 
-						sliceY += 6;
+						y = drawChips(ctx, chipRows(info), CX, y);
+						y += 14;
 					});
 
-					var legendY = sliceY + 15;
-					sliceCtx.fillStyle = '#333333';
-					sliceCtx.font = '10px -apple-system, sans-serif';
-					sliceCtx.textAlign = 'left';
-					sliceCtx.fillText('图例:', 15, legendY);
+					// 卡片内：分隔线 + 生成时间
+					y += 4;
+					ctx.strokeStyle = C.border;
+					ctx.beginPath();
+					ctx.moveTo(CX, y);
+					ctx.lineTo(CX + CW, y);
+					ctx.stroke();
 
-					var legendX = 50;
-					var legends = [
-						{ color: '#67C23A', text: '一对' },
-						{ color: '#409EFF', text: '精二' },
-						{ color: '#E6A23C', text: '精一' }
-					];
-					legends.forEach(function(leg) {
-						sliceCtx.fillStyle = leg.color;
-						sliceCtx.fillRect(legendX, legendY - 8, 12, 12);
-						sliceCtx.fillStyle = '#666666';
-						sliceCtx.fillText(leg.text, legendX + 16, legendY);
-						legendX += 60;
-					});
+					const now = new Date();
+					const ts = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' +
+						String(now.getDate()).padStart(2, '0') + ' ' + String(now.getHours()).padStart(2, '0') + ':' +
+						String(now.getMinutes()).padStart(2, '0');
+					ctx.fillStyle = C.faint2;
+					ctx.font = '9px sans-serif';
+					ctx.textAlign = 'center';
+					ctx.fillText('生成时间 ' + ts + (pageCount > 1 ? ' · ' + (pageIndex + 1) + '/' + pageCount : ''), W / 2, y + 18);
 
-					var now = new Date();
-					var ts = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0') + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
-					sliceCtx.fillStyle = '#bbbbbb';
-					sliceCtx.font = '10px -apple-system, sans-serif';
-					sliceCtx.textAlign = 'center';
-					sliceCtx.fillText('生成时间 ' + ts + ' (' + (sliceIndex + 1) + '/' + totalSlices + ')', sliceCanvasWidth / 2, legendY + 30);
+					// 卡片外：品牌行
+					const cardBottom = CARD_TOP + cardH;
+					ctx.fillStyle = C.faint;
+					ctx.font = '10px sans-serif';
+					ctx.fillText('方舟通行证谷子查询工具', W / 2, cardBottom + 22);
+					ctx.fillStyle = C.faint2;
+					ctx.font = '9px sans-serif';
+					ctx.fillText('数据只存在本机，不上传服务器', W / 2, cardBottom + 38);
+					ctx.textAlign = 'left';
 
-					var actualHeight = legendY + 50;
-					sliceCtx.draw(false, function() {
-						setTimeout(function() {
+					ctx.draw(false, function () {
+						// 旧版 canvas 的 draw 回调与像素落盘之间需要一点时间，太快导出会是空白
+						setTimeout(function () {
 							uni.canvasToTempFilePath({
 								canvasId: 'shareCanvas',
-								width: sliceCanvasWidth,
-								height: actualHeight,
-								destWidth: sliceCanvasWidth * 2,
-								destHeight: actualHeight * 2,
+								x: 0,
+								y: 0,
+								width: W,
+								height: totalH,
+								destWidth: W * 2,
+								destHeight: totalH * 2,
 								fileType: 'png',
-								success: function(res) {
-									console.log('Canvas导出成功 (分片' + (sliceIndex + 1) + '/' + totalSlices + '):', res.tempFilePath);
+								quality: 1,
+								success: function (res) {
+									console.log('[overview_shot] 第 ' + (pageIndex + 1) + '/' + pageCount + ' 张完成', res.tempFilePath);
 									resolve(res.tempFilePath);
 								},
-								fail: function(err) {
-									console.error('Canvas导出失败 (分片' + (sliceIndex + 1) + '):', err);
+								fail: function (err) {
+									console.error('[overview_shot] 导出失败', err);
 									reject(err);
 								}
 							}, self);
-						}, 200);
+						}, 260);
 					});
 				});
 			}
 
-			var boxes = self.getFilteredBoxesForOverview ? self.getFilteredBoxesForOverview() : (self.filteredBoxes || []);
-			if (self.onlyShowProgressBoxes) {
-				boxes = boxes.filter(function(box) {
-					var owned = self.getBoxOwnedCount ? self.getBoxOwnedCount(box) : 0;
-					return owned > 0;
-				});
-			}
-
-			var boxCount = boxes.length;
-			var maxBoxes = 40; // 减小每片盒子数量，避免Canvas高度超限
-			var sliceCount = Math.ceil(boxCount / maxBoxes);
-
-			console.log('盒子数量:', boxCount, 'onlyShowProgressBoxes:', self.onlyShowProgressBoxes);
-			if (sliceCount > 1) {
-				console.log('需要分片生成', sliceCount, '张图片');
-			}
-
-			self.pendingSlices = [];
-			for (var i = 0; i < sliceCount; i++) {
-				var start = i * maxBoxes;
-				var end = Math.min((i + 1) * maxBoxes, boxCount);
-				self.pendingSlices.push({
-					start: start,
-					end: end,
-					index: i,
-					total: sliceCount
-				});
-			}
-
-			function finishWithError(err) {
-				console.error('分片绘制失败:', err);
-				self.isGeneratingShareImage = false;
-				uni.showToast({ title: '生成失败', icon: 'none' });
-			}
-
-			function drawAllSlices(index) {
-				if (index >= self.pendingSlices.length) {
+			function drawAll(index) {
+				if (index >= pageCount) {
 					self.shareImageReady = true;
 					self.isGeneratingShareImage = false;
-					console.log('所有分片绘制完成，共', self.shareImagePaths.length, '张');
+					console.log('[overview_shot] 全部完成，共 ' + self.shareImagePaths.length + ' 张');
 					return;
 				}
-
-				drawSlice(self.pendingSlices[index], boxes)
-					.then(function(tempPath) {
-						self.shareImagePaths.push(tempPath);
-						drawAllSlices(index + 1);
+				drawPage(pages[index], index)
+					.then(function (path) {
+						self.shareImagePaths.push(path);
+						drawAll(index + 1);
 					})
-					.catch(finishWithError);
+					.catch(function (err) {
+						console.error('[overview_shot] 绘制失败', err);
+						self.isGeneratingShareImage = false;
+						uni.showToast({ title: '生成失败', icon: 'none' });
+					});
 			}
 
-			drawAllSlices(0);
+			drawAll(0);
 		}
 	}
 };
@@ -6722,11 +7388,8 @@ export default {
 
 
 .search-input-wrapper:focus-within {
-
-	border-color: #409EFF;
-
-	box-shadow: 0 0 0 4rpx rgba(64, 158, 255, 0.1);
-
+	border-color: var(--ak-focus-border, #2f7ed8);
+	box-shadow: var(--ak-focus-shadow, 0 0 0 4rpx rgba(64, 158, 255, 0.18), 0 10rpx 24rpx -6rpx rgba(31, 94, 168, 0.28), inset 0 0 0 2rpx rgba(64, 158, 255, 0.45), inset 0 2rpx 8rpx rgba(31, 94, 168, 0.10));
 }
 
 
@@ -7298,6 +7961,8 @@ export default {
 
 
 .character-item {
+	position: relative; /* 数量/价格浮层都挂在这张卡上，别飞到整个盒区块底部 */
+	min-width: 0;
 
 	display: flex;
 
@@ -7370,6 +8035,44 @@ export default {
 .character-avatar.for-trade {
 
 	border-color: #E6A23C;
+
+}
+
+
+
+/* 精一 / 精二 切换胶囊：只在点亮「一对」时出现 */
+
+.avatar-level-switch {
+
+	position: absolute;
+
+	left: 4rpx;
+
+	top: 92rpx;
+
+	z-index: 3;
+
+	padding: 0 8rpx;
+
+	height: 26rpx;
+
+	line-height: 26rpx;
+
+	border-radius: 13rpx;
+
+	background: rgba(0, 0, 0, 0.55);
+
+}
+
+
+
+.avatar-level-text {
+
+	font-size: 18rpx;
+
+	color: #ffffff;
+
+	line-height: 26rpx;
 
 }
 
@@ -7474,35 +8177,34 @@ export default {
 /* 成就标记样式 */
 
 .pair-indicator {
-
 	position: absolute;
-
-	top: -5rpx;
-
-	right: -5rpx;
-
+	top: -6rpx;
+	right: -6rpx;
 	background-color: #FF6B35;
-
 	color: #fff;
-
-	padding: 4rpx 8rpx;
-
+	padding: 3rpx 7rpx;
 	border-radius: 8rpx;
-
 	font-size: 16rpx;
-
+	line-height: 1.15;
 	display: flex;
-
-	flex-direction: column;
-
+	flex-direction: row;
 	align-items: center;
-
+	white-space: nowrap;
 	border: 2rpx solid #fff;
-
 	box-shadow: 0 2rpx 8rpx rgba(255, 107, 53, 0.3);
-
 	z-index: 10;
+}
 
+/* 散件摘要挂在名字下面：塞进右上角小角标会逐字换行成竖条 */
+.loose-line {
+	max-width: 130rpx;
+	font-size: 14rpx;
+	line-height: 1.2;
+	color: #FF6B35;
+	text-align: center;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 
@@ -7528,51 +8230,32 @@ export default {
 /* 数量显示区域 */
 
 .quantity-display {
-
 	position: absolute;
-
 	bottom: 0;
-
 	left: 0;
-
 	right: 0;
-
 	display: flex;
-
 	flex-direction: column;
-
-	gap: 4rpx;
-
-	background-color: rgba(255, 255, 255, 0.95);
-
-	padding: 8rpx 4rpx;
-
-	border-radius: 0 0 12rpx 12rpx;
-
+	gap: 2rpx;
+	background-color: rgba(255, 255, 255, 0.96);
+	padding: 3rpx 3rpx;
+	border-radius: 0 0 10rpx 10rpx;
 	max-height: 120rpx;
-
 	overflow-y: auto;
-
+	z-index: 5;
 }
 
 
 
 .quantity-item {
-
 	display: flex;
-
 	align-items: center;
-
 	justify-content: space-between;
-
-	padding: 4rpx 6rpx;
-
+	padding: 1rpx 2rpx;
 	background-color: #f8f8f8;
-
-	border-radius: 6rpx;
-
-	font-size: 20rpx;
-
+	border-radius: 5rpx;
+	font-size: 18rpx;
+	line-height: 1.1;
 }
 
 
@@ -7581,9 +8264,9 @@ export default {
 
 	font-weight: bold;
 
-	font-size: 18rpx;
+	font-size: 16rpx;
 
-	min-width: 24rpx;
+	min-width: 18rpx;
 
 	text-align: center;
 
@@ -7621,9 +8304,9 @@ export default {
 
 	align-items: center;
 
-	gap: 4rpx;
+	gap: 2rpx;
 
-	margin-left: 6rpx;
+	margin-left: 2rpx;
 
 }
 
@@ -7631,9 +8314,9 @@ export default {
 
 .quantity-btn {
 
-	width: 24rpx;
+	width: 20rpx;
 
-	height: 24rpx;
+	height: 20rpx;
 
 	display: flex;
 
@@ -7647,7 +8330,7 @@ export default {
 
 	border-radius: 4rpx;
 
-	font-size: 16rpx;
+	font-size: 14rpx;
 
 	font-weight: bold;
 
@@ -7671,7 +8354,7 @@ export default {
 
 .quantity-value {
 
-	min-width: 20rpx;
+	min-width: 16rpx;
 
 	text-align: center;
 
@@ -7679,8 +8362,32 @@ export default {
 
 	color: #333;
 
-	font-size: 18rpx;
+	font-size: 16rpx;
 
+}
+
+.loose-count {
+	font-size: 14rpx;
+	line-height: 1.25;
+	opacity: 0.95;
+}
+
+/* 底部「显示 / 隐藏数量」开关 */
+.qty-toggle {
+	flex: 0 0 auto;
+	font-size: 22rpx;
+	line-height: 1.6;
+	padding: 0 16rpx;
+	border-radius: 20rpx;
+	color: #409EFF;
+	background-color: rgba(64, 158, 255, 0.12);
+	border: 1rpx solid rgba(64, 158, 255, 0.35);
+}
+
+.qty-toggle.on {
+	color: #fff;
+	background-color: #409EFF;
+	border-color: #409EFF;
 }
 
 
@@ -10219,9 +10926,15 @@ export default {
 
 	display: flex;
 
-	flex-direction: column;
+	flex-direction: row;
 
-	gap: 5rpx;
+	flex-wrap: wrap;
+
+	justify-content: center;
+
+	align-items: center;
+
+	gap: 4rpx 14rpx;
 
 }
 
@@ -12873,5 +13586,825 @@ export default {
 
 
 	/* 隐私协议弹窗 */
+
+/* ===== 左侧抽屉 ===== */
+.left-drawer-handle {
+	position: fixed;
+	left: 0;
+	top: 12%;
+	z-index: 900;
+	width: 44rpx;
+	height: 112rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 0 14rpx 14rpx 0;
+	background: rgba(127, 127, 127, 0.14);
+	box-shadow: 2rpx 2rpx 10rpx rgba(0, 0, 0, 0.08);
+}
+
+.left-drawer-handle-icon {
+	font-size: 24rpx;
+	color: #7a7f85;
+	line-height: 1;
+}
+
+.left-drawer-mask {
+	position: fixed;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	z-index: 1200;
+	background: rgba(0, 0, 0, 0.35);
+}
+
+.left-drawer {
+	position: fixed;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 480rpx;
+	z-index: 1201;
+	padding: calc(var(--status-bar-height, 0px) + 60rpx) 24rpx 40rpx;
+	box-sizing: border-box;
+	background: #fff;
+	border-radius: 0 24rpx 24rpx 0;
+	box-shadow: 8rpx 0 30rpx rgba(0, 0, 0, 0.12);
+	transform: translateX(-100%);
+	transition: transform 0.24s ease;
+}
+
+.left-drawer.open {
+	transform: translateX(0);
+}
+
+.left-drawer-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 8rpx 22rpx;
+	border-bottom: 1rpx solid #f0f0f0;
+}
+
+.left-drawer-title {
+	font-size: 30rpx;
+	font-weight: 600;
+	color: #333;
+}
+
+.left-drawer-close {
+	font-size: 28rpx;
+	color: #999;
+	padding: 0 8rpx;
+}
+
+.left-drawer-item {
+	display: flex;
+	align-items: center;
+	padding: 26rpx 10rpx;
+	border-bottom: 1rpx solid #f5f5f5;
+}
+
+.left-drawer-item-icon {
+	width: 48rpx;
+	font-size: 28rpx;
+}
+
+.left-drawer-item-text {
+	font-size: 27rpx;
+	color: #333;
+}
+
+.left-drawer-tip {
+	display: block;
+	margin-top: 22rpx;
+	padding: 0 10rpx;
+	font-size: 21rpx;
+	line-height: 1.6;
+	color: #9aa0a6;
+}
+
+/* ===== 顶部功能区：整体折叠 / 收进左抽屉 ===== */
+.top-region {
+	display: block;
+}
+
+.top-region-entry {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 16rpx 20rpx;
+	margin-bottom: 20rpx;
+	background-color: #fff;
+	border-radius: 16rpx;
+	box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+}
+
+.tre-main {
+	display: flex;
+	align-items: center;
+	flex: 1;
+	min-width: 0;
+}
+
+.tre-icon {
+	font-size: 26rpx;
+	color: #409EFF;
+	margin-right: 12rpx;
+}
+
+.tre-text {
+	font-size: 24rpx;
+	color: #333;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.tre-meta {
+	font-size: 21rpx;
+	color: #9aa0a6;
+	margin-left: 12rpx;
+	flex-shrink: 0;
+}
+
+.tre-action {
+	font-size: 22rpx;
+	color: #409EFF;
+	padding: 6rpx 4rpx 6rpx 16rpx;
+	flex-shrink: 0;
+}
+
+.top-fold-bar {
+	display: flex;
+	align-items: center;
+	padding: 14rpx 20rpx;
+	margin-bottom: 20rpx;
+	background-color: #fff;
+	border-radius: 16rpx;
+	box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+}
+
+.top-fold-dot {
+	width: 10rpx;
+	height: 10rpx;
+	border-radius: 50%;
+	background-color: #d0d4d9;
+	margin-right: 12rpx;
+	flex-shrink: 0;
+}
+
+.top-fold-dot.on {
+	background-color: #409EFF;
+}
+
+.top-fold-text {
+	flex: 1;
+	min-width: 0;
+	font-size: 22rpx;
+	color: #8a9096;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.top-fold-move {
+	font-size: 21rpx;
+	color: #409EFF;
+	padding: 4rpx 12rpx;
+	margin-right: 6rpx;
+	flex-shrink: 0;
+}
+
+.top-fold-arrow {
+	font-size: 24rpx;
+	line-height: 1;
+	color: #9aa0a6;
+	transform: rotate(180deg);
+	transition: transform 0.2s ease;
+	flex-shrink: 0;
+}
+
+.top-fold-arrow.up {
+	transform: rotate(0deg);
+}
+
+/* 折叠 / 抽屉模式下列表高度兜底（实测成功时用行内高度覆盖） */
+.boxes-scroll-view.is-top-folded {
+	height: calc(100vh - 150rpx);
+}
+
+.boxes-scroll-view.is-top-in-drawer {
+	height: calc(100vh - 150rpx);
+}
+
+/* ===== 左抽屉内的顶部功能区 ===== */
+.left-drawer {
+	display: flex;
+	flex-direction: column;
+}
+
+.left-drawer.has-top-fns {
+	width: 600rpx;
+}
+
+.left-drawer-scroll {
+	flex: 1;
+	min-height: 0;
+}
+
+.drawer-block {
+	padding: 18rpx 0 10rpx;
+	border-bottom: 1rpx solid #f5f5f5;
+}
+
+.drawer-block:last-child {
+	border-bottom: none;
+}
+
+.drawer-block-title {
+	display: block;
+	font-size: 21rpx;
+	color: #9aa0a6;
+	margin: 0 8rpx 14rpx;
+	letter-spacing: 1rpx;
+}
+
+.drawer-mode-tabs {
+	display: flex;
+	gap: 12rpx;
+	margin-bottom: 14rpx;
+}
+
+.drawer-mode-tab {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 16rpx 8rpx;
+	border-radius: 12rpx;
+	background-color: #f8f8f8;
+	color: #666;
+}
+
+.drawer-mode-tab.active {
+	background-color: #409EFF;
+	color: #fff;
+}
+
+.drawer-mode-tab .mode-icon {
+	display: inline;
+	font-size: 26rpx;
+	margin-bottom: 0;
+	margin-right: 8rpx;
+}
+
+.drawer-mode-tab .mode-text {
+	font-size: 24rpx;
+}
+
+.drawer-search {
+	margin-bottom: 6rpx;
+}
+
+.drawer-search-results {
+	max-height: 300rpx;
+	margin-bottom: 6rpx;
+}
+
+.drawer-ach-row {
+	display: flex;
+	flex-direction: column;
+	gap: 10rpx;
+	margin: 8rpx 0 16rpx;
+}
+
+.drawer-ach-btn {
+	align-self: flex-start;
+	height: 68rpx;
+	padding: 0 22rpx;
+}
+
+.drawer-ach-btn .trophy-icon {
+	font-size: 32rpx;
+	margin-right: 8rpx;
+}
+
+.drawer-ach-btn .achievement-text {
+	font-size: 26rpx;
+}
+
+.drawer-ach-tip {
+	font-size: 20rpx;
+	color: #9aa0a6;
+	padding-left: 4rpx;
+}
+
+.drawer-filters {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10rpx;
+	margin-bottom: 12rpx;
+}
+
+.drawer-filters .filter-btn {
+	flex: 0 0 auto;
+	min-width: 0;
+	padding: 12rpx 20rpx;
+	font-size: 22rpx;
+}
+
+.drawer-stats {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16rpx;
+	margin-bottom: 14rpx;
+}
+
+.drawer-stat {
+	font-size: 21rpx;
+	color: #8a9096;
+}
+
+.drawer-elite {
+	display: flex;
+	gap: 8rpx;
+}
+
+.drawer-elite .elite-option {
+	padding: 12rpx 0;
+}
+
+.drawer-seg {
+	display: flex;
+	gap: 10rpx;
+	margin-bottom: 10rpx;
+}
+
+.drawer-seg-item {
+	flex: 1;
+	text-align: center;
+	padding: 16rpx 0;
+	border-radius: 12rpx;
+	background-color: #f8f8f8;
+	font-size: 24rpx;
+	color: #666;
+}
+
+.drawer-seg-item.active {
+	background-color: #409EFF;
+	color: #fff;
+}
+
+/* ================= 分享展柜海报 ================= */
+.shot-layer {
+	position: fixed;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	/* 盖住 H5 页面标题栏（uni-page-head z-index 998） */
+	z-index: 9999;
+	background: #f5f5f5;
+	display: flex;
+	flex-direction: column;
+	box-sizing: border-box;
+	padding: calc(24rpx + env(safe-area-inset-top)) 24rpx calc(16rpx + env(safe-area-inset-bottom));
+}
+.shot-page {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-start;
+	padding-top: 24rpx;
+}
+.shot-card {
+	width: 100%;
+	flex: 0 0 auto;
+	min-height: 0;
+	box-sizing: border-box;
+	background: #ffffff;
+	border-radius: 24rpx;
+	padding: 36rpx 30rpx 28rpx;
+	display: flex;
+	flex-direction: column;
+}
+.shot-head {
+	padding-bottom: 24rpx;
+	border-bottom: 1rpx solid #ececef;
+}
+.shot-title {
+	display: block;
+	font-size: 38rpx;
+	font-weight: 700;
+	color: #1c1c1e;
+}
+.shot-sub {
+	display: block;
+	margin-top: 10rpx;
+	font-size: 24rpx;
+	color: #8e8e93;
+}
+.shot-list {
+	flex: 0 0 auto;
+	min-height: 0;
+	display: flex;
+	flex-wrap: wrap;
+	align-content: flex-start;
+	gap: 16rpx;
+	margin-top: 26rpx;
+}
+.shot-note {
+	margin-top: 20rpx;
+	padding-top: 20rpx;
+	border-top: 1rpx solid #ececef;
+	display: flex;
+	justify-content: space-between;
+}
+.shot-note-text {
+	font-size: 22rpx;
+	color: #9a9aa0;
+}
+.shot-chip {
+	display: flex;
+	align-items: center;
+	gap: 8rpx;
+	padding: 10rpx 18rpx;
+	border-radius: 12rpx;
+	background: #f5f6f8;
+	border: 1rpx solid #ececef;
+}
+.shot-chip.gold {
+	background: #fff8e8;
+	border-color: #f3dfb6;
+}
+.shot-chip.more {
+	background: #eef1f6;
+	border-color: #e4e8ef;
+}
+.shot-chip-name {
+	font-size: 24rpx;
+	color: #1c1c1e;
+}
+.shot-chip.gold .shot-chip-name { color: #8a6112; }
+.shot-chip-tag {
+	font-size: 18rpx;
+	color: #b07d17;
+	background: #ffeec7;
+	border-radius: 6rpx;
+	padding: 0 8rpx;
+}
+.shot-empty {
+	padding: 60rpx 0;
+	text-align: center;
+}
+.shot-empty-text {
+	font-size: 25rpx;
+	color: #a0a0a8;
+}
+.shot-bar {
+	display: flex;
+	gap: 16rpx;
+	margin-top: 20rpx;
+}
+.shot-foot {
+	display: flex;
+	align-items: center;
+	gap: 18rpx;
+	margin-top: 22rpx;
+	padding: 0 6rpx;
+}
+.shot-qr {
+	width: 140rpx;
+	height: 140rpx;
+	flex-shrink: 0;
+	border-radius: 12rpx;
+	background: #ffffff;
+}
+.shot-foot-text { flex: 1; min-width: 0; }
+.shot-foot-title {
+	display: block;
+	font-size: 24rpx;
+	font-weight: 600;
+	color: #3a3a40;
+}
+.shot-foot-sub {
+	display: block;
+	margin-top: 4rpx;
+	font-size: 21rpx;
+	color: #9a9aa0;
+}
+
+.poster-bar {
+	display: flex;
+	gap: 16rpx;
+	margin-top: 22rpx;
+}
+.poster-btn {
+	flex: 1;
+	height: 92rpx;
+	border-radius: 46rpx;
+	background: #ffffff;
+	border: 1rpx solid #e2e2e7;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 27rpx;
+	font-weight: 600;
+	color: #1c1c1e;
+}
+.poster-btn.primary {
+	background: #1c1c1e;
+	border-color: #1c1c1e;
+	color: #ffffff;
+}
+.poster-btn-share {
+	padding: 0;
+	margin: 0;
+	line-height: normal;
+	font-size: 27rpx;
+}
+.poster-btn-share::after { border: none; }
+.poster-hint {
+	margin-top: 14rpx;
+	text-align: center;
+	font-size: 20rpx;
+	color: #a8a8ae;
+}
+
+/* ===================== 出物标记（出 / 换 / 要） ===================== */
+.trade-marks {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 3rpx;
+	width: 100%;
+	margin-top: 4rpx;
+}
+
+.trade-mark {
+	font-size: 16rpx;
+	line-height: 1.4;
+	padding: 1rpx 6rpx;
+	border-radius: 4rpx;
+	white-space: nowrap;
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.trade-mark.mk-out,
+.item-badge.mk-out {
+	color: #b4550f;
+	background-color: #fff1e2;
+}
+
+.trade-mark.mk-swap,
+.item-badge.mk-swap {
+	color: #1f6fbf;
+	background-color: #e8f2fd;
+}
+
+.trade-mark.mk-want,
+.item-badge.mk-want {
+	color: #7a4bc4;
+	background-color: #f3ecfd;
+}
+
+.trade-bar-tip {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	align-items: center;
+}
+
+.trade-bar-tip-text {
+	font-size: 20rpx;
+	line-height: 1.4;
+	color: #8d908e;
+}
+
+/* ===================== 出物编辑层 ===================== */
+.trade-sheet-mask {
+	position: fixed;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 9998;
+	background-color: rgba(0, 0, 0, 0.45);
+	display: flex;
+	align-items: flex-end;
+}
+
+.trade-sheet {
+	width: 100%;
+	box-sizing: border-box;
+	max-height: 80vh;
+	overflow-y: auto;
+	background-color: var(--ak-surface-panel, #ffffff);
+	color: var(--ak-text-primary, #1b1d1f);
+	border-radius: 24rpx 24rpx 0 0;
+	padding: 24rpx 24rpx 28rpx;
+	box-shadow: 0 -8rpx 32rpx rgba(0, 0, 0, 0.12);
+}
+
+.trade-sheet-head {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+	padding-bottom: 18rpx;
+	border-bottom: 1rpx solid var(--ak-hairline-soft, #ececec);
+}
+
+.trade-sheet-avatar {
+	width: 88rpx;
+	height: 88rpx;
+	border-radius: 12rpx;
+	flex-shrink: 0;
+	background-color: var(--ak-surface-muted, #f2f2f2);
+}
+
+.trade-sheet-title-box {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 4rpx;
+}
+
+.trade-sheet-name {
+	font-size: 30rpx;
+	font-weight: 600;
+	color: var(--ak-text-primary, #1b1d1f);
+}
+
+.trade-sheet-sub {
+	font-size: 21rpx;
+	color: var(--ak-text-muted, #8d908e);
+}
+
+.trade-sheet-close {
+	font-size: 40rpx;
+	line-height: 1;
+	padding: 0 8rpx;
+	color: var(--ak-text-muted, #8d908e);
+}
+
+.trade-sheet-body {
+	padding: 6rpx 0 0;
+}
+
+.trade-sheet-row {
+	padding: 16rpx 0;
+	border-bottom: 1rpx solid var(--ak-hairline-soft, #f0f0f0);
+}
+
+.trade-row-head {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+	margin-bottom: 10rpx;
+}
+
+.trade-row-level {
+	font-size: 26rpx;
+	font-weight: 600;
+	width: 76rpx;
+	color: var(--ak-text-primary, #1b1d1f);
+}
+
+.trade-row-own {
+	font-size: 20rpx;
+	padding: 2rpx 14rpx;
+	border-radius: 999rpx;
+	color: var(--ak-text-muted, #8d908e);
+	background-color: var(--ak-surface-muted, #f2f2f2);
+}
+
+.trade-row-own.on {
+	color: #3f9c5a;
+	background-color: #eaf7ee;
+}
+
+.trade-row-price {
+	margin-left: auto;
+	font-size: 22rpx;
+	font-weight: 600;
+	color: #e6a23c;
+}
+
+.trade-row-opts {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+}
+
+.trade-opt {
+	width: 76rpx;
+	height: 56rpx;
+	line-height: 56rpx;
+	text-align: center;
+	font-size: 24rpx;
+	border-radius: 10rpx;
+	border: 1rpx solid var(--ak-hairline-soft, #e6e6e6);
+	color: var(--ak-text-secondary, #666666);
+}
+
+.trade-opt.mk-out {
+	color: #b4550f;
+	background-color: #fff1e2;
+	border-color: #f6d5b3;
+}
+
+.trade-opt.mk-swap {
+	color: #1f6fbf;
+	background-color: #e8f2fd;
+	border-color: #c8e0f8;
+}
+
+.trade-opt.mk-want {
+	color: #7a4bc4;
+	background-color: #f3ecfd;
+	border-color: #dccbf8;
+}
+
+.trade-opt.off {
+	opacity: 0.42;
+}
+
+.trade-opt.active {
+	opacity: 1;
+	color: #ffffff;
+}
+
+.trade-opt.active.mk-out {
+	background-color: #e6a23c;
+	border-color: #e6a23c;
+}
+
+.trade-opt.active.mk-swap {
+	background-color: #409eff;
+	border-color: #409eff;
+}
+
+.trade-opt.active.mk-want {
+	background-color: #9b6bd6;
+	border-color: #9b6bd6;
+}
+
+.trade-price-field {
+	flex: 1;
+	min-width: 0;
+	height: 56rpx;
+	line-height: 56rpx;
+	padding: 0 14rpx;
+	font-size: 24rpx;
+	border-radius: 10rpx;
+	box-sizing: border-box;
+	background-color: var(--ak-surface-muted, #f5f5f5);
+	color: var(--ak-text-primary, #1b1d1f);
+	border: none;
+	outline: none;
+}
+
+.trade-sheet-empty {
+	padding: 28rpx 0;
+	text-align: center;
+	font-size: 24rpx;
+	color: var(--ak-text-muted, #8d908e);
+}
+
+.trade-sheet-foot {
+	padding-top: 18rpx;
+}
+
+.trade-sheet-tip {
+	display: block;
+	font-size: 20rpx;
+	line-height: 1.5;
+	margin-bottom: 14rpx;
+	color: var(--ak-text-muted, #8d908e);
+}
+
+.trade-sheet-done {
+	width: 100%;
+	border: none;
+	display: block;
+	height: 84rpx;
+	line-height: 84rpx;
+	text-align: center;
+	border-radius: 12rpx;
+	font-size: 28rpx;
+	background-color: #409eff;
+	color: #ffffff;
+}
+
+.trade-sheet-done::after {
+	border: none;
+}
+
 </style>
 
