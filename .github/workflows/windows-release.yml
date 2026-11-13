@@ -128,3 +128,17 @@ jobs:
             windows/dist/*-Setup.exe
             windows/dist/version.txt
           if-no-files-found: error
+
+      # 以前只传 artifact，Release 得手工建（还要本地下 236MB 再上传）。
+      # 现在让 runner 自己发：tag 一推，绿色版 zip + 安装程序直接出现在 Releases 页面。
+      # 安卓 apk 仍由人工云打包后 gh release upload 追加（CI 不产 apk）。
+      - name: 发布到 GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            windows/dist/*.zip
+            windows/dist/*-Setup.exe

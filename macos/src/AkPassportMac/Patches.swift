@@ -207,7 +207,9 @@ enum Patches {
           if (window.__akRemoteRewrite) return;
           window.__akRemoteRewrite = true;
           var BASE = '\#(proxyBase)';
-          var HOSTS = ['raw.gitcode.com','cdn.jsdelivr.net','fastly.jsdelivr.net','raw.githubusercontent.com'];
+          // monster-siren 是塞壬唱片官方 API（首页底部音乐条取音源用），
+          // 它不发 CORS 头，必须和上面几个一样走同源 /proxy，否则点播放没反应。
+          var HOSTS = ['raw.gitcode.com','cdn.jsdelivr.net','fastly.jsdelivr.net','raw.githubusercontent.com','monster-siren.hypergryph.com'];
           function fix(u){
             try {
               if (typeof u !== 'string') return u;

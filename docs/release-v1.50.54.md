@@ -107,6 +107,10 @@
 - [ ] 安卓 13+ 的通知权限：首次点「测试」没反应时，走设置页的「去开启」跳到系统通知设置。
 - [ ] **推送前跑一遍 `python scripts/secret_scan.py`**：扫证书/私钥/token/手机号/身份证，
       命中即中止。keystore 密码、埋点 token 一律不入库。
-- [ ] macOS 本次**不出包**，环境已预留：开关代码同 Windows，
-      出包时执行 `bash macos/scripts/sync-web.sh`（默认从 `windows/.../wwwroot` 拷产物）
-      → `bash macos/build.sh`。WKWebView 播放 `<audio>` 无需额外授权。
+- [ ] macOS 本次**不出包**，环境已预留完整：
+      - 开关：`Settings.swift` + `SettingsStore.swift` 已加「首页音乐条」，与 Windows 同款逻辑。
+      - 跨域：`Patches.swift` 的 `remoteRewrite` 白名单已加 `monster-siren.hypergryph.com`，
+        否则 mac 上点播放取不到音源（它不发 CORS 头，只能走同源 `/proxy`）。
+      - 出包：`rm -rf macos/wwwroot`（build.sh 只在**缺失**时才同步，不删会一直用旧产物）
+        → `bash macos/scripts/sync-web.sh` → `bash macos/build.sh`。
+      - ATS 已有 `NSAllowsLocalNetworking`，本地 http 服务与 https 音源都不受限。
