@@ -1,5 +1,9 @@
 name: Windows Release
 
+# 默认 GITHUB_TOKEN 只有读权限，发 Release 会 403 Resource not accessible by integration。
+permissions:
+  contents: write
+
 # 只在手动或打 tag 时跑：日常提交不该占用构建时间。
 on:
   workflow_dispatch:
