@@ -264,6 +264,7 @@
 			    >{{ originalCopyrightTexts[1] }}</text>
 			</view>
 		</view>
+		<ak-music-bar />
 	</view>
 </template>
 

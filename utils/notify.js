@@ -164,17 +164,43 @@ export function openSystemNotifySettings() {
 
 /**
  * Android 通知栏消息。
- * 不依赖 UniPush / 厂商通道：直接 new Notification.Builder，所以离线也能弹。
+ * 不依赖 UniPush / 厂商通道，离线也能弹。
+ *
+ * v1.50.54 的坑（报 "i is not a constructor"）：
+ *   plus.android.importClass('android.app.Notification.Builder') 返回的是 null ——
+ *   Notification.Builder 是 Java 的**静态内部类**，反射名必须用 `$` 连接：
+ *   'android.app.Notification$Builder'。写成点号拿到 null，再 new 就抛
+ *   "xxx is not a constructor"（压缩后变量名变成 i）。
+ *
+ * 所以这里反过来：先用官方 plus.push 的本地消息（最省事、不用反射），
+ * 只有它不可用时才退回反射，且反射路径用 $ 写法。
  */
 function andLocal(title, body) {
 	// #ifdef APP-PLUS
+	const sdk = parseInt(plus.os.version) || 30;
+
+	// —— 方案一：官方本地通知。只是本地消息，不需要任何推送服务/厂商通道 ——
+	try {
+		if (plus.push && typeof plus.push.createMessage === 'function') {
+			plus.push.createMessage(String(body || ''), 'akp_local', {
+				title: String(title || ''),
+				cover: false,
+				sound: 'system'
+			});
+			return true;
+		}
+	} catch (e) {
+		console.warn('[notify] plus.push 失败，转反射:', e && e.message);
+	}
+
+	// —— 方案二：反射自建通知（注意内部类要用 $）——
 	const main = plus.android.runtimeMainActivity();
 	const Context = plus.android.importClass('android.content.Context');
 	const Intent = plus.android.importClass('android.content.Intent');
 	const PendingIntent = plus.android.importClass('android.app.PendingIntent');
-	const Builder = plus.android.importClass('android.app.Notification.Builder');
+	const Builder = plus.android.importClass('android.app.Notification$Builder');
+	if (!Builder) throw new Error('通知组件不可用（Notification$Builder 导入失败）');
 
-	const sdk = parseInt(plus.os.version) || 30;
 	const nm = main.getSystemService(Context.NOTIFICATION_SERVICE);
 	plus.android.importClass(nm);
 
@@ -197,7 +223,10 @@ function andLocal(title, body) {
 	const builder = sdk >= 26 ? new Builder(main, CH_ID) : new Builder(main);
 	builder.setContentTitle(String(title || ''));
 	builder.setContentText(String(body || ''));
-	builder.setSmallIcon(main.getApplicationInfo().icon);
+	// 小图标必须是纯白剪影资源；拿应用图标当小图标在部分 ROM 上会崩，包一层 try
+	try {
+		builder.setSmallIcon(main.getApplicationInfo().icon);
+	} catch (e) {}
 	builder.setAutoCancel(true);
 	builder.setContentIntent(pi);
 	if (sdk < 26) builder.setPriority(0); // PRIORITY_DEFAULT

@@ -112,8 +112,34 @@ export function clearUrlCache() {
  *   current:()=>number, duration:()=>number
  * }}
  */
+/**
+ * 播放器是**全项目单例**：uni-app 的 app-vue 里页面切换不会销毁 JS 上下文，
+ * 所以只要 audio 实例挂在模块级，切页时音乐不会断。
+ * 多个页面各自挂一条音乐条时，重复调用本函数只会把回调换成最新那个（setHandler）。
+ */
+let sharedPlayer = null;
+
 export function createPlayer(cb) {
-	const h = cb || {};
+	if (sharedPlayer) {
+		sharedPlayer.setHandler(cb);
+		return sharedPlayer;
+	}
+	sharedPlayer = buildPlayer(cb);
+	return sharedPlayer;
+}
+
+/** 彻底关掉播放器（用户点音乐条上的 × 时用），下次 createPlayer 会重建 */
+export function destroyPlayer() {
+	if (sharedPlayer) {
+		try {
+			sharedPlayer.destroy();
+		} catch (e) {}
+		sharedPlayer = null;
+	}
+}
+
+function buildPlayer(cb) {
+	let h = cb || {};
 	let audio = null;
 	let track = null;
 	let playing = false;
@@ -256,6 +282,19 @@ export function createPlayer(cb) {
 		state,
 		current,
 		duration,
+		/** 换绑 UI 回调，并立刻把当前状态回放一次（新挂载的音乐条才不会显示成"未播放"） */
+		setHandler(next) {
+			h = next || {};
+			try {
+				h.onState && h.onState(state());
+				h.onProgress && h.onProgress({ current: current(), duration: duration() });
+			} catch (e) {}
+			return this;
+		},
+		/** 解绑（页面隐藏时用），音频继续播 */
+		detach() {
+			h = {};
+		},
 		destroy() {
 			seq++;
 			try {
@@ -264,6 +303,8 @@ export function createPlayer(cb) {
 			audio = null;
 			track = null;
 			playing = false;
+			h = {};
+			if (sharedPlayer === this) sharedPlayer = null;
 		}
 	};
 }

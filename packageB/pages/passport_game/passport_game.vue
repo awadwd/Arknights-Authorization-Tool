@@ -291,6 +291,7 @@
 		</view>
 
 		<text class="global-credit" v-if="!loading && ready">题目由本地数据随机生成，仅供娱乐 · 与官方无关</text>
+		<ak-music-bar />
 	</view>
 </template>
 

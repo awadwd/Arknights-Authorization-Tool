@@ -3113,21 +3113,32 @@
 					<text class="setting-action">去开启</text>
 				</view>
 
-				<view class="setting-item" v-if="notifyCfg.enabled && notifyCaps.pushplus">
+				<!--
+					PushPlus 输入框不跟 notifyCaps.pushplus 绑定：那个能力位一旦判错（平台识别失败、
+					自定义基座等），用户就彻底找不到填 token 的地方 —— v1.50.54 就是这个毛病。
+					现在只要「通知总开关」开着就显示，只有小程序端隐藏（请求域名不在白名单里，填了也发不出去）。
+				-->
+				<view class="setting-item" v-if="notifyCfg.enabled && notifyCaps.kind !== 'mp'">
 					<view class="setting-info">
 						<text class="setting-name">PushPlus 第三方推送</text>
-						<text class="setting-desc">填 token 后同步推一条到微信服务号，系统通知被限制时也能收到</text>
+						<text class="setting-desc">在 pushplus.plus 微信登录后复制 token 粘到下面，系统通知被限制时也能收到</text>
 					</view>
 				</view>
-				<view class="notify-token-row" v-if="notifyCfg.enabled && notifyCaps.pushplus">
+				<view class="notify-token-row" v-if="notifyCfg.enabled && notifyCaps.kind !== 'mp'">
 					<input
 						class="notify-token-input"
 						v-model="notifyCfg.pushToken"
-						placeholder="PushPlus token（pushplus.plus）"
+						placeholder="粘贴 PushPlus token"
 						placeholder-class="notify-token-ph"
+						:adjust-position="true"
+						confirm-type="done"
 						@blur="savePushToken"
+						@confirm="savePushToken"
 					/>
 					<text class="notify-token-btn" @click="testPushPlus">{{ pushTesting ? '发送中…' : '测试推送' }}</text>
+				</view>
+				<view class="notify-token-hint" v-if="notifyCfg.enabled && notifyCaps.kind !== 'mp'">
+					<text class="notify-token-hint-txt">{{ notifyCfg.pushToken ? '已保存，换 token 后失焦即自动保存' : '还没有填 token，这条通道现在是关闭状态' }}</text>
 				</view>
 
 				<view class="setting-item" v-if="notifyCfg.enabled && notifyCaps.subscribe" @click="onMpSubscribe">
@@ -5719,6 +5730,13 @@ import { markDailyTask } from "@/utils/dailyTask.js";
 
 
 
+		onShow() {
+			// 音乐条可能刚在别的页面被 × 关掉了，回到设置页开关要同步成"关"
+			try {
+				const v = uni.getStorageSync('ak_music_bar_enabled');
+				this.musicBarOn = v === '1' || v === 1 || v === true || v === 'true';
+			} catch (e) {}
+		},
 		onLoad(options) {
 			this.initNotify();
 
@@ -7064,9 +7082,7 @@ import { markDailyTask } from "@/utils/dailyTask.js";
 			try {
 				uni.setStorageSync('ak_music_bar_enabled', on ? '1' : '0');
 			} catch (err) {}
-			if (on) {
-				uni.showToast({ title: '回首页底部看看', icon: 'none' });
-			}
+			// 不弹任何提示：用户自己点的开关，不需要我们再教他去哪儿看
 		},
 		onGuessDataChange(e) {
 			const newValue = e.detail.value;
@@ -27334,12 +27350,20 @@ import { markDailyTask } from "@/utils/dailyTask.js";
 		height: 78rpx;
 		padding: 0 24rpx;
 		border-radius: 12rpx;
+		border: 1rpx solid rgba(128, 128, 128, 0.3);
 		font-size: 24rpx;
 		background: var(--ak-surface-muted);
 		color: var(--ak-text-primary);
 		margin-right: 16rpx;
 	}
 	.notify-token-ph {
+		color: var(--ak-text-muted);
+	}
+	.notify-token-hint {
+		padding: 0 4rpx 22rpx;
+	}
+	.notify-token-hint-txt {
+		font-size: 22rpx;
 		color: var(--ak-text-muted);
 	}
 	.notify-token-btn {

@@ -1,5 +1,5 @@
 <template>
-	<view class="ak-mb" :class="'ak-mb--' + theme">
+	<view class="ak-mb" :class="'ak-mb--' + themeEff" v-if="enabled">
 		<!-- 展开的曲库列表：点封面/曲名区域收放 -->
 		<view class="ak-mb-panel" v-if="listOpen">
 			<view class="ak-mb-panel-head">
@@ -69,25 +69,42 @@
 						<view class="ak-mb-ico-next"></view>
 					</view>
 				</view>
+				<!-- 关掉音乐条本身：点了就静默收起，不再提示"去设置里打开" -->
+				<view class="ak-mb-close" @click.stop="closeBar">
+					<text class="ak-mb-close-txt">×</text>
+				</view>
 			</view>
 		</view>
 	</view>
 </template>
 
 <script>
-import { getCatalog, createPlayer, prettyName, fmtTime, K_LAST } from '@/utils/music.js';
+import {
+	getCatalog,
+	createPlayer,
+	destroyPlayer,
+	prettyName,
+	fmtTime,
+	isBarEnabled,
+	setBarEnabled,
+	K_LAST
+} from '@/utils/music.js';
 
 export default {
 	name: 'ak-music-bar',
 	props: {
-		// 跟随首页主题：simple / jieyuan / ak / ark
+		// 跟随页面主题：simple / jieyuan / ak / ark。
+		// 不传就自己从 storage 读（其它页面直接 <ak-music-bar /> 即可）
 		theme: {
 			type: String,
-			default: 'simple'
+			default: ''
 		}
 	},
 	data() {
 		return {
+			// 组件自己管显隐：任何页面挂上它，只要开关是关的就什么都不渲染
+			enabled: false,
+			themeEff: 'simple',
 			list: [],
 			total: 0,
 			listOpen: false,
@@ -114,7 +131,20 @@ export default {
 			return this.playing ? '播放中…' : '已暂停';
 		}
 	},
+	watch: {
+		theme(v) {
+			if (v) this.themeEff = v;
+		}
+	},
 	created() {
+		this.themeEff = this.theme || this.readTheme();
+		// 开关关着就什么都不做，连 audio 都不创建
+		if (!isBarEnabled()) {
+			this.enabled = false;
+			return;
+		}
+		this.enabled = true;
+
 		// #ifdef APP-PLUS
 		this.showCover = true;
 		// #endif
@@ -155,15 +185,60 @@ export default {
 				uni.showToast({ title: msg || '播放失败', icon: 'none' });
 			}
 		});
+
+		// 多页面共用同一个播放器，但只有"最后绑定"的那条能收到回调。
+		// 这里每秒对一次状态，回到旧页面时进度条/按钮不会停在过期数据上。
+		this._tick = setInterval(() => {
+			if (!this.player) return;
+			try {
+				const s = this.player.state();
+				this.playing = !!s.playing;
+				this.buffering = !!s.buffering;
+				if (s.track) this.current = s.track;
+				const d = Number(s.duration) || 0;
+				if (d > 0) {
+					this.duration = d;
+					this.currentTime = Number(s.current) || 0;
+					this.percent = Math.min(100, (this.currentTime / d) * 100);
+				}
+			} catch (e) {}
+		}, 1000);
 	},
 	beforeUnmount() {
-		// 离开首页就停，别让背景音跟着跑到别的页面去
+		// 只是解绑 UI：音频要继续播，切页不该断歌。
+		// 真正销毁发生在用户点 × 的时候。
+		if (this._tick) {
+			clearInterval(this._tick);
+			this._tick = null;
+		}
 		try {
-			this.player && this.player.pause();
-			this.player && this.player.destroy();
+			this.player && this.player.detach();
 		} catch (e) {}
 	},
 	methods: {
+		readTheme() {
+			try {
+				return uni.getStorageSync('themeMode') || 'simple';
+			} catch (e) {
+				return 'simple';
+			}
+		},
+		/** 关闭音乐条：写回开关 + 释放播放器，静默收起，不作任何提示 */
+		closeBar() {
+			try {
+				setBarEnabled(false);
+			} catch (e) {}
+			if (this._tick) {
+				clearInterval(this._tick);
+				this._tick = null;
+			}
+			try {
+				destroyPlayer();
+			} catch (e) {}
+			this.player = null;
+			this.listOpen = false;
+			this.enabled = false;
+		},
 		pretty(t) {
 			return prettyName(t);
 		},
@@ -570,6 +645,23 @@ export default {
 	display: flex;
 	align-items: center;
 	flex-shrink: 0;
+}
+
+/* 右上角的关闭：点了整条收起，同时把开关写回"关" */
+.ak-mb-close {
+	width: 44rpx;
+	height: 56rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	margin-left: 2rpx;
+}
+
+.ak-mb-close-txt {
+	font-size: 34rpx;
+	line-height: 1;
+	color: var(--mb-muted);
 }
 
 .ak-mb-btn {

@@ -125,6 +125,7 @@
     <view v-if="!loading && !loadError && hasData" class="tip-section">
       <text class="tip-text">点击任意盒号可跳转到反馈页面补充条码数据</text>
     </view>
+    <ak-music-bar />
   </view>
 </template>
 

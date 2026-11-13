@@ -211,6 +211,7 @@
 			<text class="copyright-text">方舟通行证谷子查询工具</text>
 			<text class="copyright-text">本工具为玩家自制，与官方无关</text>
 		</view>
+		<ak-music-bar />
 	</view>
 </template>
 

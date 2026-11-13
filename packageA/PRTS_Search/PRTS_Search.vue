@@ -146,6 +146,7 @@
         </view>
       </view>
     </view>
+    <ak-music-bar />
   </view>
 </template>
 

@@ -85,6 +85,7 @@
 				<text class="result-arrow">›</text>
 			</view>
 		</view>
+		<ak-music-bar />
 	</view>
 </template>
 

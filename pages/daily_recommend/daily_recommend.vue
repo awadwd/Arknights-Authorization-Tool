@@ -291,6 +291,7 @@
 				<text class="ad-note">广告收益用于维持数据更新，感谢支持</text>
 			</view>
 		</view>
+		<ak-music-bar />
 	</view>
 </template>
 

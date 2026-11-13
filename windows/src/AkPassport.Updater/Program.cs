@@ -79,7 +79,7 @@ internal static class Program
 				UseShellExecute = true,
 			});
 
-			SelfDelete(log);
+			SelfDeleteIfTemporary(opt.Dir, log);
 			return 0;
 		}
 		catch (Exception ex)
@@ -112,7 +112,7 @@ internal static class Program
 			}
 			catch { }
 
-			SelfDelete(log);
+			SelfDeleteIfTemporary(opt.Dir, log);
 			return 1;
 		}
 	}
@@ -202,13 +202,27 @@ internal static class Program
 		try { Directory.Delete(staging, recursive: true); } catch { }
 	}
 
-	/// <summary>更新器自己的 exe 要在退出后才能删，交给 cmd 延迟执行。</summary>
-	private static void SelfDelete(Log log)
+	/// <summary>
+	/// 只在「自己不是安装目录里那一份」时才自删（说明是从临时目录跑的临时副本）。
+	///
+	/// 安装目录里的 AkPassport.Updater.exe 必须留下：它随安装包分发，主程序每次更新都靠它。
+	/// 以前是更新完无条件自删，结果每成功更新一次更新器就消失一次，
+	/// 下一次点更新必然报「更新程序缺失」—— 1.50.53 装完就踩到了这个坑。
+	/// </summary>
+	private static void SelfDeleteIfTemporary(string installDir, Log log)
 	{
 		try
 		{
 			var self = Environment.ProcessPath;
 			if (string.IsNullOrEmpty(self)) return;
+
+			var selfDir = Path.GetFullPath(Path.GetDirectoryName(self) ?? string.Empty).TrimEnd('\\', '/');
+			var dir = Path.GetFullPath(installDir).TrimEnd('\\', '/');
+			if (selfDir.Equals(dir, StringComparison.OrdinalIgnoreCase))
+			{
+				log.Write("更新器在安装目录内，保留给下次更新用");
+				return;
+			}
 
 			Process.Start(new ProcessStartInfo
 			{
@@ -217,7 +231,7 @@ internal static class Program
 				CreateNoWindow = true,
 				UseShellExecute = false,
 			});
-			log.Write("已安排自删: " + self);
+			log.Write("临时副本已安排自删: " + self);
 		}
 		catch (Exception ex)
 		{

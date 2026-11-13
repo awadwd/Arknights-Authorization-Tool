@@ -237,6 +237,7 @@
 				<button class="modal-btn" @tap="closePrivacyPolicy">关闭</button>
 			</view>
 		</view>
+		<ak-music-bar />
 	</view>
 </template>
 

@@ -628,6 +628,7 @@
         <button class="ten-modal-confirm" @click="closeTenModal">确 定</button>
       </view>
     </view>
+    <ak-music-bar />
   </view>
 </template>
 

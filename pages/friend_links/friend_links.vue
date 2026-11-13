@@ -45,6 +45,7 @@
 			<view class="disclaimer-line">个人玩家自制，用于聚合明日方舟同人类工具，仅供爱好者交流使用；以上网页或小程序内的内容与本小程序无关</view>
 			<view class="disclaimer-line">部分资源来源于网络，如有侵权请联系 2726269007@qq.com 删除</view>
 		</view>
+		<ak-music-bar />
 	</view>
 </template>
 

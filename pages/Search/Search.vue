@@ -704,6 +704,7 @@
 				</view>
 			</view>
 		</view>
+		<ak-music-bar />
 	</view>
 
 		<!-- 干员所在其他盒号弹窗 -->

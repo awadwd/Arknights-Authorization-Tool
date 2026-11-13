@@ -154,6 +154,7 @@
 			<text class="tip-text">• 每个干员最多可添加5个自定义搜索词</text>
 			<text class="tip-text">• 自定义搜索词将在"外号搜索"启用时生效</text>
 		</view>
+		<ak-music-bar />
 	</view>
 </template>
 

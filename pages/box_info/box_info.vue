@@ -87,6 +87,7 @@
 			<button class="back-btn" @click="goBack">返回列表</button>
 			<button class="refresh-btn" @click="forceRefresh">重新加载数据</button>
 		</view>
+		<ak-music-bar />
 	</view>
 </template>
 

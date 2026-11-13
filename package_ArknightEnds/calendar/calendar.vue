@@ -69,6 +69,7 @@
 			<text class="empty-text">{{ emptyText }}</text>
 			<button class="reload-btn" v-if="viewMode === 'timeline'" @click="loadData">重新加载数据</button>
 		</view>
+		<ak-music-bar />
 	</view>
 </template>
 

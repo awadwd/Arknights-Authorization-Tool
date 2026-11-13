@@ -288,6 +288,7 @@
 		<view class="footer-actions">
 			<button class="back-btn" @click="goBack">返回上一页</button>
 		</view>
+		<ak-music-bar />
 	</view>
 </template>
 

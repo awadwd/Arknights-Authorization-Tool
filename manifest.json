@@ -2,8 +2,8 @@
     "name" : "方舟通行证谷子查询工具",
     "appid" : "__UNI__0E47E24",
     "description" : "明日方舟通行证查询app",
-    "versionName" : "1.50.54",
-    "versionCode" : 165,
+    "versionName" : "1.50.55",
+    "versionCode" : 166,
     "transformPx" : false,
     /* 5+App特有相关 */
     "app-plus" : {
