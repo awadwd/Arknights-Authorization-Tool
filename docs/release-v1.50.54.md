@@ -23,7 +23,7 @@
 
 | 端 | 落地方式 | 需要做什么 |
 |---|---|---|
-| 安卓 | 系统通知栏，直接调 `NotificationManager`，不走厂商通道，离线也能弹 | Android 13+ 首次要给通知权限；设置页有「去开启」跳转 |
+| 安卓 | 系统通知栏，直接调 `NotificationManager`，不走厂商通道，离线也能弹 | `manifest.json` 已声明 `POST_NOTIFICATIONS`；Android 13+ 首次要给权限，设置页有「去开启」跳转 |
 | 安卓/PC/网页 | PushPlus（微信服务号推送） | 在设置页填 pushplus.plus 的 token，点「测试推送」 |
 | 微信小程序 | 一次性订阅消息 | 公众平台 → 订阅消息 → 选用模板，把模板 ID 填进 `utils/notify.js` 的 `MP_TMPL_IDS`；个人主体可用一次性订阅 |
 | Windows | 系统 Toast（Windows App SDK `AppNotificationManager`） | 无需配置；未安装开始菜单快捷方式时注册会失败，安装器会建 |
@@ -105,6 +105,9 @@
 - [ ] 公众平台配订阅消息模板 → 填 `MP_TMPL_IDS`，否则小程序端只显示说明文案。
 - [ ] PushPlus token 由使用者在设置页自己填，不写死进包。
 - [ ] 安卓 13+ 的通知权限：首次点「测试」没反应时，走设置页的「去开启」跳到系统通知设置。
+      **注意**：`manifest.json` 的 `app-plus.distribute.android.permissions` 里必须有
+      `POST_NOTIFICATIONS`（已加）。少了这条，`checkSelfPermission` 永远返回未授予，
+      系统设置里也找不到本应用的通知开关，整个通知功能静默失效。
 - [ ] **推送前跑一遍 `python scripts/secret_scan.py`**：扫证书/私钥/token/手机号/身份证，
       命中即中止。keystore 密码、埋点 token 一律不入库。
 - [ ] macOS 本次**不出包**，环境已预留完整：
