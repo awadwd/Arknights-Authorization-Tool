@@ -3140,21 +3140,23 @@
 			</view>
 		</view>
 
-		<!-- 塞壬唱片播放器 -->
+		<!-- 塞壬唱片：首页底部迷你播放条开关（默认关） -->
+		<!-- #ifndef MP-WEIXIN -->
 		<view class="section" id="section-music">
 			<view class="section-header">
 				<text class="section-title">塞壬唱片</text>
 			</view>
 			<view class="section-content">
-				<view class="setting-item" @click="gotoMusic">
+				<view class="setting-item">
 					<view class="setting-info">
-						<text class="setting-name">纯音乐播放器</text>
-						<text class="setting-desc">官方 Instrumental 曲库，查通行证时当背景音</text>
+						<text class="setting-name">首页音乐条</text>
+						<text class="setting-desc">在首页底部显示迷你播放器，放塞壬唱片纯音乐；默认关闭，音频在线播放、不占安装包体积</text>
 					</view>
-					<text class="setting-action">进入</text>
+					<switch :checked="musicBarOn" @change="onMusicBarChange" color="#409EFF" />
 				</view>
 			</view>
 		</view>
+		<!-- #endif -->
 
 		<!-- #ifdef MP-WEIXIN -->
 
@@ -5272,6 +5274,14 @@ import { markDailyTask } from "@/utils/dailyTask.js";
 				notifyTesting: false,
 				pushTesting: false,
 				mpSubReady: false, // 'simple' 简约风格, 'ark' 科技风格
+				// 首页底部音乐条是否开启（默认关）
+				musicBarOn: (function () {
+					try {
+						return uni.getStorageSync('ak_music_bar_enabled') === '1';
+					} catch (e) {
+						return false;
+					}
+				})(),
 				// 首页功能展示样式：grid 宫格 / list 列表 / minimal 极简（其余收纳）
 				homeLayout: (function () {
 					try {
@@ -7044,8 +7054,17 @@ import { markDailyTask } from "@/utils/dailyTask.js";
 				}
 			});
 		},
-		gotoMusic() {
-			uni.navigateTo({ url: '/packageA/music/music' });
+		// 首页音乐条开关。存储键与 utils/music.js 的 K_BAR 保持一致；
+		// 这里不 import music.js，避免把 catalog.json 打进设置页包体。
+		onMusicBarChange(e) {
+			const on = !!(e && e.detail && e.detail.value);
+			this.musicBarOn = on;
+			try {
+				uni.setStorageSync('ak_music_bar_enabled', on ? '1' : '0');
+			} catch (err) {}
+			if (on) {
+				uni.showToast({ title: '回首页底部看看', icon: 'none' });
+			}
 		},
 		onGuessDataChange(e) {
 			const newValue = e.detail.value;

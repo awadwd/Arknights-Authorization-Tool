@@ -52,6 +52,8 @@ public sealed partial class MainWindow : Window
 		new("通行证游乐场", "packageB/pages/passport_game/passport_game", Symbol.Emoji),
 		new("PRTS 帮查", "packageA/PRTS_Search/PRTS_Search?from=index", Symbol.Message),
 		new("数据反馈", "pages/box_feedback_new/box_feedback_new", Symbol.Comment),
+		// 塞壬唱片播放入口已取消：改成首页底部音乐条（默认关，设置里开），
+		// 没有独立页面了，这里不能再留导航项。
 	};
 
 	private static readonly NavEntry[] AePrimary =

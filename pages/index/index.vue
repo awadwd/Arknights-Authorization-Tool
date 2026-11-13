@@ -13,7 +13,7 @@
 			<view class="nav-right"></view>
 		</view>
 	</view>
-	<view :class="['container', 'theme-' + themeMode]" :style="{ paddingTop: (statusBarHeight + 44) + 'px' }">
+	<view :class="['container', 'theme-' + themeMode]" :style="containerStyle">
 		<!-- 公告栏 -->
 		<view class="notice-section" v-if="noticeContent && showNotice">
 			<view class="notice-header">
@@ -395,6 +395,11 @@
 			</view>
 		</view>
 	</view>
+
+	<!-- #ifndef MP-WEIXIN -->
+	<!-- 首页底部迷你音乐条：默认隐藏，需在「设置 → 塞壬唱片」里开启 -->
+	<ak-music-bar v-if="musicBarOn" :theme="themeMode"></ak-music-bar>
+	<!-- #endif -->
 </template>
 
 
@@ -406,6 +411,15 @@ import { haptic } from "@/utils/haptic.js";
 import { openLink } from "@/utils/openLink.js";
 import { mergeGuessData, pruneStoredGuessData } from "@/utils/guessData.js";
 import { onUpdateReady, applyUpdate, consumePrompt } from "@/utils/mpUpdate.js";
+// #ifndef MP-WEIXIN
+// 音乐条只在 App / H5(PC 壳) 启用。小程序主包已经贴过体积上限，
+// 这里连组件带 catalog.json 一起挡在编译产物之外。
+import AkMusicBar from "@/components/ak-music-bar/ak-music-bar.vue";
+// #endif
+
+// 音乐条开关的存储键，与 utils/music.js 的 K_BAR 保持一致。
+// 这里不 import music.js，是为了不在小程序包里带上 catalog.json。
+const MUSIC_BAR_KEY = "ak_music_bar_enabled";
 
 const getBaseUrl = () => {
   console.log( "当前是非 H5 环境，使用完整 URL");
@@ -437,9 +451,16 @@ const ACTIVITY_BANNER_APPID = "wx01bb1ef166cd3f4e";
 
 
 export default {
+  components: {
+    // #ifndef MP-WEIXIN
+    AkMusicBar
+    // #endif
+  },
   data() {
     return {
       highlightBtn: false,
+      // 首页底部音乐条是否显示（默认关，设置页里开）
+      musicBarOn: false,
       // 状态栏高度
       statusBarHeight: 0,
       // 主题模式
@@ -545,6 +566,7 @@ export default {
   onShow() {
       // 从设置页返回时同步首页展示样式
       this.loadHomeLayout();
+      this.refreshMusicBar();
       // 因为 navigateBack 无法使用 emit, 改用 storage 标志位方案
       if (uni.getStorageSync('needHighlight')) {
         uni.removeStorageSync('needHighlight');
@@ -580,6 +602,7 @@ export default {
     this.initDefaultToolsConfig();
     this.loadPrtsToolsConfig();
     this.loadHomeLayout();
+    this.refreshMusicBar();
     this.fetchActivityBanner();
     const savedCount = uni.getStorageSync("copyrightClickCount");
     if (savedCount) {
@@ -642,6 +665,18 @@ export default {
     });
   },
   computed: {
+    // 顶部让出状态栏 + 自定义导航；底部音乐条出现时补一段内边距，别把最后一张卡片压住
+    containerStyle() {
+      const style = { paddingTop: (this.statusBarHeight + 44) + 'px' };
+      if (this.musicBarOn) {
+        try {
+          style.paddingBottom = uni.upx2px(150) + 'px';
+        } catch (e) {
+          style.paddingBottom = '75px';
+        }
+      }
+      return style;
+    },
     // 滚动公告条配色随主题切换（简约/界园=信息蓝，工业浅色=纸面，工业深色=石墨）
     noticeBarTheme() {
       if (this.themeMode === 'ark') {
@@ -666,6 +701,19 @@ export default {
     }
   },
   methods: {
+    /**
+     * 刷新底部音乐条的显示状态。
+     * 放在 onShow 里调用，所以「设置页打开开关 → 返回首页」会立刻出现/消失。
+     */
+    refreshMusicBar() {
+      // #ifndef MP-WEIXIN
+      try {
+        this.musicBarOn = uni.getStorageSync(MUSIC_BAR_KEY) === "1";
+      } catch (e) {
+        this.musicBarOn = false;
+      }
+      // #endif
+    },
     /** 小程序：监听新版本，下载完成后提示重启（其它平台空操作） */
     initMpUpdate() {
       onUpdateReady(() => {
