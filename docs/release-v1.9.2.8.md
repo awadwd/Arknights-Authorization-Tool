@@ -34,6 +34,7 @@
 > 注意：PC 端「设置」打开的是 WinUI 原生设置页，Vue 版设置页在壳里被桥接拦截，
 > 所以「通知与提醒」的表单目前只在手机 / 小程序 / 浏览器里可见；
 > PC 端默认开启系统 Toast，版本更新通知照常工作。
+> 「首页音乐条」这个开关已经补进原生设置页（见第 3 节），不受此限制。
 
 ### 3. 塞壬唱片（首页底部音乐条）
 
@@ -54,6 +55,13 @@
 - 跨域：Windows 壳已把 `monster-siren.hypergryph.com` 加进 `RemoteProxy`；
   浏览器直开 H5 会提示「不允许跨域取音源」，属于预期。
 - 小程序不启用（`#ifndef MP-WEIXIN` 把组件和 `catalog.json` 都挡在包外，主包体积零增长）。
+- **桌面端开关走原生设置页**（Vue 设置页在壳里被拦截，点不到）：
+  - Windows：`Views/SettingsView.xaml.cs` 的「窗口」卡片第一行「首页音乐条」，
+    经 `MainWindow.OnSettingsToggleChanged` 写 `localStorage`，随即重载 WebView 生效。
+  - macOS：`Settings.swift` 同一个卡片加了同名开关，读写在 `SettingsStore.swift`。
+  - 两端写的是字符串布尔 `'true'/'false'`，手机端写 `'1'/'0'`，
+    所以 `utils/music.js` 的 `isBarEnabled()` 和首页 `refreshMusicBar()`
+    都做了宽松判断 —— **别改回 `=== '1'`**，否则 PC/mac 上开关看着打开却没反应。
 
 
 ### 4. 版本号
@@ -90,4 +98,8 @@
 - [ ] 公众平台配订阅消息模板 → 填 `MP_TMPL_IDS`，否则小程序端只显示说明文案。
 - [ ] PushPlus token 由使用者在设置页自己填，不写死进包。
 - [ ] 安卓 13+ 的通知权限：首次点「测试」没反应时，走设置页的「去开启」跳到系统通知设置。
-- [ ] macOS 端本次未改：通知与播放器都走 H5，`macos/` 壳里的 WKWebView 播放音频本身没问题。
+- [ ] **推送前跑一遍 `python scripts/secret_scan.py`**：扫证书/私钥/token/手机号/身份证，
+      命中即中止。keystore 密码、埋点 token 一律不入库。
+- [ ] macOS 本次**不出包**，环境已预留：开关代码同 Windows，
+      出包时执行 `bash macos/scripts/sync-web.sh`（默认从 `windows/.../wwwroot` 拷产物）
+      → `bash macos/build.sh`。WKWebView 播放 `<audio>` 无需额外授权。

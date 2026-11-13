@@ -1728,7 +1728,7 @@ public sealed partial class MainWindow : Window
 	}
 
 	private static SettingsView.WebSettings DefaultWebSettings() => new(
-		"liquid", false, false, false, false, false, true, false, "domestic", "", "");
+		"liquid", false, false, false, false, false, true, false, "domestic", "", "", false);
 
 	/// <summary>
 	/// 设置改完后统一走这里：先写 localStorage，再防抖重载 WebView。
@@ -1817,6 +1817,8 @@ public sealed partial class MainWindow : Window
 			"autoUpdate:!!au.enabled," +
 			"dataSource:g('dataSource')||''," +
 			"dataVersion:g('dataVersion')||''," +
+			// 音乐条：手机端存 '1'/'0'，PC 壳按字符串布尔写 'true'/'false'，这里三种都认
+			"musicBar:(function(){var m=g('ak_music_bar_enabled');return m==='1'||m===1||m===true||m==='true';})()," +
 			"lastUpdate:g('localUpdateTime')||''};" +
 			"}catch(e){return null;}})()";
 
@@ -1870,7 +1872,7 @@ public sealed partial class MainWindow : Window
 	private static readonly System.Collections.Generic.HashSet<string> StringBoolKeys = new(StringComparer.Ordinal)
 	{
 		"showMarketPrice", "enableEnglishSearch", "enableJapaneseSearch",
-		"enableNicknameSearch", "enableGuessData",
+		"enableNicknameSearch", "enableGuessData", "ak_music_bar_enabled",
 	};
 
 	private async void OnSettingsToggleChanged(string key, bool value)

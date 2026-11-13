@@ -16,6 +16,8 @@ struct WebSettings {
     var dataSource = ""
     var dataVersion = ""
     var lastUpdate = ""
+    /// 首页底部「塞壬唱片」迷你播放条。默认关闭，与手机端共用 `ak_music_bar_enabled`。
+    var musicBar = false
 }
 
 // MARK: - 干员头像个性化
@@ -233,7 +235,10 @@ final class SettingsStore {
           autoUpdate: !!au.enabled,
           dataSource: g('dataSource') || '',
           dataVersion: g('dataVersion') || '',
-          lastUpdate: g('localUpdateTime') || ''
+          lastUpdate: g('localUpdateTime') || '',
+          // 手机端存 '1'/'0'，桌面壳按字符串布尔写 'true'/'false'，三种都认
+          musicBar: (function(){ var m = g('ak_music_bar_enabled');
+            return m === '1' || m === 1 || m === true || m === 'true'; })()
         });
         }catch(e){ return null; }})()
         """
@@ -256,6 +261,7 @@ final class SettingsStore {
             settings.dataSource = raw["dataSource"] as? String ?? ""
             settings.dataVersion = raw["dataVersion"] as? String ?? ""
             settings.lastUpdate = raw["lastUpdate"] as? String ?? ""
+            settings.musicBar = raw["musicBar"] as? Bool ?? false
             completion(settings)
         }
     }
@@ -290,7 +296,7 @@ final class SettingsStore {
     /// 写成真布尔会「看着改了、实际没生效」。
     private static let stringBoolKeys: Set<String> = [
         "showMarketPrice", "enableEnglishSearch", "enableJapaneseSearch",
-        "enableNicknameSearch", "enableGuessData",
+        "enableNicknameSearch", "enableGuessData", "ak_music_bar_enabled",
     ]
 
     func setBool(_ key: String, _ value: Bool, reload: Bool = true) {

@@ -708,7 +708,9 @@ export default {
     refreshMusicBar() {
       // #ifndef MP-WEIXIN
       try {
-        this.musicBarOn = uni.getStorageSync(MUSIC_BAR_KEY) === "1";
+        const v = uni.getStorageSync(MUSIC_BAR_KEY);
+        // '1' 来自手机端设置页；'true' 来自 Windows 原生设置页（走 ToggleChanged 桥）
+        this.musicBarOn = v === "1" || v === 1 || v === true || v === "true";
       } catch (e) {
         this.musicBarOn = false;
       }

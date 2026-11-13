@@ -5277,7 +5277,9 @@ import { markDailyTask } from "@/utils/dailyTask.js";
 				// 首页底部音乐条是否开启（默认关）
 				musicBarOn: (function () {
 					try {
-						return uni.getStorageSync('ak_music_bar_enabled') === '1';
+						// '1' 是本页写的；'true' 是 Windows 原生设置页写的，两边都要认
+						const v = uni.getStorageSync('ak_music_bar_enabled');
+						return v === '1' || v === 1 || v === true || v === 'true';
 					} catch (e) {
 						return false;
 					}

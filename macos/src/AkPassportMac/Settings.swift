@@ -396,6 +396,7 @@ final class SettingsViewController: NSViewController {
         ])
 
         rebuild(windowRows, rows: [
+            ("首页音乐条", "首页底部显示塞壬唱片迷你播放条（默认关闭，只播纯音乐）", settings.musicBar, "ak_music_bar_enabled"),
             ("显示菜单栏图标", "在系统菜单栏放一个图标，方便随时唤起主窗口", trayEnabled, "@tray"),
         ])
 

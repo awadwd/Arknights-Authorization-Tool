@@ -42,7 +42,9 @@ public sealed partial class SettingsView : UserControl
 		bool AutoUpdate,
 		string DataSource,
 		string DataVersion,
-		string LastUpdate);
+		string LastUpdate,
+		// 首页底部「塞壬唱片」迷你播放条。默认关闭，和手机端共用同一个 storage 键
+		bool MusicBar);
 
 	private sealed record ThemeOption(string Value, string Label, string Desc, Color Pane, Color Panel, Color Accent);
 
@@ -146,6 +148,9 @@ public sealed partial class SettingsView : UserControl
 
 			DataSourceText.Text = DescribeSource(s.DataSource) + " · 数据 " + Fallback(s.DataVersion)
 				+ " · 更新于 " + Fallback(s.LastUpdate);
+
+			AddToggle(WindowRows, "首页音乐条", "首页底部显示塞壬唱片迷你播放条（默认关闭，只播纯音乐）",
+				s.MusicBar, v => ToggleChanged?.Invoke("ak_music_bar_enabled", v));
 
 			AddToggle(WindowRows, "自动检查更新", "启动后在后台查一次 GitHub Releases，有新版本会提示；不会自动安装",
 				_prefs.AutoCheckUpdate, v => Prefs(p => p.AutoCheckUpdate = v));
