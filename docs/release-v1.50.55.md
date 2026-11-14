@@ -2,6 +2,16 @@
 
 修 1.50.54 反馈的两个硬 bug，音乐条改为全站常驻。
 
+## 下载
+
+| 平台 | 文件 | 说明 |
+|---|---|---|
+| 安卓 | `com.ArknightsAuthorizationSeries1.50.55.apk` | 16.2 MB，Android 7.0+，覆盖安装即可 |
+| Windows | `AkPassport-Win-1.50.55-Setup.exe` | 139.7 MB，推荐；装完可走应用内更新 |
+| Windows | `AkPassport-Win-1.50.55-win-x64.zip` | 92.5 MB，免安装版 |
+
+安卓包与 1.50.54 同一张证书（SHA-256 指纹 `C2:CF:38:9B…46:8B`），可直接升级，不需要卸载重装。
+
 ## 修复
 
 **1. 安卓「测试通知」报 `i is not a constructor`，通知一条也弹不出来**
@@ -49,7 +59,7 @@
 
 ## 出包
 
-- 安卓：HBuilderX 云打包（自有证书，别名 `1`），**取消勾选开屏广告**；
-  产物按规范命名 `com.ArknightsAuthorizationSeries1.50.55.apk`
+- 安卓：HBuilderX 云打包（自有证书，别名 `1`），已取消开屏广告；
+  产物 `com.ArknightsAuthorizationSeries1.50.55.apk`，清单内 `versionName 1.50.55` / `versionCode 166`
 - Windows：推 `v1.50.55` tag 由 CI 出 zip + Setup
 - macOS：环境已预留（设置页开关 + 代理白名单），未出包
